@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ZodType } from "zod";
-import { GetApiSession } from "@lib/session";
-import { checkPermission } from "@lib/auth-options";
-import { ISession } from "@/types/next-auth";
-import { Logger } from "pino";
+import { type NextRequest, NextResponse } from "next/server";
+import type { Logger } from "pino";
+import type { ZodType } from "zod";
+import type { AppUser } from "@/lib/auth";
+import { CheckPermission, GetApiSession } from "@/lib/session";
 import { logger as baseLogger } from "../logger";
 
 interface IApiHandlerConfig<T, P = Record<string, string>> {
@@ -15,7 +14,7 @@ interface IApiHandlerConfig<T, P = Record<string, string>> {
   };
   handler: (
     body: T,
-    session?: ISession,
+    session?: AppUser,
     params?: P,
     logger?: Logger,
   ) => Promise<any>;
@@ -24,7 +23,7 @@ interface IApiHandlerConfig<T, P = Record<string, string>> {
 export function CreateApiRoute<T = any, P = Record<string, string>>(
   config: IApiHandlerConfig<T, P>,
 ) {
-  return async (req: NextRequest, context?: { params: Promise<P> }) => {
+  return async (req: NextRequest, context: { params: Promise<P> }) => {
     const reqId = crypto.randomUUID();
     const method = req.method;
     const url = req.nextUrl.pathname;
@@ -40,9 +39,9 @@ export function CreateApiRoute<T = any, P = Record<string, string>>(
     reqLogger.info("Request started");
 
     try {
-      let session: ISession | undefined;
+      let session: AppUser | undefined;
       const environment = process.env.ENVIRONMENT;
-      const params = context?.params ? await context.params : undefined;
+      const params = await context.params;
 
       if (config.requiresAuth.status) {
         session = (await GetApiSession())?.user;
@@ -52,7 +51,7 @@ export function CreateApiRoute<T = any, P = Record<string, string>>(
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const hasPermission = await checkPermission(
+        const hasPermission = await CheckPermission(
           config.requiresAuth.permission,
         );
 

@@ -13,7 +13,7 @@ const GenerateCodeSchema = z
   })
   .default({ length: 7, mode: "UPPER" });
 
-type GenerateCodeInput = z.infer<typeof GenerateCodeSchema>;
+type GenerateCodeInput = z.input<typeof GenerateCodeSchema>;
 
 export function GenerateCode(params?: GenerateCodeInput) {
   try {
