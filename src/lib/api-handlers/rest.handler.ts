@@ -5,9 +5,13 @@ import type { AppUser } from "@/lib/auth";
 import { CheckPermission, GetApiSession } from "@/lib/session";
 import { logger as baseLogger } from "../logger";
 
-interface IApiHandlerConfig<T, P = Record<string, string>> {
+interface IApiHandlerConfig<T, P = Record<string, string>, R = any> {
   moduleName: string;
   schema?: ZodType<T>;
+  // Validates the handler's return value before it's sent — catches a
+  // handler that drifts from its documented response shape. Skipped for
+  // void responses and for handlers that return a NextResponse directly.
+  responseSchema?: ZodType<R>;
   requiresAuth: {
     status: boolean;
     permission: string;
@@ -17,11 +21,11 @@ interface IApiHandlerConfig<T, P = Record<string, string>> {
     session?: AppUser,
     params?: P,
     logger?: Logger,
-  ) => Promise<any>;
+  ) => Promise<R | NextResponse>;
 }
 
-export function CreateApiRoute<T = any, P = Record<string, string>>(
-  config: IApiHandlerConfig<T, P>,
+export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
+  config: IApiHandlerConfig<T, P, R>,
 ) {
   return async (req: NextRequest, context: { params: Promise<P> }) => {
     const reqId = crypto.randomUUID();
@@ -124,11 +128,33 @@ export function CreateApiRoute<T = any, P = Record<string, string>>(
         return NextResponse.json({ success: true }, { status: 200 });
       }
 
+      // Narrowed past the NextResponse/void checks above — the remaining
+      // value is the handler's typed result.
+      const typedResult = result as R;
+      let responseData: unknown = typedResult;
+
+      if (config.responseSchema) {
+        const responseValidation = config.responseSchema.safeParse(typedResult);
+
+        if (!responseValidation.success) {
+          reqLogger.error(
+            { issues: responseValidation.error.issues, durationMs },
+            "Handler response does not match responseSchema",
+          );
+          return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 },
+          );
+        }
+
+        responseData = responseValidation.data;
+      }
+
       reqLogger.info(
         { status: 200, durationMs },
         "Request completed successfully",
       );
-      return NextResponse.json(result, { status: 200 });
+      return NextResponse.json(responseData, { status: 200 });
     } catch (err: any) {
       const durationMs = Math.round(performance.now() - startTime);
 

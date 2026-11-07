@@ -9,7 +9,7 @@ conventions.
 | # | Epic | Depends on | Status |
 |---|------|------------|--------|
 | 1 | [Foundation / Shell](./01-foundation-shell.md) | — | done |
-| 2 | [Categories + Products + Pricing](./02-categories-products-pricing.md) | 1 | not-started |
+| 2 | [Categories + Products + Pricing](./02-categories-products-pricing.md) | 1 | done |
 | 3 | [Unit Settings](./03-unit-settings.md) | 1 | not-started |
 | 4 | [Stock](./04-stock.md) | 1, 2, 3 | not-started |
 | 5 | [Customers + Loans](./05-customers-loans.md) | 1 | not-started |

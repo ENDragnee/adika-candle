@@ -118,6 +118,51 @@ model Role {
 }
 
 // ---------------------------------------------------------------------------
+// Catalog — categories, products, and price history (pricing is variable
+// over time, never a single current-price field; see AGENTS.md).
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("category")
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  name       String
+  sku        String   @unique
+  isActive   Boolean  @default(true)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  prices     Price[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("product")
+}
+
+model Price {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  amountPerKg   Decimal
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  createdById   String
+  createdAt     DateTime  @default(now())
+
+  @@index([productId, effectiveFrom])
+  @@map("price")
+}
+
+// ---------------------------------------------------------------------------
 // Audit log — written from auth and domain events.
 // ---------------------------------------------------------------------------
 

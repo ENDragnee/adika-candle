@@ -1,5 +1,5 @@
-import type { NextRequest } from "next/server";
 import { createSchema, createYoga } from "graphql-yoga";
+import type { NextRequest } from "next/server";
 import { CreateGraphqlRoute } from "@/lib/api-handlers/graphql.handler";
 
 const typeDefs = /* GraphQL */ `

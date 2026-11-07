@@ -19,7 +19,7 @@ export function GenerateCode(params?: GenerateCodeInput) {
   try {
     const safeParams = GenerateCodeSchema.parse(params);
     const { length, mode } = safeParams;
-    let vaidChars;
+    let vaidChars: string;
 
     const chars = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 

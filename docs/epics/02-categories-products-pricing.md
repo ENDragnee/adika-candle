@@ -1,7 +1,7 @@
 # Epic 2 — Categories + Products + Pricing
 
 **Depends on:** 1 (Foundation/Shell)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 

@@ -12,6 +12,80 @@ undo.
 
 ---
 
+## 2026-11-07 — Epic 2 (Categories + Products + Pricing) decisions
+
+**`responseSchema` added to `CreateApiRoute`.** Epic 2's doc flagged this as
+the right place to establish the response-shape Zod validation convention
+mentioned in Epic 1's parent plan (Epic 1 never added it — the health
+check route has no meaningful shape to validate). `IApiHandlerConfig` now
+takes an optional `responseSchema: ZodType<R>`; `CreateApiRoute` validates
+the handler's return value against it before sending the response and
+returns a 500 (logged with the Zod issues) if a handler drifts from its
+documented shape. Handlers may still return a `NextResponse` directly to
+bypass this (error responses, 404s) — only the "successful" return path is
+validated. All `api/v1/categories*` and `api/v1/products*` routes use it.
+
+**Product creation doesn't take a price.** `POST /api/v1/products` creates
+a bare product (name + category only); there's no price field on
+`/manager/products/new`. Setting the first price happens via the same
+"set new price" action used later, on `/manager/products/[id]` right after
+creation — matches the API shape literally (prices are a sub-resource of
+an existing product, `api/v1/products/[id]/prices`) and avoids a special
+case for "price at creation time" vs. "price change later." A product can
+exist with zero `Price` rows (valid per the schema); `currentPrice` on the
+DTO is `null` until a price is set.
+
+**Money crosses the wire as a string, not a `Decimal`/number.** Prisma's
+`Decimal` fields (`Price.amountPerKg`) aren't JSON-safe as live objects —
+`responseSchema`'s `safeParse` runs on the raw handler return value before
+`NextResponse.json()` serializes it, so a schema expecting a string would
+reject an actual `Decimal` instance. DTOs convert with `.toString()` in
+the `To*DTO` mappers (`src/features/{categories,products}/validators/*.schema.ts`)
+and schemas validate `z.string()`. Avoids silent float-precision loss too.
+Input (`SetNewPriceInputSchema`) still accepts a JSON number via
+`z.coerce.number()` for a plain `<input type="number">`.
+
+**SKU generation retries on collision instead of failing.** The existing
+`GenerateCode()` (`src/lib/generate-code.ts`) has no uniqueness guarantee.
+`POST /api/v1/products` wraps `prisma.product.create` in a retry loop (5
+attempts) that only retries on a Prisma `P2002` unique-constraint error on
+`sku`; any other error or exhausting the attempts rethrows. Also added a
+local `GenerateSku()` wrapper there — `GenerateCode()`'s declared return
+type is `string | undefined` (it swallows its own parse errors), which
+isn't assignable to Prisma's required `sku: string`; the wrapper throws
+instead of silently writing `undefined`.
+
+**`GET /api/v1/categories` is gated by `category:manage` only** — including
+for the product create/edit forms' category dropdown, which also needs
+the list. Epic 2's permission table only assigns `category:manage` to the
+categories page; there's no separate "read categories for a dropdown"
+permission. This works today because the only role with `product:manage`
+(`MANAGER`) also has `category:manage` — RBAC is seeded data, not an enum
+(see the 2026-11-06 "RBAC modeled as data" entry below), so this isn't
+hard-coded, just not yet exercised by a role that would expose the gap.
+Revisit if a future role gets `product:manage` without `category:manage`.
+
+**`Price.createdById` stays a plain string, not a relation.** Epic 2's
+schema snippet declares it as `String`, no `@relation` to `User` — kept
+exactly as specified rather than adding a join for convenience. Price
+history in the UI shows the raw id, not a resolved user name.
+
+**`DELETE /api/v1/categories/[id]` soft-deactivates, not hard-deletes** —
+sets `isActive = false` via the same `prisma.category.update` path as
+PATCH, per Epic 2's "PATCH, DELETE/deactivate" route note. No category row
+is ever actually deleted through this API.
+
+**Ran `npx next typegen` after adding the first dynamic route segment.**
+`/manager/products/[id]/page.tsx` uses `PageProps<'/manager/products/[id]'>`
+(the typed-routes helper from `src/app/layout.tsx`'s existing
+`LayoutProps<"/">` pattern) — but the literal route union is generated
+into `.next/types` and wasn't yet aware of this new segment, so TypeScript
+rejected the literal until `next typegen` ran once. Note for later epics:
+any new dynamic route needs this (or a `next dev`/`next build` pass) before
+`PageProps<'...'>` will type-check.
+
+---
+
 ## 2026-11-07 — Opted the whole app out of Instant Navigation validation at the root layout
 
 `next.config.ts` already had `cacheComponents: true` (pre-existing, not

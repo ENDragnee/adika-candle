@@ -61,7 +61,10 @@ describe("CreateApiRoute", () => {
       handler: async (body) => body,
     });
 
-    const response = await route(makeRequest("POST", { name: "" }), emptyContext);
+    const response = await route(
+      makeRequest("POST", { name: "" }),
+      emptyContext,
+    );
     expect(response.status).toBe(400);
   });
 
@@ -82,5 +85,32 @@ describe("CreateApiRoute", () => {
 
     expect(response.status).toBe(200);
     expect(json).toEqual({ userId: "user_1" });
+  });
+
+  it("passes through a handler result that matches the responseSchema", async () => {
+    const route = CreateApiRoute({
+      moduleName: "stub",
+      responseSchema: z.object({ id: z.string() }),
+      requiresAuth: { status: false, permission: "" },
+      handler: async () => ({ id: "abc" }),
+    });
+
+    const response = await route(makeRequest("GET"), emptyContext);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toEqual({ id: "abc" });
+  });
+
+  it("returns 500 when a handler result does not match the responseSchema", async () => {
+    const route = CreateApiRoute({
+      moduleName: "stub",
+      responseSchema: z.object({ id: z.string() }),
+      requiresAuth: { status: false, permission: "" },
+      handler: async () => ({ id: 123 }) as never,
+    });
+
+    const response = await route(makeRequest("GET"), emptyContext);
+    expect(response.status).toBe(500);
   });
 });
