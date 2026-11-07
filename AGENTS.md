@@ -45,6 +45,14 @@ request input and response shapes) · Biome (lint/format) · pnpm.
   and `CreateGraphqlRoute` (`.../graphql.handler.ts`) — both take
   `requiresAuth: { status, permission }` and a Zod `schema`, and receive a
   typed `AppUser` session. Don't hand-roll auth/validation in a route.
+- **Session-reading pages/layouts:** `next.config.ts` has `cacheComponents:
+  true`. Any page or layout whose own body calls
+  `GetSession`/`GetApiSession`/`CheckPermission`/`CheckAnyPermission` (all
+  of which read `headers()`) must add `export const instant = false;`
+  itself — an ancestor layout's `instant = false` does not suppress the
+  dev-time `blocking-prerender-dynamic` validation for a descendant
+  segment that makes its own blocking call. See `docs/DECISIONS.md`
+  (2026-11-07, "Opted the whole app out of Instant Navigation...").
 
 ## Commands
 

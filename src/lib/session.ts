@@ -10,7 +10,7 @@ export async function GetSession(): Promise<AppSession> {
   const session = await GetApiSession();
 
   if (!session?.user?.id) {
-    redirect("/auth/signin");
+    redirect("/auth/sign-in");
   }
 
   return session;

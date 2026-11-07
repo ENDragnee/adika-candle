@@ -25,6 +25,12 @@ export const metadata: Metadata = {
   description: "Sales, production, and inventory management for Adika Candle",
 };
 
+// This app is session-gated end to end (every real page checks auth via
+// headers()/cookies()) — there's no public/cacheable route to preserve
+// instant-navigation validation for. Opting out at the root avoids
+// annotating every auth-gated page individually; see docs/DECISIONS.md.
+export const instant = false;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
