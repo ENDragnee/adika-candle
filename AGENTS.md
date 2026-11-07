@@ -19,10 +19,10 @@ time and manager-only. Measurement unit is KG; Carton/Packet/Wax/Kir have
 fixed conversion ratios (see conversation history / future `docs/` notes —
 not yet encoded in the schema).
 
-**Status:** Foundation (Epic 1) and Categories/Products/Pricing (Epic 2)
-are done and verified — see `docs/epics/README.md`. Stock, customers/loans,
-sales, users/RBAC UI, and analytics (Epics 3–8) have **not** been built
-yet — that's the next slice of work.
+**Status:** Foundation (Epic 1), Categories/Products/Pricing (Epic 2), and
+Unit Settings (Epic 3) are done and verified — see `docs/epics/README.md`.
+Stock, customers/loans, sales, users/RBAC UI, and analytics (Epics 4–8)
+have **not** been built yet — that's the next slice of work.
 
 ## Tech stack
 

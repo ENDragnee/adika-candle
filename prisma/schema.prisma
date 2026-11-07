@@ -163,6 +163,23 @@ model Price {
 }
 
 // ---------------------------------------------------------------------------
+// Unit conversions — Carton/Packet/Wax/Kir → KG ratios, Manager-editable at
+// runtime. unitName is a plain string, not an enum (see docs/DECISIONS.md,
+// 2026-11-07, "UnitConversion.unitName is a string, not a Prisma enum").
+// ---------------------------------------------------------------------------
+
+model UnitConversion {
+  id        String   @id @default(cuid())
+  unitName  String   @unique
+  ratioToKg Decimal
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("unit_conversion")
+}
+
+// ---------------------------------------------------------------------------
 // Audit log — written from auth and domain events.
 // ---------------------------------------------------------------------------
 

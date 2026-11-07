@@ -10,7 +10,7 @@ conventions.
 |---|------|------------|--------|
 | 1 | [Foundation / Shell](./01-foundation-shell.md) | — | done |
 | 2 | [Categories + Products + Pricing](./02-categories-products-pricing.md) | 1 | done |
-| 3 | [Unit Settings](./03-unit-settings.md) | 1 | not-started |
+| 3 | [Unit Settings](./03-unit-settings.md) | 1 | done |
 | 4 | [Stock](./04-stock.md) | 1, 2, 3 | not-started |
 | 5 | [Customers + Loans](./05-customers-loans.md) | 1 | not-started |
 | 6 | [Unified Sales Flow](./06-unified-sales-flow.md) | 2, 3, 4, 5 | not-started |

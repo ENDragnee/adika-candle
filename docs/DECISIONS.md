@@ -12,6 +12,51 @@ undo.
 
 ---
 
+## 2026-11-07 — Epic 3 (Unit Settings) decisions
+
+**`convertToKg(unitName, qty)` lives in `src/features/unit-conversions/services/convert-to-kg.service.ts`**
+and is a server-side Prisma helper, not an axios-based client service like
+`unit-conversion.service.ts` in the same folder — despite the `.service.ts`
+suffix matching the feature's existing naming convention, it talks to
+`prisma` directly rather than `/api/v1/unit-conversions` over HTTP, since
+Epic 4's "Accept Stock" and Epic 6's "Record Sale" API route handlers will
+call it in-process, not over the network. Kept the lowerCamelCase
+`convertToKg` name exactly as Epic 3's doc specifies (rather than the
+repo's usual PascalCase function convention) because Epics 4 and 6 import
+it by that literal name.
+
+**`convertToKg` validates `unitName` by fetching all active
+`UnitConversion` rows and checking membership with a dynamically-built
+`z.enum(...)` of their names** — not a hand-rolled `includes()` check —
+per the epic doc's explicit "Validate unitName against the live table with
+Zod, not the type system." Throws a dedicated `UnknownUnitError` (exported
+alongside it) rather than a generic `Error`, so Epic 4/6 call sites can
+catch it specifically and map it to a 400 instead of a 500. Lookup is an
+exact string match against the stored `unitName` (which is uppercased on
+create) — callers must pass the stored casing; it does not normalize case
+on the read side, matching the UI's unit list exactly.
+
+**`convertToKg` uses `Prisma.Decimal` (`new Prisma.Decimal(qty).times(unit.ratioToKg)`),
+not plain `number` multiplication,** for the ratio multiply itself, to
+avoid float-precision drift on the one piece of math this helper owns —
+consistent with the project's existing practice of treating money/ratio
+fields as `Decimal` everywhere except at the DTO boundary.
+
+**`UpdateUnitConversionInputSchema` has no `unitName` field** — PATCH can
+only change `ratioToKg`/`isActive`, matching the epic doc's route table
+("PATCH ratio/active") literally. Renaming a unit after creation isn't
+supported; deactivate and create a new one instead. `CreateUnitConversionInputSchema`
+uppercases `unitName` on input (`CARTON` not `carton`) for consistency
+with the doc's naming convention, since there's no enum to enforce it.
+
+**`/manager/settings` is a new "hub" page pattern** — Epic 3 is the first
+settings-style page that isn't a flat list; it just links to
+`/manager/settings/units`. Future epics adding more Manager settings
+screens should add their link to that page's `SETTINGS_LINKS` array rather
+than inventing a new hub.
+
+---
+
 ## 2026-11-07 — Epic 2 (Categories + Products + Pricing) decisions
 
 **`responseSchema` added to `CreateApiRoute`.** Epic 2's doc flagged this as

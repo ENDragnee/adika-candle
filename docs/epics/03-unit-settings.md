@@ -1,7 +1,7 @@
 # Epic 3 — Unit Settings
 
 **Depends on:** 1 (Foundation/Shell)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 
