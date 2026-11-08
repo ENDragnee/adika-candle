@@ -2,6 +2,16 @@
 
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TableContainer } from "@/components/ui/data-table";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   useCategories,
   useCreateCategory,
@@ -9,9 +19,6 @@ import {
   useUpdateCategory,
 } from "../hooks/use-categories";
 import type { CategoryDTO } from "../validators/category.schema";
-
-const inputClassName =
-  "h-8 w-full rounded-none border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50";
 
 function CreateCategoryForm() {
   const [name, setName] = useState("");
@@ -33,18 +40,17 @@ function CreateCategoryForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-2 border border-border p-3"
+      className="flex flex-wrap items-end gap-2 rounded-xl border border-border p-3"
     >
       <div className="flex min-w-48 flex-1 flex-col gap-1">
         <label htmlFor="new-category-name" className="text-sm font-medium">
           Name
         </label>
-        <input
+        <Input
           id="new-category-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
           required
-          className={inputClassName}
         />
       </div>
       <div className="flex min-w-48 flex-1 flex-col gap-1">
@@ -54,11 +60,10 @@ function CreateCategoryForm() {
         >
           Description
         </label>
-        <input
+        <Input
           id="new-category-description"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          className={inputClassName}
         />
       </div>
       <Button type="submit" disabled={createCategory.isPending}>
@@ -108,25 +113,23 @@ function CategoryRow({ category }: { category: CategoryDTO }) {
 
   if (isEditing) {
     return (
-      <tr className="border-b border-border">
-        <td className="p-2">
-          <input
+      <TableRow>
+        <TableCell>
+          <Input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className={inputClassName}
           />
-        </td>
-        <td className="p-2">
-          <input
+        </TableCell>
+        <TableCell>
+          <Input
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            className={inputClassName}
           />
-        </td>
-        <td className="p-2 text-sm text-muted-foreground">
+        </TableCell>
+        <TableCell className="text-muted-foreground">
           {category.isActive ? "Active" : "Inactive"}
-        </td>
-        <td className="flex gap-2 p-2">
+        </TableCell>
+        <TableCell className="flex gap-2">
           <Button
             size="sm"
             onClick={handleSave}
@@ -137,21 +140,19 @@ function CategoryRow({ category }: { category: CategoryDTO }) {
           <Button size="sm" variant="ghost" onClick={handleCancel}>
             Cancel
           </Button>
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
     );
   }
 
   return (
-    <tr className="border-b border-border">
-      <td className="p-2 text-sm">{category.name}</td>
-      <td className="p-2 text-sm text-muted-foreground">
+    <TableRow>
+      <TableCell>{category.name}</TableCell>
+      <TableCell className="text-muted-foreground">
         {category.description ?? "—"}
-      </td>
-      <td className="p-2 text-sm">
-        {category.isActive ? "Active" : "Inactive"}
-      </td>
-      <td className="flex gap-2 p-2">
+      </TableCell>
+      <TableCell>{category.isActive ? "Active" : "Inactive"}</TableCell>
+      <TableCell className="flex gap-2">
         <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
           Edit
         </Button>
@@ -163,8 +164,8 @@ function CategoryRow({ category }: { category: CategoryDTO }) {
         >
           {category.isActive ? "Deactivate" : "Activate"}
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -177,34 +178,34 @@ export function CategoryManager() {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading categories…</p>
       ) : (
-        <div className="overflow-x-auto border border-border">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="p-2 text-sm font-medium">Name</th>
-                <th className="p-2 text-sm font-medium">Description</th>
-                <th className="p-2 text-sm font-medium">Status</th>
-                <th className="p-2 text-sm font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="bg-muted/50">Name</TableHead>
+                <TableHead className="bg-muted/50">Description</TableHead>
+                <TableHead className="bg-muted/50">Status</TableHead>
+                <TableHead className="bg-muted/50">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {categories?.length ? (
                 categories.map((category) => (
                   <CategoryRow key={category.id} category={category} />
                 ))
               ) : (
-                <tr>
-                  <td
+                <TableRow className="hover:bg-transparent">
+                  <TableCell
                     colSpan={4}
-                    className="p-3 text-center text-sm text-muted-foreground"
+                    className="h-24 text-center text-muted-foreground"
                   >
                     No categories yet.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </div>
   );

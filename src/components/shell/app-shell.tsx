@@ -27,18 +27,23 @@ export function AppShell({ user, navItems, children }: AppShellProps) {
           {navItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const Icon = item.icon;
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "block rounded-none px-2 py-1.5 text-sm transition-colors",
+                  "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50",
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent",
                 )}
               >
+                <Icon
+                  className="size-4 shrink-0"
+                  weight={isActive ? "fill" : "regular"}
+                />
                 {item.label}
               </Link>
             );
@@ -46,7 +51,7 @@ export function AppShell({ user, navItems, children }: AppShellProps) {
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <header className="flex items-center justify-between border-b border-border bg-background/95 px-4 py-2.5 shadow-sm backdrop-blur-sm">
           <div className="text-sm text-muted-foreground">
             {user.name} ·{" "}
             <span className="font-medium text-foreground">{user.role}</span>

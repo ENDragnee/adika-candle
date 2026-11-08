@@ -2,12 +2,26 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TableContainer } from "@/components/ui/data-table";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useRoles } from "@/features/roles/hooks/use-roles";
 import { useCreateUser, useUpdateUser, useUsers } from "../hooks/use-users";
 import type { UserDTO } from "../validators/user.schema";
-
-const inputClassName =
-  "h-8 w-full rounded-none border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50";
 
 function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
   const [name, setName] = useState("");
@@ -48,62 +62,58 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
     <div className="flex flex-col gap-2">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-wrap items-end gap-2 border border-border p-3"
+        className="flex flex-wrap items-end gap-2 rounded-xl border border-border p-3"
       >
         <div className="flex min-w-48 flex-1 flex-col gap-1">
           <label htmlFor="new-user-name" className="text-sm font-medium">
             Name
           </label>
-          <input
+          <Input
             id="new-user-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
             required
-            className={inputClassName}
           />
         </div>
         <div className="flex min-w-48 flex-1 flex-col gap-1">
           <label htmlFor="new-user-email" className="text-sm font-medium">
             Email
           </label>
-          <input
+          <Input
             id="new-user-email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            className={inputClassName}
           />
         </div>
         <div className="flex min-w-40 flex-1 flex-col gap-1">
           <label htmlFor="new-user-username" className="text-sm font-medium">
             Username
           </label>
-          <input
+          <Input
             id="new-user-username"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             required
-            className={inputClassName}
           />
         </div>
         <div className="flex min-w-40 flex-1 flex-col gap-1">
           <label htmlFor="new-user-role" className="text-sm font-medium">
             Role
           </label>
-          <select
-            id="new-user-role"
-            value={roleId}
-            onChange={(event) => setRoleId(event.target.value)}
-            required
-            className={inputClassName}
-          >
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
-              </option>
-            ))}
-          </select>
+          <Select value={roleId} onValueChange={setRoleId}>
+            <SelectTrigger id="new-user-role" className="w-full">
+              <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+              {roles.map((role) => (
+                <SelectItem key={role.id} value={role.id}>
+                  {role.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Button type="submit" disabled={createUser.isPending}>
           {createUser.isPending ? "Creating…" : "Create user"}
@@ -116,11 +126,11 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
         )}
       </form>
       {temporaryPassword && (
-        <div className="flex flex-wrap items-center gap-2 border border-border bg-muted/50 p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/50 p-3 text-sm">
           <span>
             Temporary password (shown once — share it with the new user):
           </span>
-          <code className="rounded-none bg-background px-2 py-1 font-mono">
+          <code className="rounded-md bg-background px-2 py-1 font-mono">
             {temporaryPassword}
           </code>
           <Button
@@ -156,33 +166,37 @@ function UserRow({
   }
 
   return (
-    <tr className="border-b border-border">
-      <td className="p-2 text-sm">
+    <TableRow>
+      <TableCell>
         {user.name}
         {isSelf && (
           <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>
         )}
-      </td>
-      <td className="p-2 text-sm text-muted-foreground">{user.email}</td>
-      <td className="p-2 text-sm text-muted-foreground">
+      </TableCell>
+      <TableCell className="text-muted-foreground">{user.email}</TableCell>
+      <TableCell className="text-muted-foreground">
         {user.username ?? "—"}
-      </td>
-      <td className="p-2">
-        <select
+      </TableCell>
+      <TableCell>
+        <Select
           value={user.roleId ?? ""}
-          onChange={(event) => handleRoleChange(event.target.value)}
+          onValueChange={handleRoleChange}
           disabled={isSelf || updateUser.isPending}
-          className={inputClassName}
         >
-          {roles.map((role) => (
-            <option key={role.id} value={role.id}>
-              {role.name}
-            </option>
-          ))}
-        </select>
-      </td>
-      <td className="p-2 text-sm">{user.isActive ? "Active" : "Inactive"}</td>
-      <td className="p-2">
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {roles.map((role) => (
+              <SelectItem key={role.id} value={role.id}>
+                {role.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell>{user.isActive ? "Active" : "Inactive"}</TableCell>
+      <TableCell>
         <Button
           size="sm"
           variant={user.isActive ? "destructive" : "secondary"}
@@ -192,8 +206,8 @@ function UserRow({
         >
           {user.isActive ? "Deactivate" : "Activate"}
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -208,19 +222,19 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading users…</p>
       ) : (
-        <div className="overflow-x-auto border border-border">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="p-2 text-sm font-medium">Name</th>
-                <th className="p-2 text-sm font-medium">Email</th>
-                <th className="p-2 text-sm font-medium">Username</th>
-                <th className="p-2 text-sm font-medium">Role</th>
-                <th className="p-2 text-sm font-medium">Status</th>
-                <th className="p-2 text-sm font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="bg-muted/50">Name</TableHead>
+                <TableHead className="bg-muted/50">Email</TableHead>
+                <TableHead className="bg-muted/50">Username</TableHead>
+                <TableHead className="bg-muted/50">Role</TableHead>
+                <TableHead className="bg-muted/50">Status</TableHead>
+                <TableHead className="bg-muted/50">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {users?.length ? (
                 users.map((user) => (
                   <UserRow
@@ -231,18 +245,18 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
                   />
                 ))
               ) : (
-                <tr>
-                  <td
+                <TableRow className="hover:bg-transparent">
+                  <TableCell
                     colSpan={6}
-                    className="p-3 text-center text-sm text-muted-foreground"
+                    className="h-24 text-center text-muted-foreground"
                   >
                     No users yet.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </div>
   );

@@ -16,6 +16,10 @@ conventions.
 | 6 | [Unified Sales Flow](./06-unified-sales-flow.md) | 2, 3, 4, 5 | done |
 | 7 | [Users + RBAC Management UI](./07-users-rbac-ui.md) | 1 | done |
 | 8 | [Analytics / Dashboards](./08-analytics-dashboards.md) | 2, 4, 5, 6 | done |
+| 9 | [Design System Foundation](./09-design-system-foundation.md) | 1 | done |
+| 10 | [Loading States (Skeletons)](./10-loading-states.md) | 9 | not-started |
+| 11 | [Landing / Sign-in Page](./11-landing-sign-in.md) | 9 | not-started |
+| 12 | [Page-by-Page Polish](./12-page-polish.md) | 9 | not-started |
 
 Update the Status column as epics move through
 not-started → in-progress → done.

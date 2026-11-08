@@ -12,6 +12,102 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 9 (Design System Foundation) decisions
+
+**The "techy-edged" look traced to two root causes, not thirteen files of
+hand-rolled styling: a global `font-mono` and the shadcn registry's own
+zero-radius style.** `globals.css` already had a complete, unused shadcn
+token set (`--radius`, `--card`, `--popover`, full dark-mode palette) from
+the original scaffold — nothing wrong with the tokens themselves. Two
+things overrode them everywhere: (1) `src/app/layout.tsx` applied a
+literal `"font-mono"` Tailwind utility class directly on `<html>` in its
+`cn()` call, which — because Tailwind's utility layer always wins over
+`@layer base` — silently defeated `globals.css`'s `html { @apply
+font-mono; }` even after that line was changed to `font-sans`; the fix
+had to touch both files. (2) The project's shadcn `components.json` is
+configured with `"style": "radix-lyra"`, a zero-border-radius registry
+style — every primitive (`button.tsx`, `card.tsx`, `input.tsx`, etc.)
+ships `rounded-none` baked into its own class string, so pulling in new
+primitives for this epic reproduced the sharp-edged look by default.
+Fixed by hand-editing each new primitive's `rounded-none` to a step on
+the existing `--radius` scale (`rounded-md` for controls — Button,
+Badge, Input, Select trigger/item; `rounded-lg` for floating panels —
+Dialog content, Select content; `rounded-xl` for `Card`) rather than
+switching registry styles, since nothing else about `radix-lyra` (density,
+ring-based elevation instead of box-shadow) was a problem — only its
+radius default was.
+
+**Accent color: one warm honey-amber hue (`oklch(0.58 0.15 68)` light /
+`oklch(0.78 0.15 72)` dark), applied only to `--primary`/`--ring`/
+`--sidebar-primary`/`--sidebar-ring`.** Deliberately not the generic
+"AI-generated design" terracotta tell (`~oklch(0.65 0.14 35)`, hue ~35°)
+flagged in the `frontend-design` skill — picked a hue ~68-72° (yellow-leaning
+amber/honey, evoking candle wax) instead, clearly separated in hue angle.
+Every other token (`--background`, `--border`, `--muted`, `--accent`,
+Epic 8's `--chart-*`) stays achromatic — one accent, not accent-everywhere,
+per the "spend your boldness in one place" principle. Incidentally fixed
+a pre-existing bug: dark mode's `--sidebar-primary` was
+`oklch(0.488 0.243 264.376)` (a blue, leftover shadcn default) even
+though nothing used it — `AppShell`'s active-nav state read
+`--sidebar-accent` instead. Epic 9 wires the active-nav pill to
+`--sidebar-primary` for the first time, which is what surfaced the stale
+blue value; replaced with the new amber.
+
+**One shared `DataTable<T>` (`src/components/ui/data-table.tsx`)
+component, but not for all 13 files that had a hand-rolled `<table>`.**
+Split into two groups by whether each row is already its own stateful
+component: `product-list.tsx`, `price-history.tsx`, `stock-ledger.tsx`,
+`stock-balance-list.tsx`, `sale-list.tsx`, `loan-ledger.tsx`,
+`loan-oversight-list.tsx`, `customer-list.tsx`, and
+`manager-dashboard.tsx`'s three tables (9 total) have no per-row
+local state — they adopt the generic `columns`+`data`+`cell`
+`DataTable<T>`. `category-manager.tsx`, `customer-manager.tsx`,
+`unit-conversion-manager.tsx`, `user-manager.tsx` (4 total) have
+per-row components with local `isEditing` state or per-row mutations
+(`CategoryRow`, `CustomerRow`, `UnitConversionRow`, `UserRow`) — forcing
+these through a column/cell abstraction would mean splitting one row's
+`useUpdateX()` mutation hook across multiple cell sub-components, so
+they keep their existing row-component pattern but render shadcn's
+`Table`/`TableRow`/`TableCell` instead of raw `<table>`/`<tr>`/`<td>`,
+wrapped in the same `TableContainer` (also exported from
+`data-table.tsx`) for identical chrome. Both groups render visually
+identically; only the internal composition differs, by necessity not
+preference.
+
+**While already editing those 13 files for the table swap, their
+`inputClassName`-styled `<input>`/`<select>` elements were also swapped
+to the new `Input`/`Select` components** — both the edit-row inputs
+(inside the table being touched anyway) and each file's "create new X"
+form above the table. Scoped this way deliberately: leaving a file with
+a newly-rounded table sitting under a still-`rounded-none` create-form
+would look half-migrated within one file, which is worse than a slightly
+larger diff. Standalone forms with no accompanying table in the same file
+(`accept-stock-form.tsx`, `record-sale-form.tsx`, `create-product-form.tsx`,
+`set-price-form.tsx`, `manual-adjustment-form.tsx`, `repayment-form.tsx`,
+`sign-in-form.tsx`, `product-detail.tsx`'s edit form) were **not** touched
+— correctly deferred to Epic 12, which doesn't need an opportunistic
+justification to open them.
+
+**Phosphor icon components required `"use client"` on `nav-config.ts`,
+a plain data file.** `MANAGER_NAV_ITEMS`/`INVENTORY_NAV_ITEMS` hold
+references to `@phosphor-icons/react` icon components (not rendered
+JSX, just the component function as data) and are imported by
+`src/app/(dashboard)/layout.tsx`, a Server Component. Phosphor's icons
+use a shared `IconContext` internally, and merely importing (not
+rendering) one into a module reachable from a Server Component without
+`"use client"` throws `createContext only works in Client Components` at
+module-evaluation time — not a rendering-time error, so it surfaced as a
+500 on every page under `(dashboard)/layout.tsx` until `"use client"`
+was added to `nav-config.ts` itself (the actual rendering already
+happened inside `AppShell`, already a Client Component — the failure was
+purely from the data file being imported into the server module graph
+first). Also note: this project's installed `@phosphor-icons/react`
+(`2.1.10`) exports two names per icon — e.g. both `Gauge` and
+`GaugeIcon` — and the `Icon` type itself is only re-exported from the
+`@phosphor-icons/react/lib` subpath, not the package root.
+
+---
+
 ## 2026-11-08 — Epic 8 (Analytics / Dashboards) decisions
 
 **Low-stock alerts got a real schema field (`Product.lowStockThresholdKg`,

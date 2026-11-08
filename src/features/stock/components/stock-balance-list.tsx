@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useStockBalances } from "../hooks/use-stock";
+import type { StockBalanceDTO } from "../validators/stock.schema";
 
 function FormatDateTime(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Never";
@@ -17,6 +19,41 @@ export function StockBalanceList({
 }) {
   const { data: balances, isLoading } = useStockBalances();
 
+  const columns: DataTableColumn<StockBalanceDTO>[] = [
+    {
+      key: "name",
+      header: "Name",
+      cell: (balance) =>
+        detailHrefBase ? (
+          <Link
+            href={`${detailHrefBase}/${balance.productId}`}
+            className="underline underline-offset-4"
+          >
+            {balance.productName}
+          </Link>
+        ) : (
+          balance.productName
+        ),
+    },
+    {
+      key: "sku",
+      header: "SKU",
+      cell: (balance) => balance.productSku,
+      className: "text-muted-foreground",
+    },
+    {
+      key: "quantity",
+      header: "Quantity (kg)",
+      cell: (balance) => balance.quantityKg,
+    },
+    {
+      key: "updated",
+      header: "Last updated",
+      cell: (balance) => FormatDateTime(balance.updatedAt),
+      className: "text-muted-foreground",
+    },
+  ];
+
   if (isLoading) {
     return (
       <p className="text-sm text-muted-foreground">Loading stock levels…</p>
@@ -24,53 +61,11 @@ export function StockBalanceList({
   }
 
   return (
-    <div className="overflow-x-auto border border-border">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="p-2 text-sm font-medium">Name</th>
-            <th className="p-2 text-sm font-medium">SKU</th>
-            <th className="p-2 text-sm font-medium">Quantity (kg)</th>
-            <th className="p-2 text-sm font-medium">Last updated</th>
-          </tr>
-        </thead>
-        <tbody>
-          {balances?.length ? (
-            balances.map((balance) => (
-              <tr key={balance.productId} className="border-b border-border">
-                <td className="p-2 text-sm">
-                  {detailHrefBase ? (
-                    <Link
-                      href={`${detailHrefBase}/${balance.productId}`}
-                      className="underline underline-offset-4"
-                    >
-                      {balance.productName}
-                    </Link>
-                  ) : (
-                    balance.productName
-                  )}
-                </td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {balance.productSku}
-                </td>
-                <td className="p-2 text-sm">{balance.quantityKg}</td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {FormatDateTime(balance.updatedAt)}
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                colSpan={4}
-                className="p-3 text-center text-sm text-muted-foreground"
-              >
-                No products yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={balances ?? []}
+      getRowKey={(balance) => balance.productId}
+      emptyMessage="No products yet."
+    />
   );
 }

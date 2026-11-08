@@ -19,11 +19,13 @@ time and manager-only. Measurement unit is KG; Carton/Packet/Wax/Kir have
 fixed conversion ratios (see conversation history / future `docs/` notes —
 not yet encoded in the schema).
 
-**Status:** All 8 epics are done and verified — Foundation (Epic 1),
-Categories/Products/Pricing (Epic 2), Unit Settings (Epic 3), Stock
-(Epic 4), Customers/Loans (Epic 5), the Unified Sales Flow (Epic 6),
-Users/RBAC Management UI (Epic 7), and Analytics/Dashboards (Epic 8) —
-see `docs/epics/README.md`.
+**Status:** The full business-domain build (Epics 1–8) is done and
+verified — see `docs/epics/README.md`. A UI/UX overhaul (Epics 9–12) is
+in progress: Design System Foundation (Epic 9) is done — warm accent
+color, Geist Sans in place of the previous global monospace, a shared
+`Card`/`DataTable`/`Skeleton` component base under `src/components/ui/`.
+Loading States (Epic 10), Landing/Sign-in (Epic 11), and Page-by-Page
+Polish (Epic 12) are planned but not yet built.
 
 ## Tech stack
 

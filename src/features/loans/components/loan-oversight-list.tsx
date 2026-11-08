@@ -1,11 +1,35 @@
 "use client";
 
 import Link from "next/link";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useLoanAccounts } from "../hooks/use-loans";
+import type { LoanAccountDTO } from "../validators/loan.schema";
 
 function FormatDateTime(value: string) {
   return new Date(value).toLocaleString();
 }
+
+const columns: DataTableColumn<LoanAccountDTO>[] = [
+  {
+    key: "customer",
+    header: "Customer",
+    cell: (account) => (
+      <Link
+        href={`/manager/customers/${account.customerId}`}
+        className="underline underline-offset-4"
+      >
+        {account.customerName}
+      </Link>
+    ),
+  },
+  { key: "balance", header: "Balance", cell: (account) => account.balance },
+  {
+    key: "updated",
+    header: "Last activity",
+    cell: (account) => FormatDateTime(account.updatedAt),
+    className: "text-muted-foreground",
+  },
+];
 
 export function LoanOversightList() {
   const { data: accounts, isLoading } = useLoanAccounts();
@@ -17,45 +41,11 @@ export function LoanOversightList() {
   }
 
   return (
-    <div className="overflow-x-auto border border-border">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="p-2 text-sm font-medium">Customer</th>
-            <th className="p-2 text-sm font-medium">Balance</th>
-            <th className="p-2 text-sm font-medium">Last activity</th>
-          </tr>
-        </thead>
-        <tbody>
-          {accounts?.length ? (
-            accounts.map((account) => (
-              <tr key={account.id} className="border-b border-border">
-                <td className="p-2 text-sm">
-                  <Link
-                    href={`/manager/customers/${account.customerId}`}
-                    className="underline underline-offset-4"
-                  >
-                    {account.customerName}
-                  </Link>
-                </td>
-                <td className="p-2 text-sm">{account.balance}</td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {FormatDateTime(account.updatedAt)}
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                colSpan={3}
-                className="p-3 text-center text-sm text-muted-foreground"
-              >
-                No loan accounts yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={accounts ?? []}
+      getRowKey={(account) => account.id}
+      emptyMessage="No loan accounts yet."
+    />
   );
 }

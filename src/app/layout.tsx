@@ -39,9 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={cn(
         "h-full",
         "antialiased",
+        "font-sans",
         geistSans.variable,
         geistMono.variable,
-        "font-mono",
         jetbrainsMono.variable,
       )}
     >

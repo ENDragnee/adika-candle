@@ -2,6 +2,16 @@
 
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TableContainer } from "@/components/ui/data-table";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   useCreateUnitConversion,
   useDeactivateUnitConversion,
@@ -9,9 +19,6 @@ import {
   useUpdateUnitConversion,
 } from "../hooks/use-unit-conversions";
 import type { UnitConversionDTO } from "../validators/unit-conversion.schema";
-
-const inputClassName =
-  "h-8 w-full rounded-none border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50";
 
 function CreateUnitConversionForm() {
   const [unitName, setUnitName] = useState("");
@@ -33,26 +40,25 @@ function CreateUnitConversionForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-2 border border-border p-3"
+      className="flex flex-wrap items-end gap-2 rounded-xl border border-border p-3"
     >
       <div className="flex min-w-48 flex-1 flex-col gap-1">
         <label htmlFor="new-unit-name" className="text-sm font-medium">
           Unit name
         </label>
-        <input
+        <Input
           id="new-unit-name"
           value={unitName}
           onChange={(event) => setUnitName(event.target.value)}
           placeholder="CARTON"
           required
-          className={inputClassName}
         />
       </div>
       <div className="flex min-w-48 flex-1 flex-col gap-1">
         <label htmlFor="new-unit-ratio" className="text-sm font-medium">
           Ratio to KG
         </label>
-        <input
+        <Input
           id="new-unit-ratio"
           type="number"
           step="any"
@@ -60,7 +66,6 @@ function CreateUnitConversionForm() {
           value={ratioToKg}
           onChange={(event) => setRatioToKg(event.target.value)}
           required
-          className={inputClassName}
         />
       </div>
       <Button type="submit" disabled={createUnitConversion.isPending}>
@@ -107,22 +112,21 @@ function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
 
   if (isEditing) {
     return (
-      <tr className="border-b border-border">
-        <td className="p-2 text-sm">{unit.unitName}</td>
-        <td className="p-2">
-          <input
+      <TableRow>
+        <TableCell>{unit.unitName}</TableCell>
+        <TableCell>
+          <Input
             type="number"
             step="any"
             min="0"
             value={ratioToKg}
             onChange={(event) => setRatioToKg(event.target.value)}
-            className={inputClassName}
           />
-        </td>
-        <td className="p-2 text-sm text-muted-foreground">
+        </TableCell>
+        <TableCell className="text-muted-foreground">
           {unit.isActive ? "Active" : "Inactive"}
-        </td>
-        <td className="flex gap-2 p-2">
+        </TableCell>
+        <TableCell className="flex gap-2">
           <Button
             size="sm"
             onClick={handleSave}
@@ -133,17 +137,17 @@ function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
           <Button size="sm" variant="ghost" onClick={handleCancel}>
             Cancel
           </Button>
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
     );
   }
 
   return (
-    <tr className="border-b border-border">
-      <td className="p-2 text-sm">{unit.unitName}</td>
-      <td className="p-2 text-sm text-muted-foreground">{unit.ratioToKg}</td>
-      <td className="p-2 text-sm">{unit.isActive ? "Active" : "Inactive"}</td>
-      <td className="flex gap-2 p-2">
+    <TableRow>
+      <TableCell>{unit.unitName}</TableCell>
+      <TableCell className="text-muted-foreground">{unit.ratioToKg}</TableCell>
+      <TableCell>{unit.isActive ? "Active" : "Inactive"}</TableCell>
+      <TableCell className="flex gap-2">
         <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
           Edit
         </Button>
@@ -157,8 +161,8 @@ function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
         >
           {unit.isActive ? "Deactivate" : "Activate"}
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -171,34 +175,34 @@ export function UnitConversionManager() {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading units…</p>
       ) : (
-        <div className="overflow-x-auto border border-border">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="p-2 text-sm font-medium">Unit</th>
-                <th className="p-2 text-sm font-medium">Ratio to KG</th>
-                <th className="p-2 text-sm font-medium">Status</th>
-                <th className="p-2 text-sm font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="bg-muted/50">Unit</TableHead>
+                <TableHead className="bg-muted/50">Ratio to KG</TableHead>
+                <TableHead className="bg-muted/50">Status</TableHead>
+                <TableHead className="bg-muted/50">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {units?.length ? (
                 units.map((unit) => (
                   <UnitConversionRow key={unit.id} unit={unit} />
                 ))
               ) : (
-                <tr>
-                  <td
+                <TableRow className="hover:bg-transparent">
+                  <TableCell
                     colSpan={4}
-                    className="p-3 text-center text-sm text-muted-foreground"
+                    className="h-24 text-center text-muted-foreground"
                   >
                     No unit conversions yet.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </div>
   );

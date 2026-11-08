@@ -1,10 +1,47 @@
 "use client";
 
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useProductLedger } from "../hooks/use-stock";
+import type { StockLedgerEntryDTO } from "../validators/stock.schema";
 
 function FormatDateTime(value: string) {
   return new Date(value).toLocaleString();
 }
+
+const columns: DataTableColumn<StockLedgerEntryDTO>[] = [
+  { key: "type", header: "Type", cell: (entry) => entry.type },
+  {
+    key: "quantity",
+    header: "Quantity (kg)",
+    cell: (entry) => entry.quantityKg,
+  },
+  {
+    key: "balance",
+    header: "Balance after (kg)",
+    cell: (entry) => entry.balanceAfterKg,
+  },
+  {
+    key: "input",
+    header: "Input",
+    cell: (entry) =>
+      entry.inputQuantity && entry.inputUnitName
+        ? `${entry.inputQuantity} ${entry.inputUnitName}`
+        : "—",
+    className: "text-muted-foreground",
+  },
+  {
+    key: "note",
+    header: "Note",
+    cell: (entry) => entry.note ?? "—",
+    className: "text-muted-foreground",
+  },
+  {
+    key: "date",
+    header: "Date",
+    cell: (entry) => FormatDateTime(entry.createdAt),
+    className: "text-muted-foreground",
+  },
+];
 
 export function StockLedger({ productId }: { productId: string }) {
   const { data: entries, isLoading } = useProductLedger(productId);
@@ -14,50 +51,11 @@ export function StockLedger({ productId }: { productId: string }) {
   }
 
   return (
-    <div className="overflow-x-auto border border-border">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="p-2 text-sm font-medium">Type</th>
-            <th className="p-2 text-sm font-medium">Quantity (kg)</th>
-            <th className="p-2 text-sm font-medium">Balance after (kg)</th>
-            <th className="p-2 text-sm font-medium">Input</th>
-            <th className="p-2 text-sm font-medium">Note</th>
-            <th className="p-2 text-sm font-medium">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries?.length ? (
-            entries.map((entry) => (
-              <tr key={entry.id} className="border-b border-border">
-                <td className="p-2 text-sm">{entry.type}</td>
-                <td className="p-2 text-sm">{entry.quantityKg}</td>
-                <td className="p-2 text-sm">{entry.balanceAfterKg}</td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {entry.inputQuantity && entry.inputUnitName
-                    ? `${entry.inputQuantity} ${entry.inputUnitName}`
-                    : "—"}
-                </td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {entry.note ?? "—"}
-                </td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {FormatDateTime(entry.createdAt)}
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                colSpan={6}
-                className="p-3 text-center text-sm text-muted-foreground"
-              >
-                No ledger entries yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={entries ?? []}
+      getRowKey={(entry) => entry.id}
+      emptyMessage="No ledger entries yet."
+    />
   );
 }

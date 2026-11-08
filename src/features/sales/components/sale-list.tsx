@@ -1,10 +1,47 @@
 "use client";
 
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useSales } from "../hooks/use-sales";
+import type { SaleDTO } from "../validators/sale.schema";
 
 function FormatDateTime(value: string) {
   return new Date(value).toLocaleString();
 }
+
+const columns: DataTableColumn<SaleDTO>[] = [
+  { key: "reference", header: "Reference", cell: (sale) => sale.referenceCode },
+  {
+    key: "product",
+    header: "Product",
+    cell: (sale) => (
+      <>
+        {sale.productName}{" "}
+        <span className="text-muted-foreground">({sale.productSku})</span>
+      </>
+    ),
+  },
+  {
+    key: "customer",
+    header: "Customer",
+    cell: (sale) =>
+      sale.customerName ?? (
+        <span className="text-muted-foreground">Walk-in</span>
+      ),
+  },
+  {
+    key: "quantity",
+    header: "Quantity",
+    cell: (sale) => `${sale.inputQuantity} ${sale.inputUnitName}`,
+  },
+  { key: "total", header: "Total", cell: (sale) => sale.totalAmount },
+  { key: "payment", header: "Payment", cell: (sale) => sale.paymentType },
+  {
+    key: "date",
+    header: "Date",
+    cell: (sale) => FormatDateTime(sale.createdAt),
+    className: "text-muted-foreground",
+  },
+];
 
 export function SaleList({
   // When set (the Inventory Manager's "own recent sales" page), the list is
@@ -23,57 +60,11 @@ export function SaleList({
   }
 
   return (
-    <div className="overflow-x-auto border border-border">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="p-2 text-sm font-medium">Reference</th>
-            <th className="p-2 text-sm font-medium">Product</th>
-            <th className="p-2 text-sm font-medium">Customer</th>
-            <th className="p-2 text-sm font-medium">Quantity</th>
-            <th className="p-2 text-sm font-medium">Total</th>
-            <th className="p-2 text-sm font-medium">Payment</th>
-            <th className="p-2 text-sm font-medium">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sales?.length ? (
-            sales.map((sale) => (
-              <tr key={sale.id} className="border-b border-border">
-                <td className="p-2 text-sm">{sale.referenceCode}</td>
-                <td className="p-2 text-sm">
-                  {sale.productName}{" "}
-                  <span className="text-muted-foreground">
-                    ({sale.productSku})
-                  </span>
-                </td>
-                <td className="p-2 text-sm">
-                  {sale.customerName ?? (
-                    <span className="text-muted-foreground">Walk-in</span>
-                  )}
-                </td>
-                <td className="p-2 text-sm">
-                  {sale.inputQuantity} {sale.inputUnitName}
-                </td>
-                <td className="p-2 text-sm">{sale.totalAmount}</td>
-                <td className="p-2 text-sm">{sale.paymentType}</td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {FormatDateTime(sale.createdAt)}
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                colSpan={7}
-                className="p-3 text-center text-sm text-muted-foreground"
-              >
-                No sales yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={sales ?? []}
+      getRowKey={(sale) => sale.id}
+      emptyMessage="No sales yet."
+    />
   );
 }

@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useManagerDashboard } from "../hooks/use-analytics";
+import type {
+  DashboardLoanAccountDTO,
+  DashboardStockLevelDTO,
+  LowStockAlertDTO,
+} from "../validators/analytics.schema";
 import { SalesTrendChart } from "./sales-trend-chart";
 
 function FormatDateTime(value: string | null) {
@@ -10,10 +17,12 @@ function FormatDateTime(value: string | null) {
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1 border border-border p-3">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-2xl font-semibold tabular-nums">{value}</span>
-    </div>
+    <Card>
+      <CardContent className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="text-2xl font-semibold tabular-nums">{value}</span>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -38,6 +47,82 @@ function Section({
     </div>
   );
 }
+
+const lowStockColumns: DataTableColumn<LowStockAlertDTO>[] = [
+  {
+    key: "product",
+    header: "Product",
+    cell: (alert) => (
+      <>
+        <Link
+          href={`/manager/stock/${alert.productId}`}
+          className="underline underline-offset-4"
+        >
+          {alert.productName}
+        </Link>{" "}
+        <span className="text-muted-foreground">({alert.productSku})</span>
+      </>
+    ),
+  },
+  { key: "onHand", header: "On hand (kg)", cell: (alert) => alert.quantityKg },
+  {
+    key: "threshold",
+    header: "Threshold (kg)",
+    cell: (alert) => alert.thresholdKg,
+    className: "text-muted-foreground",
+  },
+];
+
+const stockLevelColumns: DataTableColumn<DashboardStockLevelDTO>[] = [
+  {
+    key: "product",
+    header: "Product",
+    cell: (level) => (
+      <>
+        <Link
+          href={`/manager/stock/${level.productId}`}
+          className="underline underline-offset-4"
+        >
+          {level.productName}
+        </Link>{" "}
+        <span className="text-muted-foreground">({level.productSku})</span>
+      </>
+    ),
+  },
+  {
+    key: "quantity",
+    header: "Quantity (kg)",
+    cell: (level) => level.quantityKg,
+  },
+  {
+    key: "updated",
+    header: "Last updated",
+    cell: (level) => FormatDateTime(level.updatedAt),
+    className: "text-muted-foreground",
+  },
+];
+
+const loanColumns: DataTableColumn<DashboardLoanAccountDTO>[] = [
+  {
+    key: "customer",
+    header: "Customer",
+    cell: (account) => (
+      <Link
+        href={`/manager/customers/${account.customerId}`}
+        className="underline underline-offset-4"
+      >
+        {account.customerName}
+      </Link>
+    ),
+  },
+  { key: "balance", header: "Balance", cell: (account) => account.balance },
+  {
+    key: "updated",
+    header: "Last activity",
+    cell: (account) => FormatDateTime(account.updatedAt),
+    className: "text-muted-foreground",
+  },
+];
 
 export function ManagerDashboard() {
   const { data, isLoading } = useManagerDashboard();
@@ -74,136 +159,33 @@ export function ManagerDashboard() {
         title="Low-stock alerts"
         description="Products below their configured low-stock threshold. Set a threshold from a product's detail page to opt it in."
       >
-        {data.lowStockAlerts.length ? (
-          <div className="overflow-x-auto border border-border">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="p-2 text-sm font-medium">Product</th>
-                  <th className="p-2 text-sm font-medium">On hand (kg)</th>
-                  <th className="p-2 text-sm font-medium">Threshold (kg)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.lowStockAlerts.map((alert) => (
-                  <tr key={alert.productId} className="border-b border-border">
-                    <td className="p-2 text-sm">
-                      <Link
-                        href={`/manager/stock/${alert.productId}`}
-                        className="underline underline-offset-4"
-                      >
-                        {alert.productName}
-                      </Link>{" "}
-                      <span className="text-muted-foreground">
-                        ({alert.productSku})
-                      </span>
-                    </td>
-                    <td className="p-2 text-sm">{alert.quantityKg}</td>
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {alert.thresholdKg}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No products are below their low-stock threshold.
-          </p>
-        )}
+        <DataTable
+          columns={lowStockColumns}
+          data={data.lowStockAlerts}
+          getRowKey={(alert) => alert.productId}
+          emptyMessage="No products are below their low-stock threshold."
+        />
       </Section>
 
       <Section title="Stock levels" description="Current balance per product.">
-        <div className="overflow-x-auto border border-border">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="p-2 text-sm font-medium">Product</th>
-                <th className="p-2 text-sm font-medium">Quantity (kg)</th>
-                <th className="p-2 text-sm font-medium">Last updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.stockLevels.length ? (
-                data.stockLevels.map((level) => (
-                  <tr key={level.productId} className="border-b border-border">
-                    <td className="p-2 text-sm">
-                      <Link
-                        href={`/manager/stock/${level.productId}`}
-                        className="underline underline-offset-4"
-                      >
-                        {level.productName}
-                      </Link>{" "}
-                      <span className="text-muted-foreground">
-                        ({level.productSku})
-                      </span>
-                    </td>
-                    <td className="p-2 text-sm">{level.quantityKg}</td>
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {FormatDateTime(level.updatedAt)}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="p-3 text-center text-sm text-muted-foreground"
-                  >
-                    No products yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={stockLevelColumns}
+          data={data.stockLevels}
+          getRowKey={(level) => level.productId}
+          emptyMessage="No products yet."
+        />
       </Section>
 
       <Section
         title="Loan exposure"
         description="Customer loan account balances, highest first."
       >
-        <div className="overflow-x-auto border border-border">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="p-2 text-sm font-medium">Customer</th>
-                <th className="p-2 text-sm font-medium">Balance</th>
-                <th className="p-2 text-sm font-medium">Last activity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.loanAccounts.length ? (
-                data.loanAccounts.map((account) => (
-                  <tr key={account.id} className="border-b border-border">
-                    <td className="p-2 text-sm">
-                      <Link
-                        href={`/manager/customers/${account.customerId}`}
-                        className="underline underline-offset-4"
-                      >
-                        {account.customerName}
-                      </Link>
-                    </td>
-                    <td className="p-2 text-sm">{account.balance}</td>
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {FormatDateTime(account.updatedAt)}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="p-3 text-center text-sm text-muted-foreground"
-                  >
-                    No loan accounts yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={loanColumns}
+          data={data.loanAccounts}
+          getRowKey={(account) => account.id}
+          emptyMessage="No loan accounts yet."
+        />
       </Section>
     </div>
   );

@@ -1,10 +1,38 @@
 "use client";
 
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useLoanTransactions } from "../hooks/use-loans";
+import type { LoanTransactionDTO } from "../validators/loan.schema";
 
 function FormatDateTime(value: string) {
   return new Date(value).toLocaleString();
 }
+
+const columns: DataTableColumn<LoanTransactionDTO>[] = [
+  { key: "type", header: "Type", cell: (transaction) => transaction.type },
+  {
+    key: "amount",
+    header: "Amount",
+    cell: (transaction) => transaction.amount,
+  },
+  {
+    key: "balance",
+    header: "Balance after",
+    cell: (transaction) => transaction.balanceAfter,
+  },
+  {
+    key: "note",
+    header: "Note",
+    cell: (transaction) => transaction.note ?? "—",
+    className: "text-muted-foreground",
+  },
+  {
+    key: "date",
+    header: "Date",
+    cell: (transaction) => FormatDateTime(transaction.createdAt),
+    className: "text-muted-foreground",
+  },
+];
 
 export function LoanLedger({ accountId }: { accountId: string }) {
   const { data: transactions, isLoading } = useLoanTransactions(accountId);
@@ -14,44 +42,11 @@ export function LoanLedger({ accountId }: { accountId: string }) {
   }
 
   return (
-    <div className="overflow-x-auto border border-border">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="p-2 text-sm font-medium">Type</th>
-            <th className="p-2 text-sm font-medium">Amount</th>
-            <th className="p-2 text-sm font-medium">Balance after</th>
-            <th className="p-2 text-sm font-medium">Note</th>
-            <th className="p-2 text-sm font-medium">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {transactions?.length ? (
-            transactions.map((transaction) => (
-              <tr key={transaction.id} className="border-b border-border">
-                <td className="p-2 text-sm">{transaction.type}</td>
-                <td className="p-2 text-sm">{transaction.amount}</td>
-                <td className="p-2 text-sm">{transaction.balanceAfter}</td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {transaction.note ?? "—"}
-                </td>
-                <td className="p-2 text-sm text-muted-foreground">
-                  {FormatDateTime(transaction.createdAt)}
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                colSpan={5}
-                className="p-3 text-center text-sm text-muted-foreground"
-              >
-                No loan activity yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={transactions ?? []}
+      getRowKey={(transaction) => transaction.id}
+      emptyMessage="No loan activity yet."
+    />
   );
 }
