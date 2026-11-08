@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { useStockBalances } from "../hooks/use-stock";
 import type { StockBalanceDTO } from "../validators/stock.schema";
 
@@ -55,9 +59,7 @@ export function StockBalanceList({
   ];
 
   if (isLoading) {
-    return (
-      <p className="text-sm text-muted-foreground">Loading stock levels…</p>
-    );
+    return <TableSkeleton columns={columns.length} />;
   }
 
   return (

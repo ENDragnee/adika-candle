@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { useCustomers } from "../hooks/use-customers";
 import type { CustomerDTO } from "../validators/customer.schema";
@@ -60,7 +64,7 @@ export function CustomerList({
   ];
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading customers…</p>;
+    return <TableSkeleton columns={columns.length} />;
   }
 
   return (

@@ -1,6 +1,10 @@
 "use client";
 
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { useProductLedger } from "../hooks/use-stock";
 import type { StockLedgerEntryDTO } from "../validators/stock.schema";
 
@@ -47,7 +51,7 @@ export function StockLedger({ productId }: { productId: string }) {
   const { data: entries, isLoading } = useProductLedger(productId);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading ledger…</p>;
+    return <TableSkeleton columns={columns.length} />;
   }
 
   return (

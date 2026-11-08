@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { TableContainer } from "@/components/ui/data-table";
+import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -173,7 +173,7 @@ export function UnitConversionManager() {
     <div className="flex flex-col gap-4">
       <CreateUnitConversionForm />
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading units…</p>
+        <TableSkeleton columns={4} />
       ) : (
         <TableContainer>
           <Table>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DetailSkeleton } from "@/components/ui/skeleton";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useProduct, useUpdateProduct } from "../hooks/use-products";
 import { PriceHistory } from "./price-history";
@@ -28,7 +29,7 @@ function ProductOverview({
   const [lowStockThresholdKg, setLowStockThresholdKg] = useState("");
 
   if (isLoading || !product) {
-    return <p className="text-sm text-muted-foreground">Loading product…</p>;
+    return <DetailSkeleton rows={6} />;
   }
 
   const startEditing = () => {

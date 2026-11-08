@@ -1,6 +1,10 @@
 "use client";
 
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { useLoanTransactions } from "../hooks/use-loans";
 import type { LoanTransactionDTO } from "../validators/loan.schema";
 
@@ -38,7 +42,7 @@ export function LoanLedger({ accountId }: { accountId: string }) {
   const { data: transactions, isLoading } = useLoanTransactions(accountId);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading ledger…</p>;
+    return <TableSkeleton columns={columns.length} />;
   }
 
   return (

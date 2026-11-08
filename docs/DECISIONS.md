@@ -12,6 +12,78 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 10 (Loading States / Skeletons) decisions
+
+**`TableSkeleton` takes a plain `columns: number`, not a `DataTableColumn<T>[]`
+array or real header text.** Considered reusing the same `columns` array
+already passed to `DataTable<T>` so the skeleton's header row could show
+real (static) header text instead of shimmering blocks — header labels
+don't come from the loading data, so there'd be no flash-of-wrong-content
+risk. Rejected because the 4 composed-table files (`category-manager.tsx`,
+`customer-manager.tsx`, `unit-conversion-manager.tsx`, `user-manager.tsx`,
+see Epic 9's decision below) hand-write their `TableHead` cells directly
+and have no `DataTableColumn[]` array to pass — supporting both shapes
+would mean either two props or a union type for one cosmetic win. Plain
+`columns: number` works identically for both groups: the 9 `DataTable<T>`
+call sites pass `columns.length` from their existing array (one extra
+token, no new plumbing), the 4 composed files pass a literal matching
+their hand-written `TableHead` count. Lives in `data-table.tsx` next to
+`DataTable`/`TableContainer` since it's genuinely shared, not
+feature-specific.
+
+**Default row count is a flat `5` (`DEFAULT_SKELETON_ROWS` in
+`data-table.tsx`), not tuned per call site.** The epic doc only requires
+matching *column* count exactly (so there's no layout jump from the real
+table's width); row count has no equivalent correctness requirement since
+a real result set's length is unknowable before it arrives. Picked one
+default over guessing a "typical" count per table (e.g. fewer rows for
+`LowStockAlerts`, more for `ProductList`) — that's speculative precision
+the epic didn't ask for and would need revisiting every time seed data
+changes. `manager-dashboard.tsx`'s three tables and all `DataTable<T>`/
+composed-table call sites use the default; only `customer-ledger-view.tsx`/
+`customer-profile.tsx`'s embedded ledger skeleton passes `rows={5}` too,
+so this is effectively uniform across the app.
+
+**`SalesTrendChartSkeleton` lives in `sales-trend-chart.tsx` itself, not in
+`src/components/ui/`.** Unlike `TableSkeleton`/`CardSkeleton`/
+`DetailSkeleton` (generic, reused across many unrelated features), this
+skeleton's bar-grid shape is specific to one chart in one feature — matches
+`AGENTS.md`'s "feature-specific components live in the feature folder"
+convention. Its 30 bars use deterministic heights (`30 + ((index * 17) %
+60)`), not `Math.random()` — purely decorative, so determinism costs
+nothing and avoids any doubt about hydration-timing flakiness.
+
+**`customer-ledger-view.tsx`/`customer-profile.tsx`'s "Loading loan
+account…" guard (blocking `RepaymentForm`/`ManualAdjustmentForm` +
+`LoanLedger` until `useCustomer` resolves) was not given a new dedicated
+skeleton variant.** Its real content is a composite — one or two forms
+plus a ledger table — that doesn't match any of the epic's four named
+shapes. Rather than inventing a fifth variant for two call sites, composed
+a plain `Skeleton` block sized to approximate each form's height
+(`h-56`/`h-64 w-full max-w-sm`) alongside a `TableSkeleton columns={5}` for
+the ledger (which `LoanLedger` itself already skeletons once mounted with
+a real `accountId`) — reuses only the existing primitives. Same reasoning
+for `RoleManager`'s loading state: `RoleCard`'s title + module/checkbox-group
++ save-button shape doesn't match the four named variants either, so
+`RoleCardSkeleton` is a local, unexported composition inside
+`role-manager.tsx` built from plain `Skeleton` blocks, not a new
+`components/ui` primitive. It renders exactly 2 cards — the app only ever
+seeds two roles (Manager, Inventory Manager; see "RBAC modeled as data"
+below) — rather than a parameterized count.
+
+**Verified visually by adding a temporary 8-second delay to
+`axiosInstance`'s request interceptor in `src/lib/axios.ts`** (every
+request, since every feature service routes through this one instance,
+REST and the GraphQL dashboard query alike), reverted immediately after
+confirming each skeleton via Playwright screenshots in both light and dark
+mode. 2 seconds wasn't enough to reliably catch mid-flight — the gap
+between issuing a browser-automation navigate call and the following
+screenshot call was itself several seconds, so a short delay would
+sometimes already be resolved by the time the screenshot fired. Not
+committed; `git status` on `src/lib/axios.ts` is clean.
+
+---
+
 ## 2026-11-08 — Epic 9 (Design System Foundation) decisions
 
 **The "techy-edged" look traced to two root causes, not thirteen files of

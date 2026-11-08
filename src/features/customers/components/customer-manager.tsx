@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { TableContainer } from "@/components/ui/data-table";
+import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -198,7 +198,7 @@ export function CustomerManager() {
     <div className="flex flex-col gap-4">
       <CreateCustomerForm />
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading customers…</p>
+        <TableSkeleton columns={6} />
       ) : (
         <TableContainer>
           <Table>

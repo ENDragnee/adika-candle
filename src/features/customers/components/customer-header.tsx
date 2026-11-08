@@ -1,12 +1,13 @@
 "use client";
 
+import { DetailSkeleton } from "@/components/ui/skeleton";
 import { useCustomer } from "../hooks/use-customers";
 
 export function CustomerHeader({ customerId }: { customerId: string }) {
   const { data: customer, isLoading } = useCustomer(customerId);
 
   if (isLoading || !customer) {
-    return <p className="text-sm text-muted-foreground">Loading customer…</p>;
+    return <DetailSkeleton rows={5} />;
   }
 
   return (

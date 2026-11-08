@@ -1,5 +1,6 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { useProduct } from "@/features/products/hooks/use-products";
 import { useStockBalances } from "../hooks/use-stock";
 import { StockLedger } from "./stock-ledger";
@@ -13,7 +14,10 @@ export function ProductStockDetail({ productId }: { productId: string }) {
     <div className="flex flex-col gap-4">
       <div>
         {productLoading || !product ? (
-          <p className="text-sm text-muted-foreground">Loading product…</p>
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-6 w-56" />
+            <Skeleton className="h-4 w-40" />
+          </div>
         ) : (
           <>
             <h1 className="text-lg font-semibold">

@@ -21,11 +21,15 @@ not yet encoded in the schema).
 
 **Status:** The full business-domain build (Epics 1–8) is done and
 verified — see `docs/epics/README.md`. A UI/UX overhaul (Epics 9–12) is
-in progress: Design System Foundation (Epic 9) is done — warm accent
-color, Geist Sans in place of the previous global monospace, a shared
-`Card`/`DataTable`/`Skeleton` component base under `src/components/ui/`.
-Loading States (Epic 10), Landing/Sign-in (Epic 11), and Page-by-Page
-Polish (Epic 12) are planned but not yet built.
+in progress: Design System Foundation (Epic 9) and Loading States (Epic
+10) are done — warm accent color, Geist Sans in place of the previous
+global monospace, a shared `Card`/`DataTable`/`Skeleton` component base
+under `src/components/ui/`, and every `isLoading` data-view fallback
+across `src/features/**` now renders a shape-matched skeleton
+(`TableSkeleton`, `CardSkeleton`, `DetailSkeleton`, and the
+`SalesTrendChart`-specific bar skeleton) instead of literal "Loading X…"
+text. Landing/Sign-in (Epic 11) and Page-by-Page Polish (Epic 12) are
+planned but not yet built.
 
 ## Tech stack
 

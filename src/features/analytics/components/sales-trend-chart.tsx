@@ -1,9 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { SalesTrendPointDTO } from "../validators/analytics.schema";
 
 const CHART_HEIGHT_PX = 140;
+
+// Deterministic varied bar heights (not Math.random — this is purely
+// decorative, and a fixed pattern avoids any hydration-timing flakiness)
+// matching the real chart's 30-day point count.
+const SKELETON_BAR_COUNT = 30;
+const SKELETON_BAR_HEIGHTS_PERCENT = Array.from(
+  { length: SKELETON_BAR_COUNT },
+  (_, index) => 30 + ((index * 17) % 60),
+);
 
 function FormatShortDate(dateKey: string) {
   if (!dateKey) return "";
@@ -85,6 +95,40 @@ export function SalesTrendChart({ points }: { points: SalesTrendPointDTO[] }) {
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{FormatShortDate(points[0]?.date ?? "")}</span>
         <span>{FormatShortDate(points[points.length - 1]?.date ?? "")}</span>
+      </div>
+    </div>
+  );
+}
+
+// Standalone skeleton for SalesTrendChart's loading state — bar shapes, not
+// a generic block, so the dashboard's chart section doesn't collapse to a
+// blank rectangle while `useManagerDashboard` is in flight.
+export function SalesTrendChartSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      <div
+        className="grid items-end border-b border-border"
+        style={{
+          height: CHART_HEIGHT_PX,
+          gridTemplateColumns: `repeat(${SKELETON_BAR_HEIGHTS_PERCENT.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {SKELETON_BAR_HEIGHTS_PERCENT.map((heightPercent, index) => (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: static bar count, never reordered
+            key={index}
+            className="flex h-full items-end justify-center px-px"
+          >
+            <Skeleton
+              className="w-full max-w-6 rounded-t-[4px] rounded-b-none"
+              style={{ height: `${heightPercent}%` }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 w-12" />
       </div>
     </div>
   );

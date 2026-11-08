@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { useProducts } from "../hooks/use-products";
 import type { ProductDTO } from "../validators/product.schema";
 
@@ -45,7 +49,7 @@ export function ProductList() {
   const { data: products, isLoading } = useProducts();
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading products…</p>;
+    return <TableSkeleton columns={columns.length} />;
   }
 
   return (

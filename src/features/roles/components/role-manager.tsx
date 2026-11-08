@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRoles, useUpdateRolePermissions } from "../hooks/use-roles";
 import type { ModuleDTO, RoleDTO } from "../validators/role.schema";
 
@@ -97,11 +98,44 @@ function RoleCard({ role, modules }: { role: RoleDTO; modules: ModuleDTO[] }) {
   );
 }
 
+// Matches RoleCard's title + module/checkbox-group + save-button shape.
+// Two cards — the app only ever seeds two roles (Manager, Inventory
+// Manager), see docs/DECISIONS.md "RBAC modeled as data".
+function RoleCardSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 border border-border p-3">
+      <div className="flex flex-col gap-1.5">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-48" />
+      </div>
+      <div className="flex flex-col gap-3">
+        {Array.from({ length: 2 }, (_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static group count, never reordered
+          <div key={index} className="flex flex-col gap-1.5">
+            <Skeleton className="h-4 w-20" />
+            <div className="flex flex-wrap gap-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <Skeleton className="h-8 w-20" />
+    </div>
+  );
+}
+
 export function RoleManager() {
   const { data, isLoading } = useRoles();
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading roles…</p>;
+    return (
+      <div className="flex flex-col gap-4">
+        <RoleCardSkeleton />
+        <RoleCardSkeleton />
+      </div>
+    );
   }
 
   if (!data?.roles.length) {

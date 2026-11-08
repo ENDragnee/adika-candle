@@ -1,6 +1,10 @@
 "use client";
 
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { useSales } from "../hooks/use-sales";
 import type { SaleDTO } from "../validators/sale.schema";
 
@@ -56,7 +60,7 @@ export function SaleList({
   );
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading sales…</p>;
+    return <TableSkeleton columns={columns.length} />;
   }
 
   return (

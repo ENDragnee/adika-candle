@@ -1,5 +1,7 @@
 "use client";
 
+import { TableSkeleton } from "@/components/ui/data-table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LoanLedger } from "@/features/loans/components/loan-ledger";
 import { RepaymentForm } from "@/features/loans/components/repayment-form";
 import { useCustomer } from "../hooks/use-customers";
@@ -15,7 +17,10 @@ export function CustomerLedgerView({ customerId }: { customerId: string }) {
     <div className="flex flex-col gap-4">
       <CustomerHeader customerId={customerId} />
       {isLoading || !customer ? (
-        <p className="text-sm text-muted-foreground">Loading loan account…</p>
+        <>
+          <Skeleton className="h-56 w-full max-w-sm" />
+          <TableSkeleton columns={5} />
+        </>
       ) : (
         <>
           <RepaymentForm

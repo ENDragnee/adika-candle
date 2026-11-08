@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { TableContainer } from "@/components/ui/data-table";
+import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -220,7 +220,7 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
     <div className="flex flex-col gap-4">
       <CreateUserForm roles={roles} />
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading users…</p>
+        <TableSkeleton columns={6} />
       ) : (
         <TableContainer>
           <Table>

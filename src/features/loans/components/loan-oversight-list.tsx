@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { useLoanAccounts } from "../hooks/use-loans";
 import type { LoanAccountDTO } from "../validators/loan.schema";
 
@@ -35,9 +39,7 @@ export function LoanOversightList() {
   const { data: accounts, isLoading } = useLoanAccounts();
 
   if (isLoading) {
-    return (
-      <p className="text-sm text-muted-foreground">Loading loan accounts…</p>
-    );
+    return <TableSkeleton columns={columns.length} />;
   }
 
   return (

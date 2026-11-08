@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
+import { CardSkeleton } from "@/components/ui/skeleton";
 import { useManagerDashboard } from "../hooks/use-analytics";
 import type {
   DashboardLoanAccountDTO,
   DashboardStockLevelDTO,
   LowStockAlertDTO,
 } from "../validators/analytics.schema";
-import { SalesTrendChart } from "./sales-trend-chart";
+import { SalesTrendChart, SalesTrendChartSkeleton } from "./sales-trend-chart";
 
 function FormatDateTime(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Never";
@@ -128,7 +133,43 @@ export function ManagerDashboard() {
   const { data, isLoading } = useManagerDashboard();
 
   if (isLoading || !data) {
-    return <p className="text-sm text-muted-foreground">Loading dashboard…</p>;
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+
+        <Section
+          title="Sales trend"
+          description="Daily sales totals, last 30 days."
+        >
+          <SalesTrendChartSkeleton />
+        </Section>
+
+        <Section
+          title="Low-stock alerts"
+          description="Products below their configured low-stock threshold. Set a threshold from a product's detail page to opt it in."
+        >
+          <TableSkeleton columns={lowStockColumns.length} />
+        </Section>
+
+        <Section
+          title="Stock levels"
+          description="Current balance per product."
+        >
+          <TableSkeleton columns={stockLevelColumns.length} />
+        </Section>
+
+        <Section
+          title="Loan exposure"
+          description="Customer loan account balances, highest first."
+        >
+          <TableSkeleton columns={loanColumns.length} />
+        </Section>
+      </div>
+    );
   }
 
   return (

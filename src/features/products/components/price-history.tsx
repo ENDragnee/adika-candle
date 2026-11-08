@@ -1,6 +1,10 @@
 "use client";
 
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { useProductPrices } from "../hooks/use-prices";
 import type { PriceDTO } from "../validators/price.schema";
 
@@ -28,9 +32,7 @@ export function PriceHistory({ productId }: { productId: string }) {
   const { data: prices, isLoading } = useProductPrices(productId);
 
   if (isLoading) {
-    return (
-      <p className="text-sm text-muted-foreground">Loading price history…</p>
-    );
+    return <TableSkeleton columns={columns.length} />;
   }
 
   return (

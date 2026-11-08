@@ -1,4 +1,5 @@
 import type * as React from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -83,6 +84,53 @@ export function DataTable<T>({
               </TableCell>
             </TableRow>
           )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+const DEFAULT_SKELETON_ROWS = 5;
+
+// Loading placeholder for both DataTable<T> call sites and the 4
+// composed-table files (category/customer/unit-conversion/user-manager) —
+// same TableContainer/Table chrome as the real table so there's no layout
+// jump when data swaps in. Callers pass their real column count (often
+// `columns.length` from an existing DataTableColumn[] array) so the
+// skeleton's column count always matches what renders after loading. See
+// docs/DECISIONS.md, "Epic 10 decisions" for the default row-count choice.
+export function TableSkeleton({
+  columns,
+  rows = DEFAULT_SKELETON_ROWS,
+}: {
+  columns: number;
+  rows?: number;
+}) {
+  return (
+    <TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            {Array.from({ length: columns }, (_, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: static column count, never reordered
+              <TableHead key={index} className="bg-muted/50">
+                <Skeleton className="h-4 w-20" />
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: rows }, (_, rowIndex) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static row count, never reordered
+            <TableRow key={rowIndex} className="hover:bg-transparent">
+              {Array.from({ length: columns }, (_, colIndex) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: static column count, never reordered
+                <TableCell key={colIndex}>
+                  <Skeleton className="h-4 w-full max-w-32" />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </TableContainer>

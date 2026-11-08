@@ -1,7 +1,7 @@
 # Epic 10 — Loading States (Skeletons)
 
 **Depends on:** 9 (Design System Foundation)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 
