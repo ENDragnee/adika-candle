@@ -144,6 +144,7 @@ model Product {
   prices             Price[]
   stockBalance       StockBalance?
   stockLedgerEntries StockLedgerEntry[]
+  sales              Sale[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -216,6 +217,7 @@ model StockLedgerEntry {
   inputRatioToKg Decimal?
   note           String?
   saleId         String?        @unique
+  sale           Sale?          @relation(fields: [saleId], references: [id])
   createdById    String
   createdAt      DateTime       @default(now())
 
@@ -239,6 +241,7 @@ model Customer {
   location    String?
   isActive    Boolean      @default(true)
   loanAccount LoanAccount?
+  sales       Sale[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -274,11 +277,51 @@ model LoanTransaction {
   balanceAfter  Decimal
   note          String?
   saleId        String?             @unique
+  sale          Sale?               @relation(fields: [saleId], references: [id])
   createdById   String
   createdAt     DateTime            @default(now())
 
   @@index([loanAccountId, createdAt])
   @@map("loan_transaction")
+}
+
+// ---------------------------------------------------------------------------
+// Sales — the unified Record Sale flow (Epic 6). The only place a sale is
+// ever recorded: POST /api/v1/sales writes this row plus a SALE
+// StockLedgerEntry and (if paymentType is LOAN) a SALE_ON_CREDIT
+// LoanTransaction, all in one DB transaction. inputRatioToKg/unitPriceAtSale
+// are snapshots, not live joins — see docs/DECISIONS.md. Single-product-per-
+// transaction by design (no SaleLine) — see docs/DECISIONS.md.
+// ---------------------------------------------------------------------------
+
+enum SalePaymentType {
+  CASH
+  LOAN
+}
+
+model Sale {
+  id               String            @id @default(cuid())
+  referenceCode    String            @unique // via GenerateCode()
+  productId        String
+  product          Product           @relation(fields: [productId], references: [id])
+  customerId       String? // null = walk-in
+  customer         Customer?         @relation(fields: [customerId], references: [id])
+  inputQuantity    Decimal
+  inputUnitName    String // snapshot, e.g. "CARTON"
+  inputRatioToKg   Decimal // snapshot of ratio used at sale time
+  quantityKg       Decimal // inputQuantity * inputRatioToKg
+  unitPriceAtSale  Decimal // snapshot of Price.amountPerKg
+  totalAmount      Decimal // quantityKg * unitPriceAtSale
+  paymentType      SalePaymentType
+  createdById      String
+  createdAt        DateTime          @default(now())
+  stockLedgerEntry StockLedgerEntry?
+  loanTransaction  LoanTransaction?
+
+  @@index([productId, createdAt])
+  @@index([customerId, createdAt])
+  @@index([createdById, createdAt])
+  @@map("sale")
 }
 
 // ---------------------------------------------------------------------------

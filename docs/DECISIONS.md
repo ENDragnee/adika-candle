@@ -12,6 +12,64 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 6 (Unified Sales Flow) decisions
+
+**The referenceCode collision-retry loop retries the entire `$transaction`,
+not just the inner `sale.create`.** Epic 2's `GenerateSku()` pattern
+(retry only the single `product.create` call) doesn't carry over directly
+here: `POST /api/v1/sales` writes `Sale` + `StockLedgerEntry` +
+`StockBalance` (+ `LoanTransaction`/`LoanAccount` for LOAN sales) in one
+`prisma.$transaction`, and on Postgres a failed statement (a `P2002` on
+`referenceCode`) poisons the rest of that same transaction — a retry of
+just the inner create would fail again on the now-aborted transaction.
+`POST /api/v1/sales` instead re-runs the *whole* `$transaction` callback
+(up to 5 attempts) with a freshly generated `referenceCode` each time;
+each failed attempt rolls back cleanly on its own, so the next attempt's
+balance/account reads are never stale.
+
+**Walk-in LOAN sales are rejected by the Zod schema itself, not a handler
+check.** `CreateSaleInputSchema` is a discriminated union on
+`paymentType` (same shape as Epic 5's `CreateLoanTransactionInputSchema`):
+the `CASH` branch's `customerId` is optional, the `LOAN` branch's is
+required. A walk-in (`customerId` omitted) `LOAN` sale fails schema
+validation with a 400 before the handler ever runs — there's no
+`LoanAccount` to post a `SALE_ON_CREDIT` transaction against for a
+customer that doesn't exist. This is the edge case the epic doc didn't
+spell out explicitly; the schema makes the nonsense state unrepresentable
+instead of relying on the UI alone.
+
+**`GET /api/v1/sales` (list) was added even though the epic doc's API
+section only mentioned `POST /api/v1/sales` and `GET /api/v1/sales/[id]`.**
+`/inventory/sales` ("own recent sales") and `/manager/sales` ("read-only
+... across all") both need to list multiple sales — every other feature
+folder has a list GET alongside its detail GET, so this fills an obvious
+gap rather than inventing a new shape. Gated by a single `sale:read`
+string (both roles already have it identically); the "own" vs. "all"
+distinction is an optional `createdById` query param set by the
+`/inventory/sales` page (from its own session) and omitted by
+`/manager/sales` — scope is page-level, not permission-level, matching
+`StockBalanceList`'s `detailHrefBase` prop split between the Manager and
+Inventory Manager views of the same list component.
+
+**No guard against selling more stock than `StockBalance.quantityKg` has
+on hand.** The epic doc doesn't ask for one, and Epic 4's `ACCEPT` path
+has no corresponding guard either (there's nothing to guard against on
+the inbound side). `StockBalance.quantityKg` can go negative after a
+sale; the ledger is still the source of truth and nothing currently reads
+that negative value as an error state. Flagged here as a deliberate
+scope decision, not an oversight — revisit if the business wants a hard
+block or a soft warning on overselling.
+
+**Product existence and customer existence are checked with plain
+`findUnique`, no `isActive` filter** — matches Epic 4's `stock/accept`
+route (which also doesn't filter inactive products) rather than adding
+new validation the epic doc never asked for. A sale against an
+inactive product or customer isn't blocked server-side; the UI pickers
+already filter to `isActive` rows, same as "Accept Stock"'s product
+picker.
+
+---
+
 ## 2026-11-08 — Epic 5 (Customers + Loans) decisions
 
 **`Customer` always gets a `LoanAccount` at creation time (balance 0),

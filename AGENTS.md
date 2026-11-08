@@ -20,10 +20,10 @@ fixed conversion ratios (see conversation history / future `docs/` notes —
 not yet encoded in the schema).
 
 **Status:** Foundation (Epic 1), Categories/Products/Pricing (Epic 2), Unit
-Settings (Epic 3), and Stock (Epic 4) are done and verified — see
-`docs/epics/README.md`. Customers/loans, sales, users/RBAC UI, and
-analytics (Epics 5–8) have **not** been built yet — that's the next slice
-of work.
+Settings (Epic 3), Stock (Epic 4), Customers/Loans (Epic 5), and the
+Unified Sales Flow (Epic 6) are done and verified — see
+`docs/epics/README.md`. Users/RBAC UI and analytics (Epics 7–8) have
+**not** been built yet — that's the next slice of work.
 
 ## Tech stack
 

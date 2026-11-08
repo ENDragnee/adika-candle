@@ -1,7 +1,7 @@
 # Epic 6 — Unified Sales Flow
 
 **Depends on:** 2 (Products/Pricing), 3 (Unit Settings), 4 (Stock), 5 (Customers/Loans)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 
@@ -76,6 +76,15 @@ transaction:
    update `LoanAccount.balance` (Epic 5's tables).
 
 `api/v1/sales/[id]` (GET detail).
+
+Also added (not explicitly listed above, but needed by the page table below
+and consistent with every other feature's REST shape): `GET api/v1/sales`
+— a list endpoint, `sale:read`-gated, with an optional `createdById` query
+filter. `/inventory/sales` ("own recent sales") passes the session's own
+id; `/manager/sales` omits it and sees everything. Both pages share the
+same `sale:read` permission — the scoping is page-level, the same way
+`StockBalanceList`'s `detailHrefBase` differs between the Manager and
+Inventory Manager views of the same list. See `docs/DECISIONS.md`.
 
 ## Feature folders
 
