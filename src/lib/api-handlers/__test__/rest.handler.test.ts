@@ -6,9 +6,12 @@ import { CreateApiRoute } from "../rest.handler";
 vi.mock("@/lib/session", () => ({
   GetApiSession: vi.fn(),
   CheckPermission: vi.fn(),
+  CheckAnyPermission: vi.fn(),
 }));
 
-const { GetApiSession, CheckPermission } = await import("@/lib/session");
+const { GetApiSession, CheckPermission, CheckAnyPermission } = await import(
+  "@/lib/session"
+);
 
 function makeRequest(method: string, body?: unknown) {
   return new NextRequest("http://localhost/api/v1/stub", {
@@ -112,5 +115,27 @@ describe("CreateApiRoute", () => {
 
     const response = await route(makeRequest("GET"), emptyContext);
     expect(response.status).toBe(500);
+  });
+
+  it("grants access via CheckAnyPermission when permission is an array", async () => {
+    vi.mocked(GetApiSession).mockResolvedValue({
+      user: { id: "user_1" },
+    } as never);
+    vi.mocked(CheckAnyPermission).mockResolvedValue(true);
+
+    const route = CreateApiRoute({
+      moduleName: "stub",
+      requiresAuth: { status: true, permission: ["stub:manage", "stub:use"] },
+      handler: async () => ({ ok: true }),
+    });
+
+    const response = await route(makeRequest("GET"), emptyContext);
+
+    expect(CheckAnyPermission).toHaveBeenCalledWith([
+      "stub:manage",
+      "stub:use",
+    ]);
+    expect(CheckPermission).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
   });
 });

@@ -2,7 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import type { Logger } from "pino";
 import type { ZodType } from "zod";
 import type { AppUser } from "@/lib/auth";
-import { CheckPermission, GetApiSession } from "@/lib/session";
+import {
+  CheckAnyPermission,
+  CheckPermission,
+  GetApiSession,
+} from "@/lib/session";
 import { logger as baseLogger } from "../logger";
 
 interface IApiHandlerConfig<T, P = Record<string, string>, R = any> {
@@ -14,7 +18,11 @@ interface IApiHandlerConfig<T, P = Record<string, string>, R = any> {
   responseSchema?: ZodType<R>;
   requiresAuth: {
     status: boolean;
-    permission: string;
+    // A string[] grants access to any one of the listed permissions (via
+    // CheckAnyPermission) — e.g. a read endpoint that both a "manage" role
+    // and a narrower "use" role may call. Single-string behavior (the
+    // common case) is unchanged.
+    permission: string | string[];
   };
   handler: (
     body: T,
@@ -55,9 +63,9 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const hasPermission = await CheckPermission(
-          config.requiresAuth.permission,
-        );
+        const hasPermission = Array.isArray(config.requiresAuth.permission)
+          ? await CheckAnyPermission(config.requiresAuth.permission)
+          : await CheckPermission(config.requiresAuth.permission);
 
         if (!hasPermission) {
           reqLogger.warn(

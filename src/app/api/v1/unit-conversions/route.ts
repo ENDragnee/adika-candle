@@ -11,7 +11,15 @@ import { prisma } from "@/lib/prisma";
 
 export const GET = CreateApiRoute({
   moduleName: "unit-conversions",
-  requiresAuth: { status: true, permission: "unit-conversion:manage" },
+  // Read access is also granted to stock:accept — Epic 4's "Accept Stock"
+  // form (and Epic 6's "Record Sale") need the live unit list to validate
+  // against, but neither should be able to create/edit/deactivate units via
+  // the POST/PATCH/DELETE routes below, which stay unit-conversion:manage
+  // only.
+  requiresAuth: {
+    status: true,
+    permission: ["unit-conversion:manage", "stock:accept"],
+  },
   responseSchema: UnitConversionListResponseSchema,
   handler: async () => {
     const units = await prisma.unitConversion.findMany({

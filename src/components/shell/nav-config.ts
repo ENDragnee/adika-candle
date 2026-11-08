@@ -9,9 +9,12 @@ export const MANAGER_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/manager/dashboard" },
   { label: "Categories", href: "/manager/categories" },
   { label: "Products", href: "/manager/products" },
+  { label: "Stock", href: "/manager/stock" },
   { label: "Settings", href: "/manager/settings" },
 ];
 
 export const INVENTORY_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/inventory/dashboard" },
+  { label: "Stock", href: "/inventory/stock" },
+  { label: "Accept Stock", href: "/inventory/stock/accept" },
 ];

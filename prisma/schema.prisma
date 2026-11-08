@@ -135,15 +135,17 @@ model Category {
 }
 
 model Product {
-  id         String   @id @default(cuid())
-  name       String
-  sku        String   @unique
-  isActive   Boolean  @default(true)
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
-  prices     Price[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                 String             @id @default(cuid())
+  name               String
+  sku                String             @unique
+  isActive           Boolean            @default(true)
+  categoryId         String
+  category           Category           @relation(fields: [categoryId], references: [id])
+  prices             Price[]
+  stockBalance       StockBalance?
+  stockLedgerEntries StockLedgerEntry[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@map("product")
 }
@@ -177,6 +179,48 @@ model UnitConversion {
   updatedAt DateTime @updatedAt
 
   @@map("unit_conversion")
+}
+
+// ---------------------------------------------------------------------------
+// Stock — append-only ledger + cached balance (hybrid, see docs/DECISIONS.md,
+// 2026-11-07 "Stock and loan balances: cached column + append-only ledger").
+// Only the inbound ACCEPT side is written here; SALE decrement is Epic 6's
+// job even though it writes into these same tables.
+// ---------------------------------------------------------------------------
+
+enum StockEntryType {
+  ACCEPT
+  SALE
+  ADJUSTMENT
+}
+
+model StockBalance {
+  id         String   @id @default(cuid())
+  productId  String   @unique
+  product    Product  @relation(fields: [productId], references: [id])
+  quantityKg Decimal  @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@map("stock_balance")
+}
+
+model StockLedgerEntry {
+  id             String         @id @default(cuid())
+  productId      String
+  product        Product        @relation(fields: [productId], references: [id])
+  type           StockEntryType
+  quantityKg     Decimal
+  balanceAfterKg Decimal
+  inputQuantity  Decimal?
+  inputUnitName  String?
+  inputRatioToKg Decimal?
+  note           String?
+  saleId         String?        @unique
+  createdById    String
+  createdAt      DateTime       @default(now())
+
+  @@index([productId, createdAt])
+  @@map("stock_ledger_entry")
 }
 
 // ---------------------------------------------------------------------------

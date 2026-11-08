@@ -1,7 +1,7 @@
 # Epic 4 — Stock
 
 **Depends on:** 1 (Foundation/Shell), 2 (Products), 3 (Unit Settings)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 

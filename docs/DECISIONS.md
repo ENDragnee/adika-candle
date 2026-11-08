@@ -12,6 +12,55 @@ undo.
 
 ---
 
+## 2026-11-07 — Epic 4 (Stock) decisions
+
+**`CreateApiRoute`'s `requiresAuth.permission` now accepts `string | string[]`.**
+A `string[]` grants access if the session has *any one* of the listed
+permissions, via the existing (previously page-only) `CheckAnyPermission`
+helper from `src/lib/session.ts`. The single-string path is untouched —
+still calls `CheckPermission` exactly as before, so no existing route's
+behavior changed. Added because `GET /api/v1/unit-conversions` needed to
+stay `unit-conversion:manage`-only for writes but also be readable by
+`stock:accept` holders (see next entry) without handing Inventory Manager
+write access to units.
+
+**`GET /api/v1/unit-conversions` is now `["unit-conversion:manage", "stock:accept"]`;**
+POST/PATCH/DELETE on that resource stay `unit-conversion:manage` only. The
+"Accept Stock" form needs the live unit list to populate its unit dropdown,
+but Inventory Manager must not be able to create/edit/deactivate units via
+the API (even though they can't reach `/manager/settings/units` — the
+`ManagerLayout` role gate — a permission-only check would otherwise still
+let them hit the write routes directly). This mismatch was flagged as a
+"revisit if" in Epic 2's categories decision below; Epic 6 ("Record Sale")
+will need the same read access for the same reason, so this isn't
+stock-specific plumbing.
+
+**Added `product:read` to `INVENTORY_MANAGER_PERMISSIONS` in `prisma/seed.ts`.**
+Same gap as above, for the product picker on "Accept Stock". Inventory
+Manager was never granted `product:read` despite needing to look up
+products — Epic 6's "Record Sale" needs this regardless of stock, so this
+is a correction, not a scope creep.
+
+**`StockBalance` rows are created lazily (`upsert`), not backfilled for
+existing products.** `GET /api/v1/stock` starts from `Product.findMany`
+with an `include: { stockBalance: true }` rather than
+`StockBalance.findMany`, so every active product appears in the balance
+list even before its first ACCEPT — `quantityKg` defaults to `"0"` and
+`updatedAt` is `null` (meaning "never accepted") in the DTO, matching the
+nullable-optional-scalar convention in `AGENTS.md` rather than omitting the
+row.
+
+**`StockLedgerEntry.inputRatioToKg` is read via a second
+`prisma.unitConversion.findUnique`, not derived from `convertToKg`'s
+return value.** `convertToKg(unitName, qty)` returns only the computed
+`quantityKg` number; snapshotting the ratio itself (not the kg conversion)
+needs the `UnitConversion` row directly. This is a plain read of the same
+table `convertToKg` already validated against, not a second conversion
+implementation — the kg math itself only ever happens inside
+`convertToKg`, per the epic doc's "don't reimplement conversion logic."
+
+---
+
 ## 2026-11-07 — Epic 3 (Unit Settings) decisions
 
 **`convertToKg(unitName, qty)` lives in `src/features/unit-conversions/services/convert-to-kg.service.ts`**

@@ -21,6 +21,10 @@ const MODULE_PERMISSIONS: Record<string, string[]> = {
 const INVENTORY_MANAGER_PERMISSIONS = [
   "stock:read",
   "stock:accept",
+  // Needed to populate the product picker on "Accept Stock" (Epic 4) and,
+  // inevitably, "Record Sale" (Epic 6) — Inventory Manager was never given
+  // read access to the product catalog despite needing it for both flows.
+  "product:read",
   "sale:create",
   "sale:read",
   "customer:read",
