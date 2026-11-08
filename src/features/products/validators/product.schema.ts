@@ -13,6 +13,9 @@ export const ProductSchema = z.object({
   categoryId: z.string(),
   category: CategorySchema,
   currentPrice: z.string().nullable(),
+  // Null means no low-stock alert is ever raised for this product — opt-in
+  // per product, not a global default. See docs/DECISIONS.md.
+  lowStockThresholdKg: z.string().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -32,6 +35,11 @@ export const UpdateProductInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(160).optional(),
   categoryId: z.string().min(1, "Category is required").optional(),
   isActive: z.boolean().optional(),
+  // Explicit null clears the threshold (no alert); a number sets it;
+  // omitted leaves it unchanged.
+  lowStockThresholdKg: z
+    .union([z.coerce.number().positive().finite(), z.null()])
+    .optional(),
 });
 
 export type UpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
@@ -50,6 +58,7 @@ export function ToProductDTO(product: ProductWithRelations): ProductDTO {
     categoryId: product.categoryId,
     category: ToCategoryDTO(product.category),
     currentPrice: product.prices[0]?.amountPerKg.toString() ?? null,
+    lowStockThresholdKg: product.lowStockThresholdKg?.toString() ?? null,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };

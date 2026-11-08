@@ -142,18 +142,22 @@ model Category {
 }
 
 model Product {
-  id                 String             @id @default(cuid())
-  name               String
-  sku                String             @unique
-  isActive           Boolean            @default(true)
-  categoryId         String
-  category           Category           @relation(fields: [categoryId], references: [id])
-  prices             Price[]
-  stockBalance       StockBalance?
-  stockLedgerEntries StockLedgerEntry[]
-  sales              Sale[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id         String   @id @default(cuid())
+  name       String
+  sku        String   @unique
+  isActive   Boolean  @default(true)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  // Manager-editable, nullable opt-in per product (Epic 8). Null means no
+  // alert is ever raised for this product — there is no global default
+  // threshold. See docs/DECISIONS.md, "Epic 8 decisions".
+  lowStockThresholdKg Decimal?
+  prices              Price[]
+  stockBalance        StockBalance?
+  stockLedgerEntries  StockLedgerEntry[]
+  sales               Sale[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@map("product")
 }

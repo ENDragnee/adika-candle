@@ -12,6 +12,69 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 8 (Analytics / Dashboards) decisions
+
+**Low-stock alerts got a real schema field (`Product.lowStockThresholdKg`,
+nullable `Decimal`), not a hardcoded global number.** The epic doc
+explicitly left this open (no threshold field existed anywhere in the
+schema). Chose "add a field" over "just list the lowest-N products" because
+a hardcoded threshold (e.g. "< 10kg") would be meaningless across products
+with very different normal stock levels (a candle SKU that normally holds
+2kg vs. one that holds 200kg), and the epic's own Manager-editable framing
+fit the existing per-product edit pattern on `/manager/products/[id]`
+(`ProductOverview` in `product-detail.tsx`) better than a new settings
+page. Nullable and opt-in per product — a product with no threshold set
+never raises an alert, there is no implicit default. `GET dashboard`'s
+`lowStockAlerts` resolver additionally filters to `isActive` products
+(an inactive/discontinued product's stock level isn't actionable), while
+`stockLevels` itself stays unfiltered to match `GET /api/v1/stock`'s
+existing behavior.
+
+**Sales trend is daily totals, last 30 days (today inclusive), including
+zero-sale days.** Bucketed in JS after one `prisma.sale.findMany` (not a
+raw-SQL `GROUP BY date_trunc`) — this app's sale volume doesn't need
+database-side aggregation, and keeping it Prisma-only avoids a
+Postgres-specific raw query. Zero-sale days are filled in explicitly
+(not omitted) so the trend chart has a continuous 30-point x-axis rather
+than gaps that could be misread as missing data. Grouping is per
+`Sale.totalAmount` directly, consistent with the "Sale is
+single-product-per-transaction" decision — no `SaleLine` aggregation
+needed.
+
+**No charting dependency was added.** `SalesTrendChart`
+(`src/features/analytics/components/sales-trend-chart.tsx`) is a
+hand-built CSS grid bar chart (not SVG — a `viewBox`-scaled SVG distorts
+rounded-corner radii non-uniformly when width and height scale
+differently, which a plain grid of flex/grid `div`s avoids entirely).
+Colored with the app's existing `--chart-*`/`--foreground` tokens from
+`globals.css` (already theme-aware light/dark) rather than introducing a
+new palette — single series, so per the `dataviz` skill's "a single
+series needs no legend box" rule, there's no legend. Picked over
+`recharts`/`visx`/etc. because `package.json` had no charting library and
+one chart didn't justify adding a dependency.
+
+**`GET dashboard`'s `totalLoanExposure` sums only positive
+`LoanAccount.balance` rows, not every account netted together.** Per the
+`LoanAccount.balance` sign convention (positive = customer owes the
+business, negative = business owes the customer), a negative balance
+isn't risk exposure — netting it against positive balances would
+understate what the business is actually owed. `loanAccounts` (the full
+list backing the oversight table) is unfiltered and still sorted by
+balance descending, matching `GET /api/v1/loans`.
+
+**The Inventory dashboard (`/inventory/dashboard`) stayed pure REST,
+reusing `SaleList`/`StockBalanceList` directly** — no new component, no
+GraphQL query. Confirmed during implementation that the epic doc's own
+suggestion held: `useSales({ createdById: session.user.id })` and
+`useStockBalances()` were already exactly what the page needed, the same
+pattern `/inventory/sales` already uses for "own recent sales." The
+GraphQL `dashboard` query (`src/app/api/graphql/route.ts`) is Manager-only
+(`analytics:read`), combining sales trend + stock levels + loan exposure +
+low-stock alerts in one round trip, per the REST/GraphQL split decision
+below.
+
+---
+
 ## 2026-11-08 — Epic 7 (Users + RBAC Management UI) decisions
 
 **`User.isActive` was added (not in the original schema) and deactivation

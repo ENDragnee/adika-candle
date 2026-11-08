@@ -25,6 +25,7 @@ function ProductOverview({
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [lowStockThresholdKg, setLowStockThresholdKg] = useState("");
 
   if (isLoading || !product) {
     return <p className="text-sm text-muted-foreground">Loading product…</p>;
@@ -33,11 +34,18 @@ function ProductOverview({
   const startEditing = () => {
     setName(product.name);
     setCategoryId(product.categoryId);
+    setLowStockThresholdKg(product.lowStockThresholdKg ?? "");
     setIsEditing(true);
   };
 
   const handleSave = async () => {
-    await updateProduct.mutateAsync({ name, categoryId });
+    await updateProduct.mutateAsync({
+      name,
+      categoryId,
+      lowStockThresholdKg: lowStockThresholdKg.trim()
+        ? Number(lowStockThresholdKg)
+        : null,
+    });
     setIsEditing(false);
   };
 
@@ -79,6 +87,28 @@ function ProductOverview({
             ))}
           </select>
         </div>
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="edit-product-low-stock-threshold"
+            className="text-sm font-medium"
+          >
+            Low-stock alert threshold (kg)
+          </label>
+          <input
+            id="edit-product-low-stock-threshold"
+            type="number"
+            min="0"
+            step="any"
+            placeholder="No alert"
+            value={lowStockThresholdKg}
+            onChange={(event) => setLowStockThresholdKg(event.target.value)}
+            className={inputClassName}
+          />
+          <p className="text-xs text-muted-foreground">
+            Flagged on the Manager dashboard when stock falls below this. Leave
+            blank to disable alerts for this product.
+          </p>
+        </div>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -112,6 +142,16 @@ function ProductOverview({
       <div className="flex justify-between border-b border-border pb-2">
         <dt className="text-sm text-muted-foreground">Current price / kg</dt>
         <dd className="text-sm font-medium">{product.currentPrice ?? "—"}</dd>
+      </div>
+      <div className="flex justify-between border-b border-border pb-2">
+        <dt className="text-sm text-muted-foreground">
+          Low-stock alert threshold
+        </dt>
+        <dd className="text-sm font-medium">
+          {product.lowStockThresholdKg
+            ? `${product.lowStockThresholdKg} kg`
+            : "Disabled"}
+        </dd>
       </div>
       <div className="flex justify-between pb-2">
         <dt className="text-sm text-muted-foreground">Status</dt>

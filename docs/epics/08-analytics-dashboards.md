@@ -1,7 +1,9 @@
 # Epic 8 — Analytics / Dashboards
 
 **Depends on:** 2 (Products/Pricing), 4 (Stock), 5 (Customers/Loans), 6 (Sales)
-**Status:** not-started
+**Status:** done — see docs/DECISIONS.md, "Epic 8 decisions" for the
+low-stock-threshold schema addition, sales-trend window/grouping, and
+charting approach.
 
 ## Goal
 
