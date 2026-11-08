@@ -17,6 +17,16 @@ export type CustomerDTO = z.infer<typeof CustomerSchema>;
 
 export const CustomerListResponseSchema = z.array(CustomerSchema);
 
+// Server-side name filter — customer-list.tsx's search box used to
+// filter client-side, which silently broke once results are paginated
+// (search would only ever see the current page's rows). See
+// docs/DECISIONS.md.
+export const CustomerQuerySchema = z.object({
+  search: z.string().trim().min(1).optional(),
+});
+
+export type CustomerQuery = z.infer<typeof CustomerQuerySchema>;
+
 export const CreateCustomerInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(160),
   phone: z.string().trim().max(40).optional(),

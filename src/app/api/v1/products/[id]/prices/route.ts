@@ -1,26 +1,42 @@
 import { NextResponse } from "next/server";
 import type { SetNewPriceInput } from "@/features/products/validators/price.schema";
 import {
-  PriceListResponseSchema,
   PriceSchema,
   SetNewPriceInputSchema,
   ToPriceDTO,
 } from "@/features/products/validators/price.schema";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
+import {
+  BuildPaginationMeta,
+  PaginatedResponseSchema,
+  type PaginationQuery,
+  PaginationQuerySchema,
+  ToSkipTake,
+} from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
 type Params = { id: string };
 
-export const GET = CreateApiRoute<unknown, Params>({
+export const GET = CreateApiRoute<PaginationQuery, Params>({
   moduleName: "products.prices",
+  schema: PaginationQuerySchema,
   requiresAuth: { status: true, permission: "product:read" },
-  responseSchema: PriceListResponseSchema,
-  handler: async (_body, _session, params) => {
-    const prices = await prisma.price.findMany({
-      where: { productId: params?.id },
-      orderBy: { effectiveFrom: "desc" },
-    });
-    return prices.map(ToPriceDTO);
+  responseSchema: PaginatedResponseSchema(PriceSchema),
+  handler: async (query, _session, params) => {
+    const where = { productId: params?.id };
+
+    const [prices, total] = await Promise.all([
+      prisma.price.findMany({
+        where,
+        orderBy: { effectiveFrom: "desc" },
+        ...ToSkipTake(query),
+      }),
+      prisma.price.count({ where }),
+    ]);
+    return {
+      data: prices.map(ToPriceDTO),
+      pagination: BuildPaginationMeta(query, total),
+    };
   },
 });
 

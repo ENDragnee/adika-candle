@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Table,
   TableBody,
@@ -175,7 +176,9 @@ function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
 }
 
 export function UnitConversionManager() {
-  const { data: units, isLoading } = useUnitConversions();
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useUnitConversions({ page });
+  const units = result?.data;
 
   return (
     <div className="flex flex-col gap-4">
@@ -183,34 +186,41 @@ export function UnitConversionManager() {
       {isLoading ? (
         <TableSkeleton columns={4} mobileCard={false} />
       ) : (
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="bg-muted/50">Unit</TableHead>
-                <TableHead className="bg-muted/50">Ratio to KG</TableHead>
-                <TableHead className="bg-muted/50">Status</TableHead>
-                <TableHead className="bg-muted/50">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {units?.length ? (
-                units.map((unit) => (
-                  <UnitConversionRow key={unit.id} unit={unit} />
-                ))
-              ) : (
+        <>
+          <TableContainer>
+            <Table>
+              <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableCell
-                    colSpan={4}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No unit conversions yet.
-                  </TableCell>
+                  <TableHead className="bg-muted/50">Unit</TableHead>
+                  <TableHead className="bg-muted/50">Ratio to KG</TableHead>
+                  <TableHead className="bg-muted/50">Status</TableHead>
+                  <TableHead className="bg-muted/50">Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHeader>
+              <TableBody>
+                {units?.length ? (
+                  units.map((unit) => (
+                    <UnitConversionRow key={unit.id} unit={unit} />
+                  ))
+                ) : (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell
+                      colSpan={4}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No unit conversions yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Pagination
+            page={page}
+            totalPages={result?.pagination.totalPages ?? 1}
+            onPageChange={setPage}
+          />
+        </>
       )}
     </div>
   );

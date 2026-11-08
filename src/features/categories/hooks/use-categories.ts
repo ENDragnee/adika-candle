@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateCategory,
   DeactivateCategory,
@@ -13,11 +14,13 @@ import type {
 } from "../validators/category.schema";
 
 export const CATEGORIES_QUERY_KEY = ["categories"] as const;
+export const categoriesQueryKey = (params: PaginationParams) =>
+  ["categories", params] as const;
 
-export function useCategories() {
+export function useCategories(params: PaginationParams = {}) {
   return useQuery({
-    queryKey: CATEGORIES_QUERY_KEY,
-    queryFn: FetchCategories,
+    queryKey: categoriesQueryKey(params),
+    queryFn: () => FetchCategories(params),
   });
 }
 

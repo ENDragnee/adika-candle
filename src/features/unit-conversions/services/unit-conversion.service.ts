@@ -1,13 +1,17 @@
 import { axiosInstance } from "@/lib/axios";
+import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CreateUnitConversionInput,
   UnitConversionDTO,
   UpdateUnitConversionInput,
 } from "../validators/unit-conversion.schema";
 
-export async function FetchUnitConversions(): Promise<UnitConversionDTO[]> {
-  const { data } = await axiosInstance.get<UnitConversionDTO[]>(
+export async function FetchUnitConversions(
+  params: PaginationParams = {},
+): Promise<Paginated<UnitConversionDTO>> {
+  const { data } = await axiosInstance.get<Paginated<UnitConversionDTO>>(
     "/api/v1/unit-conversions",
+    { params },
   );
   return data;
 }

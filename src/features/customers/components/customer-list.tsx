@@ -8,6 +8,7 @@ import {
   TableSkeleton,
 } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/lib/use-debounce";
 import { useCustomers } from "../hooks/use-customers";
 import type { CustomerDTO } from "../validators/customer.schema";
 
@@ -19,12 +20,23 @@ export function CustomerList({
   // different base paths.
   detailHrefBase: string;
 }) {
-  const { data: customers, isLoading } = useCustomers();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  // Searched server-side (see docs/DECISIONS.md) — debounced so typing
+  // doesn't fire a request per keystroke.
+  const debouncedSearch = useDebounce(search.trim(), 400);
 
-  const filtered = customers?.filter((customer) =>
-    customer.name.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    // A new search term always starts back at page 1 — the old page
+    // number may not exist in the new, smaller result set.
+    setPage(1);
+  }
+
+  const { data: result, isLoading } = useCustomers({
+    page,
+    search: debouncedSearch || undefined,
+  });
 
   const columns: DataTableColumn<CustomerDTO>[] = [
     {
@@ -71,15 +83,20 @@ export function CustomerList({
     <div className="flex flex-col gap-3">
       <Input
         value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        onChange={(event) => handleSearchChange(event.target.value)}
         placeholder="Search by name…"
         className="max-w-sm"
       />
       <DataTable
         columns={columns}
-        data={filtered ?? []}
+        data={result?.data ?? []}
         getRowKey={(customer) => customer.id}
         emptyMessage="No customers found."
+        pagination={{
+          page,
+          totalPages: result?.pagination.totalPages ?? 1,
+          onPageChange: setPage,
+        }}
       />
     </div>
   );

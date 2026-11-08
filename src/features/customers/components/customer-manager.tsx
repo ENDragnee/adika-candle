@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Table,
   TableBody,
@@ -202,7 +203,9 @@ function CustomerRow({ customer }: { customer: CustomerDTO }) {
 }
 
 export function CustomerManager() {
-  const { data: customers, isLoading } = useCustomers();
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useCustomers({ page });
+  const customers = result?.data;
 
   return (
     <div className="flex flex-col gap-4">
@@ -210,36 +213,43 @@ export function CustomerManager() {
       {isLoading ? (
         <TableSkeleton columns={6} mobileCard={false} />
       ) : (
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="bg-muted/50">Name</TableHead>
-                <TableHead className="bg-muted/50">Phone</TableHead>
-                <TableHead className="bg-muted/50">Location</TableHead>
-                <TableHead className="bg-muted/50">Loan balance</TableHead>
-                <TableHead className="bg-muted/50">Status</TableHead>
-                <TableHead className="bg-muted/50">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers?.length ? (
-                customers.map((customer) => (
-                  <CustomerRow key={customer.id} customer={customer} />
-                ))
-              ) : (
+        <>
+          <TableContainer>
+            <Table>
+              <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableCell
-                    colSpan={6}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No customers yet.
-                  </TableCell>
+                  <TableHead className="bg-muted/50">Name</TableHead>
+                  <TableHead className="bg-muted/50">Phone</TableHead>
+                  <TableHead className="bg-muted/50">Location</TableHead>
+                  <TableHead className="bg-muted/50">Loan balance</TableHead>
+                  <TableHead className="bg-muted/50">Status</TableHead>
+                  <TableHead className="bg-muted/50">Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHeader>
+              <TableBody>
+                {customers?.length ? (
+                  customers.map((customer) => (
+                    <CustomerRow key={customer.id} customer={customer} />
+                  ))
+                ) : (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell
+                      colSpan={6}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No customers yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Pagination
+            page={page}
+            totalPages={result?.pagination.totalPages ?? 1}
+            onPageChange={setPage}
+          />
+        </>
       )}
     </div>
   );

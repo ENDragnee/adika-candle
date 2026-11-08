@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { DetailSkeleton } from "@/components/ui/skeleton";
 import { useCategories } from "@/features/categories/hooks/use-categories";
+import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useProduct, useUpdateProduct } from "../hooks/use-products";
 import { PriceHistory } from "./price-history";
 import { SetPriceForm } from "./set-price-form";
@@ -26,7 +27,10 @@ function ProductOverview({
   canManage: boolean;
 }) {
   const { data: product, isLoading } = useProduct(productId);
-  const { data: categories } = useCategories();
+  const { data: categoriesResult } = useCategories({
+    pageSize: MAX_PAGE_SIZE,
+  });
+  const categories = categoriesResult?.data;
   const updateProduct = useUpdateProduct(productId);
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState("");

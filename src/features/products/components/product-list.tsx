@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -46,7 +47,8 @@ const columns: DataTableColumn<ProductDTO>[] = [
 ];
 
 export function ProductList() {
-  const { data: products, isLoading } = useProducts();
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useProducts({ page });
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -55,9 +57,14 @@ export function ProductList() {
   return (
     <DataTable
       columns={columns}
-      data={products ?? []}
+      data={result?.data ?? []}
       getRowKey={(product) => product.id}
       emptyMessage="No products yet."
+      pagination={{
+        page,
+        totalPages: result?.pagination.totalPages ?? 1,
+        onPageChange: setPage,
+      }}
     />
   );
 }

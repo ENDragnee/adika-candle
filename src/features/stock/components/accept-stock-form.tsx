@@ -14,14 +14,20 @@ import {
 } from "@/components/ui/select";
 import { useProducts } from "@/features/products/hooks/use-products";
 import { useUnitConversions } from "@/features/unit-conversions/hooks/use-unit-conversions";
+import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useAcceptStock } from "../hooks/use-stock";
 
 export function AcceptStockForm() {
   const router = useRouter();
-  const { data: products, isLoading: productsLoading } = useProducts();
-  const { data: units, isLoading: unitsLoading } = useUnitConversions();
-  const activeProducts = products?.filter((product) => product.isActive) ?? [];
-  const activeUnits = units?.filter((unit) => unit.isActive) ?? [];
+  const { data: productsResult, isLoading: productsLoading } = useProducts({
+    pageSize: MAX_PAGE_SIZE,
+  });
+  const { data: unitsResult, isLoading: unitsLoading } = useUnitConversions({
+    pageSize: MAX_PAGE_SIZE,
+  });
+  const activeProducts =
+    productsResult?.data.filter((product) => product.isActive) ?? [];
+  const activeUnits = unitsResult?.data.filter((unit) => unit.isActive) ?? [];
 
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState("");

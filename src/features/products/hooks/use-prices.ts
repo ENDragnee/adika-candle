@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PaginationParams } from "@/lib/pagination";
 import {
   FetchProductPrices,
   SetNewProductPrice,
@@ -8,13 +9,18 @@ import {
 import type { SetNewPriceInput } from "../validators/price.schema";
 import { PRODUCTS_QUERY_KEY, productQueryKey } from "./use-products";
 
-export const productPricesQueryKey = (productId: string) =>
-  ["products", productId, "prices"] as const;
+export const productPricesQueryKey = (
+  productId: string,
+  params: PaginationParams = {},
+) => ["products", productId, "prices", params] as const;
 
-export function useProductPrices(productId: string) {
+export function useProductPrices(
+  productId: string,
+  params: PaginationParams = {},
+) {
   return useQuery({
-    queryKey: productPricesQueryKey(productId),
-    queryFn: () => FetchProductPrices(productId),
+    queryKey: productPricesQueryKey(productId, params),
+    queryFn: () => FetchProductPrices(productId, params),
     enabled: Boolean(productId),
   });
 }

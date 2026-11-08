@@ -2,13 +2,18 @@ import { NextResponse } from "next/server";
 import {
   ACTIVE_PRICE_INCLUDE,
   CreateProductInputSchema,
-  ProductListResponseSchema,
   ProductSchema,
   ToProductDTO,
 } from "@/features/products/validators/product.schema";
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { GenerateCode } from "@/lib/generate-code";
+import {
+  BuildPaginationMeta,
+  PaginatedResponseSchema,
+  PaginationQuerySchema,
+  ToSkipTake,
+} from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
 const MAX_SKU_ATTEMPTS = 5;
@@ -25,14 +30,22 @@ function GenerateSku(): string {
 
 export const GET = CreateApiRoute({
   moduleName: "products",
+  schema: PaginationQuerySchema,
   requiresAuth: { status: true, permission: "product:read" },
-  responseSchema: ProductListResponseSchema,
-  handler: async () => {
-    const products = await prisma.product.findMany({
-      orderBy: { name: "asc" },
-      include: ACTIVE_PRICE_INCLUDE,
-    });
-    return products.map(ToProductDTO);
+  responseSchema: PaginatedResponseSchema(ProductSchema),
+  handler: async (query) => {
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        orderBy: { name: "asc" },
+        include: ACTIVE_PRICE_INCLUDE,
+        ...ToSkipTake(query),
+      }),
+      prisma.product.count(),
+    ]);
+    return {
+      data: products.map(ToProductDTO),
+      pagination: BuildPaginationMeta(query, total),
+    };
   },
 });
 

@@ -1,14 +1,19 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CreateSale, FetchSale, FetchSales } from "../services/sale.service";
-import type { CreateSaleInput, SaleQuery } from "../validators/sale.schema";
+import {
+  CreateSale,
+  FetchSale,
+  FetchSales,
+  type SalesQueryParams,
+} from "../services/sale.service";
+import type { CreateSaleInput } from "../validators/sale.schema";
 
-export const salesQueryKey = (query?: SaleQuery) =>
+export const salesQueryKey = (query?: SalesQueryParams) =>
   ["sales", query ?? {}] as const;
 export const saleQueryKey = (id: string) => ["sales", "detail", id] as const;
 
-export function useSales(query?: SaleQuery) {
+export function useSales(query?: SalesQueryParams) {
   return useQuery({
     queryKey: salesQueryKey(query),
     queryFn: () => FetchSales(query),

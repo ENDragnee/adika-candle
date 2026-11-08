@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CreateCustomer,
+  type CustomersQueryParams,
   FetchCustomer,
   FetchCustomers,
   UpdateCustomer,
@@ -13,10 +14,15 @@ import type {
 } from "../validators/customer.schema";
 
 export const CUSTOMERS_QUERY_KEY = ["customers"] as const;
+export const customersQueryKey = (params: CustomersQueryParams) =>
+  ["customers", params] as const;
 export const customerQueryKey = (id: string) => ["customers", id] as const;
 
-export function useCustomers() {
-  return useQuery({ queryKey: CUSTOMERS_QUERY_KEY, queryFn: FetchCustomers });
+export function useCustomers(params: CustomersQueryParams = {}) {
+  return useQuery({
+    queryKey: customersQueryKey(params),
+    queryFn: () => FetchCustomers(params),
+  });
 }
 
 export function useCustomer(id: string) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -29,7 +30,8 @@ const columns: DataTableColumn<PriceDTO>[] = [
 ];
 
 export function PriceHistory({ productId }: { productId: string }) {
-  const { data: prices, isLoading } = useProductPrices(productId);
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useProductPrices(productId, { page });
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -38,9 +40,14 @@ export function PriceHistory({ productId }: { productId: string }) {
   return (
     <DataTable
       columns={columns}
-      data={prices ?? []}
+      data={result?.data ?? []}
       getRowKey={(price) => price.id}
       emptyMessage="No price has been set yet."
+      pagination={{
+        page,
+        totalPages: result?.pagination.totalPages ?? 1,
+        onPageChange: setPage,
+      }}
     />
   );
 }

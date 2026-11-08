@@ -1,14 +1,20 @@
 import { axiosInstance } from "@/lib/axios";
+import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CreateSaleInput,
   SaleDTO,
   SaleQuery,
 } from "../validators/sale.schema";
 
-export async function FetchSales(query?: SaleQuery): Promise<SaleDTO[]> {
-  const { data } = await axiosInstance.get<SaleDTO[]>("/api/v1/sales", {
-    params: query,
-  });
+export type SalesQueryParams = SaleQuery & PaginationParams;
+
+export async function FetchSales(
+  query: SalesQueryParams = {},
+): Promise<Paginated<SaleDTO>> {
+  const { data } = await axiosInstance.get<Paginated<SaleDTO>>(
+    "/api/v1/sales",
+    { params: query },
+  );
   return data;
 }
 

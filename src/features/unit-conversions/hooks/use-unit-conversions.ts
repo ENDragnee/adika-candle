@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateUnitConversion,
   DeactivateUnitConversion,
@@ -13,11 +14,13 @@ import type {
 } from "../validators/unit-conversion.schema";
 
 export const UNIT_CONVERSIONS_QUERY_KEY = ["unit-conversions"] as const;
+export const unitConversionsQueryKey = (params: PaginationParams) =>
+  ["unit-conversions", params] as const;
 
-export function useUnitConversions() {
+export function useUnitConversions(params: PaginationParams = {}) {
   return useQuery({
-    queryKey: UNIT_CONVERSIONS_QUERY_KEY,
-    queryFn: FetchUnitConversions,
+    queryKey: unitConversionsQueryKey(params),
+    queryFn: () => FetchUnitConversions(params),
   });
 }
 

@@ -12,6 +12,106 @@ undo.
 
 ---
 
+## 2026-11-08 — Backend + frontend pagination decisions
+
+**Every REST list endpoint got paginated, with two structural exceptions:
+`GET /api/v1/roles` (already a different `{ roles, modules }` envelope
+per Epic 7, and the role count is permanently 2 — nothing to paginate)
+and `manager-dashboard.tsx`'s three GraphQL-sourced inline tables
+(low-stock alerts, stock levels, loan exposure — a different mechanism,
+the single-query `dashboard` resolver in `src/app/api/graphql/route.ts`,
+not a REST list route).** Confirmed with the user: paginate everything
+else uniformly rather than scoping to just the append-only transaction
+logs — 11 routes total (products, categories, customers,
+unit-conversions, users, sales, stock balances, stock ledger, loan
+oversight, loan transactions, price history).
+
+**New shared `src/lib/pagination.ts`**: `PaginationQuerySchema` (Zod,
+`page`/`pageSize` with defaults 1/20, `pageSize` capped at
+`MAX_PAGE_SIZE` = 100), `ToSkipTake`/`BuildPaginationMeta` helpers for
+route handlers, `PaginatedResponseSchema(itemSchema)` for
+`responseSchema`, and `Paginated<T>`/`PaginationParams` types reused
+directly by every feature's frontend `service.ts` (no per-feature
+duplicate schema/type). Every paginated route follows one pattern:
+`Promise.all([model.findMany({ ...where, ...ToSkipTake(query) }),
+model.count({ where })])`, returning `{ data, pagination }`.
+
+**Several hooks are called two different ways — "a page to browse" vs.
+"everything, for a `<Select>` dropdown" — and this wasn't obvious until
+implementation surfaced it.** `useProducts`, `useCategories`,
+`useUnitConversions`, and `useCustomers` are each consumed by both a
+browsable list page (default `pageSize` 20, renders `<Pagination>`) and
+one or more dropdown pickers (`create-product-form.tsx`,
+`product-detail.tsx`'s edit form, `accept-stock-form.tsx`,
+`record-sale-form.tsx`) that need the *complete* active list to populate
+a `<Select>`, not just page 1. Rather than adding a second non-paginated
+fetch path per resource, dropdown call sites simply pass
+`{ pageSize: MAX_PAGE_SIZE }` to the same paginated hook/endpoint — this
+app is a single small factory, so a 100-row ceiling is already generous
+for categories/units/products/customers. **Known limit, not silently
+hidden:** if any of those four ever exceeds 100 active rows, a dropdown
+would silently truncate rather than erroring — flagged here rather than
+building a second endpoint for a scale this app isn't at.
+
+**`product-stock-detail.tsx` (shows one product's current balance) used
+to call `useStockBalances()` with no args — fetching every product's
+balance just to `.find()` one row.** Fixed opportunistically while
+touching this hook's signature anyway: it now calls
+`useStockBalances({ productId })`, using `StockBalanceQuerySchema`'s
+existing (pre-pagination) `productId` filter that nothing had wired up
+to this call site before. Not a pagination-caused regression — a
+pre-existing inefficiency this work happened to touch.
+
+**`customer-list.tsx`'s name search moved from client-side
+`.filter()` to a server-side `search` param
+(`CustomerQuerySchema.search`, `Prisma`'s `contains`/`insensitive`)** —
+required, not optional, once results are paginated: client-side
+filtering only ever sees the current page's 20 rows, so a customer on
+page 2 would become unfindable by search. Debounced 400ms via the
+existing (previously unused but already tested) `src/lib/use-debounce.ts`.
+Page resets to 1 directly inside the search input's `onChange` handler
+rather than via a `useEffect` keyed on the debounced value — simpler,
+avoids a step of indirection, and side-steps a biome
+`useExhaustiveDependencies` complaint about a dependency that's only
+ever used to *trigger* the effect, never read inside it.
+
+**`Pagination` (`src/components/ui/pagination.tsx`) is hand-built
+against the existing `Button`/`cn` primitives, not pulled from the
+shadcn registry** — confirmed with the user, consistent with every
+other `src/components/ui/` primitive in this app (`avatar.tsx`,
+`dropdown-menu.tsx`, etc., all hand-authored against `radix-ui`
+directly). A CLI-pulled component would need the same manual
+`rounded-none` → radius-scale fix Epic 9 already did for every other
+primitive, so there's no real time saved. Previous/Page X of
+Y/Next only — no numbered page buttons, confirmed with the user over a
+more typical numbered-pagination control, since this app's data volumes
+don't call for jumping to an arbitrary page.
+
+**`DataTable<T>`'s mobile card view and `Pagination` compose for free** —
+`DataTable` renders one `<Pagination>` beneath whichever of its two
+responsive trees (desktop table / mobile card list) is visible, so none
+of the 8 `DataTable<T>`-consuming components had to think about mobile
+placement themselves. The 3 composed-row managers that gained
+pagination (`category-manager.tsx`, `customer-manager.tsx`,
+`unit-conversion-manager.tsx`, `user-manager.tsx` — 4 total, all
+pre-existing `TableSkeleton mobileCard={false}` consumers from the
+mobile-shell work above) render `<Pagination>` manually beneath their
+`TableContainer`, same pattern.
+
+**Verified against the real dev database, not just unit tests** —
+seeded 25 extra categories and 21 extra products via direct API calls
+(`page.request` in Playwright, reusing the signed-in session) to force
+a real second page, confirmed Previous/Next/page-count on both a
+composed table (Categories) and a `DataTable<T>` list (Products, desktop
+and mobile card view), confirmed a dropdown picker still listed all 26
+categories post-pagination, confirmed `customer-list.tsx`'s search still
+finds a customer not on the currently-loaded page, then hard-deleted the
+seeded rows directly via Prisma (`category.deleteMany`/
+`product.deleteMany` — the REST API only soft-deactivates, which would
+have left 25+ "Inactive" rows cluttering the dev data).
+
+---
+
 ## 2026-11-08 — Mobile-responsive shell decisions
 
 **Breakpoint is `md` (768px), independent of the stat-tile grid's existing

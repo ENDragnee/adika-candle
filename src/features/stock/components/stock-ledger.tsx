@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -48,7 +49,8 @@ const columns: DataTableColumn<StockLedgerEntryDTO>[] = [
 ];
 
 export function StockLedger({ productId }: { productId: string }) {
-  const { data: entries, isLoading } = useProductLedger(productId);
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useProductLedger(productId, { page });
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -57,9 +59,14 @@ export function StockLedger({ productId }: { productId: string }) {
   return (
     <DataTable
       columns={columns}
-      data={entries ?? []}
+      data={result?.data ?? []}
       getRowKey={(entry) => entry.id}
       emptyMessage="No ledger entries yet."
+      pagination={{
+        page,
+        totalPages: result?.pagination.totalPages ?? 1,
+        onPageChange: setPage,
+      }}
     />
   );
 }

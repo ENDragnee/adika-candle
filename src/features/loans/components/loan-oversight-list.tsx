@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -36,7 +37,8 @@ const columns: DataTableColumn<LoanAccountDTO>[] = [
 ];
 
 export function LoanOversightList() {
-  const { data: accounts, isLoading } = useLoanAccounts();
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useLoanAccounts({ page });
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -45,9 +47,14 @@ export function LoanOversightList() {
   return (
     <DataTable
       columns={columns}
-      data={accounts ?? []}
+      data={result?.data ?? []}
       getRowKey={(account) => account.id}
       emptyMessage="No loan accounts yet."
+      pagination={{
+        page,
+        totalPages: result?.pagination.totalPages ?? 1,
+        onPageChange: setPage,
+      }}
     />
   );
 }

@@ -1,20 +1,28 @@
 import { axiosInstance } from "@/lib/axios";
+import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CreateLoanTransactionInput,
   LoanAccountDTO,
   LoanTransactionDTO,
 } from "../validators/loan.schema";
 
-export async function FetchLoanAccounts(): Promise<LoanAccountDTO[]> {
-  const { data } = await axiosInstance.get<LoanAccountDTO[]>("/api/v1/loans");
+export async function FetchLoanAccounts(
+  params: PaginationParams = {},
+): Promise<Paginated<LoanAccountDTO>> {
+  const { data } = await axiosInstance.get<Paginated<LoanAccountDTO>>(
+    "/api/v1/loans",
+    { params },
+  );
   return data;
 }
 
 export async function FetchLoanTransactions(
   accountId: string,
-): Promise<LoanTransactionDTO[]> {
-  const { data } = await axiosInstance.get<LoanTransactionDTO[]>(
+  params: PaginationParams = {},
+): Promise<Paginated<LoanTransactionDTO>> {
+  const { data } = await axiosInstance.get<Paginated<LoanTransactionDTO>>(
     `/api/v1/loans/${accountId}/transactions`,
+    { params },
   );
   return data;
 }

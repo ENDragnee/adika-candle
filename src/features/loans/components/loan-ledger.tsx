@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -39,7 +40,10 @@ const columns: DataTableColumn<LoanTransactionDTO>[] = [
 ];
 
 export function LoanLedger({ accountId }: { accountId: string }) {
-  const { data: transactions, isLoading } = useLoanTransactions(accountId);
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useLoanTransactions(accountId, {
+    page,
+  });
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -48,9 +52,14 @@ export function LoanLedger({ accountId }: { accountId: string }) {
   return (
     <DataTable
       columns={columns}
-      data={transactions ?? []}
+      data={result?.data ?? []}
       getRowKey={(transaction) => transaction.id}
       emptyMessage="No loan activity yet."
+      pagination={{
+        page,
+        totalPages: result?.pagination.totalPages ?? 1,
+        onPageChange: setPage,
+      }}
     />
   );
 }

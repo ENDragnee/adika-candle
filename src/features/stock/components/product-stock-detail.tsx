@@ -7,8 +7,8 @@ import { StockLedger } from "./stock-ledger";
 
 export function ProductStockDetail({ productId }: { productId: string }) {
   const { data: product, isLoading: productLoading } = useProduct(productId);
-  const { data: balances } = useStockBalances();
-  const balance = balances?.find((b) => b.productId === productId);
+  const { data: balancesResult } = useStockBalances({ productId });
+  const balance = balancesResult?.data[0];
 
   return (
     <div className="flex flex-col gap-4">

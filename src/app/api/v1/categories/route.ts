@@ -1,23 +1,36 @@
 import { NextResponse } from "next/server";
 import {
-  CategoryListResponseSchema,
   CategorySchema,
   CreateCategoryInputSchema,
   ToCategoryDTO,
 } from "@/features/categories/validators/category.schema";
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
+import {
+  BuildPaginationMeta,
+  PaginatedResponseSchema,
+  PaginationQuerySchema,
+  ToSkipTake,
+} from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
 export const GET = CreateApiRoute({
   moduleName: "categories",
+  schema: PaginationQuerySchema,
   requiresAuth: { status: true, permission: "category:manage" },
-  responseSchema: CategoryListResponseSchema,
-  handler: async () => {
-    const categories = await prisma.category.findMany({
-      orderBy: { name: "asc" },
-    });
-    return categories.map(ToCategoryDTO);
+  responseSchema: PaginatedResponseSchema(CategorySchema),
+  handler: async (query) => {
+    const [categories, total] = await Promise.all([
+      prisma.category.findMany({
+        orderBy: { name: "asc" },
+        ...ToSkipTake(query),
+      }),
+      prisma.category.count(),
+    ]);
+    return {
+      data: categories.map(ToCategoryDTO),
+      pagination: BuildPaginationMeta(query, total),
+    };
   },
 });
 

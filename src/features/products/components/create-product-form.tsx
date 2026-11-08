@@ -14,13 +14,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCategories } from "@/features/categories/hooks/use-categories";
+import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useCreateProduct } from "../hooks/use-products";
 
 export function CreateProductForm() {
   const router = useRouter();
-  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const { data: categoriesResult, isLoading: categoriesLoading } =
+    useCategories({ pageSize: MAX_PAGE_SIZE });
   const activeCategories =
-    categories?.filter((category) => category.isActive) ?? [];
+    categoriesResult?.data.filter((category) => category.isActive) ?? [];
 
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -55,9 +56,11 @@ export function SaleList({
 }: {
   createdById?: string;
 }) {
-  const { data: sales, isLoading } = useSales(
-    createdById ? { createdById } : undefined,
-  );
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useSales({
+    page,
+    ...(createdById && { createdById }),
+  });
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -66,9 +69,14 @@ export function SaleList({
   return (
     <DataTable
       columns={columns}
-      data={sales ?? []}
+      data={result?.data ?? []}
       getRowKey={(sale) => sale.id}
       emptyMessage="No sales yet."
+      pagination={{
+        page,
+        totalPages: result?.pagination.totalPages ?? 1,
+        onPageChange: setPage,
+      }}
     />
   );
 }

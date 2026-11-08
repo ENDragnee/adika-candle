@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
   CreateSaleInputSchema,
-  SaleListResponseSchema,
   SaleQuerySchema,
   SaleSchema,
   ToSaleDTO,
@@ -14,7 +13,15 @@ import {
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { GenerateCode } from "@/lib/generate-code";
+import {
+  BuildPaginationMeta,
+  PaginatedResponseSchema,
+  PaginationQuerySchema,
+  ToSkipTake,
+} from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
+
+const SalesQuerySchema = SaleQuerySchema.extend(PaginationQuerySchema.shape);
 
 const MAX_REFERENCE_CODE_ATTEMPTS = 5;
 
@@ -30,16 +37,27 @@ function GenerateSaleReferenceCode(): string {
 
 export const GET = CreateApiRoute({
   moduleName: "sales",
-  schema: SaleQuerySchema,
+  schema: SalesQuerySchema,
   requiresAuth: { status: true, permission: "sale:read" },
-  responseSchema: SaleListResponseSchema,
+  responseSchema: PaginatedResponseSchema(SaleSchema),
   handler: async (query) => {
-    const sales = await prisma.sale.findMany({
-      where: query.createdById ? { createdById: query.createdById } : undefined,
-      include: WITH_SALE_RELATIONS_INCLUDE,
-      orderBy: { createdAt: "desc" },
-    });
-    return sales.map(ToSaleDTO);
+    const where = query.createdById
+      ? { createdById: query.createdById }
+      : undefined;
+
+    const [sales, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        include: WITH_SALE_RELATIONS_INCLUDE,
+        orderBy: { createdAt: "desc" },
+        ...ToSkipTake(query),
+      }),
+      prisma.sale.count({ where }),
+    ]);
+    return {
+      data: sales.map(ToSaleDTO),
+      pagination: BuildPaginationMeta(query, total),
+    };
   },
 });
 

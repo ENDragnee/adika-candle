@@ -2,26 +2,42 @@ import { NextResponse } from "next/server";
 import type { CreateLoanTransactionInput } from "@/features/loans/validators/loan.schema";
 import {
   CreateLoanTransactionInputSchema,
-  LoanTransactionListResponseSchema,
   LoanTransactionSchema,
   ToLoanTransactionDTO,
 } from "@/features/loans/validators/loan.schema";
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
+import {
+  BuildPaginationMeta,
+  PaginatedResponseSchema,
+  type PaginationQuery,
+  PaginationQuerySchema,
+  ToSkipTake,
+} from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
 type Params = { accountId: string };
 
-export const GET = CreateApiRoute<unknown, Params>({
+export const GET = CreateApiRoute<PaginationQuery, Params>({
   moduleName: "loans.transactions",
+  schema: PaginationQuerySchema,
   requiresAuth: { status: true, permission: ["loan:manage", "loan:record"] },
-  responseSchema: LoanTransactionListResponseSchema,
-  handler: async (_body, _session, params) => {
-    const transactions = await prisma.loanTransaction.findMany({
-      where: { loanAccountId: params?.accountId },
-      orderBy: { createdAt: "desc" },
-    });
-    return transactions.map(ToLoanTransactionDTO);
+  responseSchema: PaginatedResponseSchema(LoanTransactionSchema),
+  handler: async (query, _session, params) => {
+    const where = { loanAccountId: params?.accountId };
+
+    const [transactions, total] = await Promise.all([
+      prisma.loanTransaction.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        ...ToSkipTake(query),
+      }),
+      prisma.loanTransaction.count({ where }),
+    ]);
+    return {
+      data: transactions.map(ToLoanTransactionDTO),
+      pagination: BuildPaginationMeta(query, total),
+    };
   },
 });
 

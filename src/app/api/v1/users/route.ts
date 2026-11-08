@@ -5,23 +5,37 @@ import {
   CreateUserInputSchema,
   CreateUserResponseSchema,
   ToUserDTO,
-  UserListResponseSchema,
+  UserSchema,
   WITH_ROLE_INCLUDE,
 } from "@/features/users/validators/user.schema";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { auth } from "@/lib/auth";
+import {
+  BuildPaginationMeta,
+  PaginatedResponseSchema,
+  PaginationQuerySchema,
+  ToSkipTake,
+} from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
 export const GET = CreateApiRoute({
   moduleName: "users",
+  schema: PaginationQuerySchema,
   requiresAuth: { status: true, permission: "user:manage" },
-  responseSchema: UserListResponseSchema,
-  handler: async () => {
-    const users = await prisma.user.findMany({
-      include: WITH_ROLE_INCLUDE,
-      orderBy: { name: "asc" },
-    });
-    return users.map(ToUserDTO);
+  responseSchema: PaginatedResponseSchema(UserSchema),
+  handler: async (query) => {
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        include: WITH_ROLE_INCLUDE,
+        orderBy: { name: "asc" },
+        ...ToSkipTake(query),
+      }),
+      prisma.user.count(),
+    ]);
+    return {
+      data: users.map(ToUserDTO),
+      pagination: BuildPaginationMeta(query, total),
+    };
   },
 });
 

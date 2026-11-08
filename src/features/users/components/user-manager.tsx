@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -224,7 +225,9 @@ function UserRow({
 }
 
 export function UserManager({ currentUserId }: { currentUserId: string }) {
-  const { data: users, isLoading } = useUsers();
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useUsers({ page });
+  const users = result?.data;
   const { data: rolesData } = useRoles();
   const roles = rolesData?.roles ?? [];
 
@@ -234,41 +237,48 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
       {isLoading ? (
         <TableSkeleton columns={6} mobileCard={false} />
       ) : (
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="bg-muted/50">Name</TableHead>
-                <TableHead className="bg-muted/50">Email</TableHead>
-                <TableHead className="bg-muted/50">Username</TableHead>
-                <TableHead className="bg-muted/50">Role</TableHead>
-                <TableHead className="bg-muted/50">Status</TableHead>
-                <TableHead className="bg-muted/50">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users?.length ? (
-                users.map((user) => (
-                  <UserRow
-                    key={user.id}
-                    user={user}
-                    roles={roles}
-                    isSelf={user.id === currentUserId}
-                  />
-                ))
-              ) : (
+        <>
+          <TableContainer>
+            <Table>
+              <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableCell
-                    colSpan={6}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No users yet.
-                  </TableCell>
+                  <TableHead className="bg-muted/50">Name</TableHead>
+                  <TableHead className="bg-muted/50">Email</TableHead>
+                  <TableHead className="bg-muted/50">Username</TableHead>
+                  <TableHead className="bg-muted/50">Role</TableHead>
+                  <TableHead className="bg-muted/50">Status</TableHead>
+                  <TableHead className="bg-muted/50">Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHeader>
+              <TableBody>
+                {users?.length ? (
+                  users.map((user) => (
+                    <UserRow
+                      key={user.id}
+                      user={user}
+                      roles={roles}
+                      isSelf={user.id === currentUserId}
+                    />
+                  ))
+                ) : (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell
+                      colSpan={6}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No users yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Pagination
+            page={page}
+            totalPages={result?.pagination.totalPages ?? 1}
+            onPageChange={setPage}
+          />
+        </>
       )}
     </div>
   );

@@ -1,12 +1,18 @@
 import { axiosInstance } from "@/lib/axios";
+import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CategoryDTO,
   CreateCategoryInput,
   UpdateCategoryInput,
 } from "../validators/category.schema";
 
-export async function FetchCategories(): Promise<CategoryDTO[]> {
-  const { data } = await axiosInstance.get<CategoryDTO[]>("/api/v1/categories");
+export async function FetchCategories(
+  params: PaginationParams = {},
+): Promise<Paginated<CategoryDTO>> {
+  const { data } = await axiosInstance.get<Paginated<CategoryDTO>>(
+    "/api/v1/categories",
+    { params },
+  );
   return data;
 }
 

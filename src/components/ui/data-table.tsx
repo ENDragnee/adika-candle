@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -34,11 +35,18 @@ export interface DataTableColumn<T> {
   className?: string;
 }
 
+interface DataTablePagination {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
 interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   data: T[];
   getRowKey: (row: T) => string;
   emptyMessage: string;
+  pagination?: DataTablePagination;
 }
 
 // Shared table shell every list component in src/features uses — gives a
@@ -58,11 +66,12 @@ export function DataTable<T>({
   data,
   getRowKey,
   emptyMessage,
+  pagination,
 }: DataTableProps<T>) {
   const [titleColumn, ...restColumns] = columns;
 
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <div className="hidden md:block">
         <TableContainer>
           <Table>
@@ -137,7 +146,14 @@ export function DataTable<T>({
           </p>
         )}
       </div>
-    </>
+      {pagination && (
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.onPageChange}
+        />
+      )}
+    </div>
   );
 }
 

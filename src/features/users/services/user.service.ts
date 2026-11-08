@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
+import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CreateUserInput,
   CreateUserResponse,
@@ -6,8 +7,13 @@ import type {
   UserDTO,
 } from "../validators/user.schema";
 
-export async function FetchUsers(): Promise<UserDTO[]> {
-  const { data } = await axiosInstance.get<UserDTO[]>("/api/v1/users");
+export async function FetchUsers(
+  params: PaginationParams = {},
+): Promise<Paginated<UserDTO>> {
+  const { data } = await axiosInstance.get<Paginated<UserDTO>>(
+    "/api/v1/users",
+    { params },
+  );
   return data;
 }
 

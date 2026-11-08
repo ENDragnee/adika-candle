@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -21,7 +22,8 @@ export function StockBalanceList({
   // Manager's read-only view, which has no detail page.
   detailHrefBase?: string;
 }) {
-  const { data: balances, isLoading } = useStockBalances();
+  const [page, setPage] = useState(1);
+  const { data: result, isLoading } = useStockBalances({ page });
 
   const columns: DataTableColumn<StockBalanceDTO>[] = [
     {
@@ -65,9 +67,14 @@ export function StockBalanceList({
   return (
     <DataTable
       columns={columns}
-      data={balances ?? []}
+      data={result?.data ?? []}
       getRowKey={(balance) => balance.productId}
       emptyMessage="No products yet."
+      pagination={{
+        page,
+        totalPages: result?.pagination.totalPages ?? 1,
+        onPageChange: setPage,
+      }}
     />
   );
 }
