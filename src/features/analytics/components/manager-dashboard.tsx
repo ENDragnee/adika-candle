@@ -135,7 +135,7 @@ export function ManagerDashboard() {
   if (isLoading || !data) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
@@ -174,7 +174,7 @@ export function ManagerDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatTile
           label="Sales, last 30 days"
           value={data.salesTotalLast30Days}

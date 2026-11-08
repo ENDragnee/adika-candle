@@ -49,7 +49,7 @@ function CreateCustomerForm() {
           onSubmit={handleSubmit}
           className="flex flex-wrap items-end gap-2"
         >
-          <div className="flex min-w-48 flex-1 flex-col gap-1">
+          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
             <label htmlFor="new-customer-name" className="text-sm font-medium">
               Name
             </label>
@@ -60,7 +60,7 @@ function CreateCustomerForm() {
               required
             />
           </div>
-          <div className="flex min-w-40 flex-1 flex-col gap-1">
+          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-40">
             <label htmlFor="new-customer-phone" className="text-sm font-medium">
               Phone
             </label>
@@ -70,7 +70,7 @@ function CreateCustomerForm() {
               onChange={(event) => setPhone(event.target.value)}
             />
           </div>
-          <div className="flex min-w-40 flex-1 flex-col gap-1">
+          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-40">
             <label
               htmlFor="new-customer-location"
               className="text-sm font-medium"
@@ -208,7 +208,7 @@ export function CustomerManager() {
     <div className="flex flex-col gap-4">
       <CreateCustomerForm />
       {isLoading ? (
-        <TableSkeleton columns={6} />
+        <TableSkeleton columns={6} mobileCard={false} />
       ) : (
         <TableContainer>
           <Table>

@@ -12,6 +12,109 @@ undo.
 
 ---
 
+## 2026-11-08 — Mobile-responsive shell decisions
+
+**Breakpoint is `md` (768px), independent of the stat-tile grid's existing
+`sm` (640px) step.** Below `md`: sidebar hidden, a `MobileHeader` +
+`BottomNav` (`src/components/shell/`) replace it. At `md`+: the original
+sidebar layout, unchanged except for the new account section at its
+bottom. Chosen over `sm` because the sidebar nav itself (up to 10 items
+for Manager) needs real width to read as a sidebar, not just "not a
+phone."
+
+**Bottom bar: all nav items scroll horizontally in one strip; the account
+avatar is a separate, non-scrolling tab pinned at the end** (confirmed
+with the user over the alternative — a fixed ~4 items + a "More"
+sheet/drawer). Chosen because no Sheet/Drawer primitive exists in this
+project yet, and because Manager's 10 items vs. Inventory Manager's 6
+would need two different "which 4 items win" decisions. The avatar tab
+never scrolls away, mirroring YouTube's always-visible profile tab.
+`BottomNav` (`src/components/shell/bottom-nav.tsx`) reuses the exact same
+active-route logic the old sidebar used
+(`pathname === href || pathname.startsWith(href + "/")`).
+
+**New `account-menu.tsx` renders its trigger via a `children` prop
+instead of owning its own `Avatar` markup**, so the same `AccountMenu` +
+`DropdownMenu` logic can be reused for two visually different triggers:
+a full-width name/role row at the sidebar's bottom (desktop) and a small
+icon-and-label tab in the bottom bar (mobile) — one`GetInitials()` helper
+(also exported from that file) builds the fallback initials for both.
+Sign-out is inlined in the dropdown item's `onSelect` rather than nesting
+the existing `<SignOutButton>` — a `<button>` can't validly nest inside a
+Radix `DropdownMenuItem` (itself `role=menuitem`). `SignOutButton` itself
+is untouched, still used standalone on `src/app/unauthorized/page.tsx`.
+
+**The old header (`"{name} · {role}"` + Sign out button) was removed
+entirely on desktop, not kept alongside the new sidebar account section**
+— that was its only content, so leaving an empty header bar behind would
+be dead chrome. `MobileHeader` (just the "Adika Candle" wordmark) is the
+only header now, and only renders below `md`.
+
+**`DataTable<T>` (`src/components/ui/data-table.tsx`) gained a real
+stacked-card view below `md`, built from the existing
+`DataTableColumn<T>[]` structure — the first column's `cell(row)` becomes
+each card's `CardTitle`, the rest render as a `dl` of label/value rows
+styled like `DetailSkeleton`/`ProductOverview`'s existing convention
+(`flex justify-between border-b border-border pb-2 last:border-b-0`).**
+This required zero changes to any of the 9 call sites
+(`product-list.tsx`, `sale-list.tsx`, `stock-ledger.tsx`, etc., plus
+`manager-dashboard.tsx`'s three inline tables) — the column metadata
+they already pass was sufficient. The 4 composed-row files
+(`category-manager.tsx`, `customer-manager.tsx`,
+`unit-conversion-manager.tsx`, `user-manager.tsx`) were **not** given
+this treatment — their rows are stateful components with inline
+edit/mutation logic, and rebuilding that as mobile cards is a separate,
+larger job. They (and every other table) get `overflow-x-auto` on
+`TableContainer` as a baseline instead, so nothing is ever unusable on a
+narrow screen, just horizontally scrollable.
+
+**`TableSkeleton` gained a `mobileCard` prop (default `true`), and the 4
+composed-row files now pass `mobileCard={false}` explicitly** — a small,
+deliberate deviation from "zero call-site changes," made after
+confirming `TableSkeleton` is shared by both groups (the 9 `DataTable<T>`
+consumers *and* the 4 composed files call it directly). Without the
+prop, the composed files' loading state would show a card-shaped
+skeleton on mobile while their real loaded content stays a table — the
+exact shape-mismatch/layout-jump Epic 10's `DetailSkeleton`/
+`TableSkeleton` work was built to avoid. 4 one-line call-site edits was
+judged worth it over either skipping the mobile skeleton correctness or
+expanding scope to rebuild those 4 tables as cards too.
+
+**Dashboard stat tiles (`manager-dashboard.tsx`) go 2-column below `sm`,
+not every `Card` in the app** — confirmed with the user: applying a
+blanket 2-column grid to full-width forms or `RoleCard`'s permission
+checkboxes would cramp them on a ~375px phone. Only the 3 short,
+number-led `StatTile`s (loaded state *and* its matching `CardSkeleton`
+loading grid, kept in sync per Epic 10's shape-matching convention) were
+in scope.
+
+**Root-caused a page-level horizontal-scroll bug to a classic Flexbox
+`min-width: auto` trap, not the tables themselves.** `TableContainer`
+already had `overflow-x-auto`, but on a composed-table page (e.g.
+`/manager/categories`) the whole page still scrolled sideways on mobile.
+The actual cause: `app-shell.tsx`'s `<div className="flex flex-1
+flex-col">` (and `<main>` inside it) are flex items in the outer row
+flex (`<div className="flex min-h-screen">`) with no `min-w-0` — by
+default a flex item won't shrink below its content's intrinsic width,
+so a wide table inside `main` forced the whole shell wider than the
+viewport instead of scrolling internally. Fixed by adding `min-w-0` to
+both the wrapper div and `main`. Also surfaced (and fixed, same root
+cause) that the 4 composed-table create-forms' `min-w-48`/`min-w-40`
+flex-wrap field widths (e.g. `category-manager.tsx`'s Name/Description
+fields) don't leave room to wrap on a narrow phone — changed to
+`min-w-full sm:min-w-48`/`sm:min-w-40` so fields stack full-width below
+`sm` and keep their original side-by-side sizing at `sm`+.
+
+**New `src/components/ui/avatar.tsx` and `dropdown-menu.tsx`** wrap
+Radix `Avatar`/`DropdownMenu` from the `radix-ui` package (already a
+dependency, already used this way for `Select`/`Dialog`/`Label`/
+`Separator`). `DropdownMenuContent`/`DropdownMenuItem` reuse
+`SelectContent`/`SelectItem`'s exact floating-panel styling
+(`rounded-lg bg-popover ring-1 ring-foreground/10 shadow-md`, same
+`data-open:animate-in...` transitions) rather than inventing a new look.
+
+---
+
 ## 2026-11-08 — Epic 12 (Page-by-Page Polish) decisions
 
 **Resolved the task brief's "the same 13 files above" (for the Card

@@ -46,7 +46,7 @@ function CreateCategoryForm() {
           onSubmit={handleSubmit}
           className="flex flex-wrap items-end gap-2"
         >
-          <div className="flex min-w-48 flex-1 flex-col gap-1">
+          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
             <label htmlFor="new-category-name" className="text-sm font-medium">
               Name
             </label>
@@ -57,7 +57,7 @@ function CreateCategoryForm() {
               required
             />
           </div>
-          <div className="flex min-w-48 flex-1 flex-col gap-1">
+          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
             <label
               htmlFor="new-category-description"
               className="text-sm font-medium"
@@ -183,7 +183,7 @@ export function CategoryManager() {
     <div className="flex flex-col gap-4">
       <CreateCategoryForm />
       {isLoading ? (
-        <TableSkeleton columns={4} />
+        <TableSkeleton columns={4} mobileCard={false} />
       ) : (
         <TableContainer>
           <Table>

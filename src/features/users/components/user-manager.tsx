@@ -68,7 +68,7 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
             onSubmit={handleSubmit}
             className="flex flex-wrap items-end gap-2"
           >
-            <div className="flex min-w-48 flex-1 flex-col gap-1">
+            <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
               <label htmlFor="new-user-name" className="text-sm font-medium">
                 Name
               </label>
@@ -79,7 +79,7 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
                 required
               />
             </div>
-            <div className="flex min-w-48 flex-1 flex-col gap-1">
+            <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
               <label htmlFor="new-user-email" className="text-sm font-medium">
                 Email
               </label>
@@ -91,7 +91,7 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
                 required
               />
             </div>
-            <div className="flex min-w-40 flex-1 flex-col gap-1">
+            <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-40">
               <label
                 htmlFor="new-user-username"
                 className="text-sm font-medium"
@@ -105,7 +105,7 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
                 required
               />
             </div>
-            <div className="flex min-w-40 flex-1 flex-col gap-1">
+            <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-40">
               <label htmlFor="new-user-role" className="text-sm font-medium">
                 Role
               </label>
@@ -232,7 +232,7 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
     <div className="flex flex-col gap-4">
       <CreateUserForm roles={roles} />
       {isLoading ? (
-        <TableSkeleton columns={6} />
+        <TableSkeleton columns={6} mobileCard={false} />
       ) : (
         <TableContainer>
           <Table>

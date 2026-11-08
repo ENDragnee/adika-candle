@@ -46,7 +46,7 @@ function CreateUnitConversionForm() {
           onSubmit={handleSubmit}
           className="flex flex-wrap items-end gap-2"
         >
-          <div className="flex min-w-48 flex-1 flex-col gap-1">
+          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
             <label htmlFor="new-unit-name" className="text-sm font-medium">
               Unit name
             </label>
@@ -58,7 +58,7 @@ function CreateUnitConversionForm() {
               required
             />
           </div>
-          <div className="flex min-w-48 flex-1 flex-col gap-1">
+          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
             <label htmlFor="new-unit-ratio" className="text-sm font-medium">
               Ratio to KG
             </label>
@@ -181,7 +181,7 @@ export function UnitConversionManager() {
     <div className="flex flex-col gap-4">
       <CreateUnitConversionForm />
       {isLoading ? (
-        <TableSkeleton columns={4} />
+        <TableSkeleton columns={4} mobileCard={false} />
       ) : (
         <TableContainer>
           <Table>

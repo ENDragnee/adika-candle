@@ -1,11 +1,16 @@
 "use client";
 
+import { CaretUpDownIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
-import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { AccountMenu, GetInitials } from "@/components/shell/account-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import type { AppUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { BottomNav } from "./bottom-nav";
+import { MobileHeader } from "./mobile-header";
 import type { NavItem } from "./nav-config";
 
 interface AppShellProps {
@@ -19,7 +24,7 @@ export function AppShell({ user, navItems, children }: AppShellProps) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
+      <aside className="hidden h-screen shrink-0 flex-col border-r border-border bg-sidebar md:sticky md:top-0 md:flex md:w-56">
         <div className="px-4 py-3 text-sm font-semibold text-sidebar-foreground">
           Adika Candle
         </div>
@@ -49,16 +54,33 @@ export function AppShell({ user, navItems, children }: AppShellProps) {
             );
           })}
         </nav>
+        <Separator />
+        <AccountMenu user={user} align="start" side="top">
+          <button
+            type="button"
+            className="flex items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-sidebar-accent"
+          >
+            <Avatar className="size-7">
+              <AvatarFallback>{GetInitials(user.name)}</AvatarFallback>
+            </Avatar>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-medium text-sidebar-foreground">
+                {user.name}
+              </span>
+              <span className="truncate text-xs text-muted-foreground">
+                {user.role}
+              </span>
+            </div>
+            <CaretUpDownIcon className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+        </AccountMenu>
       </aside>
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-background/95 px-4 py-2.5 shadow-sm backdrop-blur-sm">
-          <div className="text-sm text-muted-foreground">
-            {user.name} ·{" "}
-            <span className="font-medium text-foreground">{user.role}</span>
-          </div>
-          <SignOutButton />
-        </header>
-        <main className="flex-1 p-6">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <MobileHeader />
+        <main className="min-w-0 flex-1 p-4 pb-20 md:p-6 md:pb-6">
+          {children}
+        </main>
+        <BottomNav user={user} navItems={navItems} />
       </div>
     </div>
   );
