@@ -3,6 +3,7 @@
 import {
   CheckCircleIcon,
   DotsThreeVerticalIcon,
+  KeyIcon,
   PencilSimpleIcon,
   PlusIcon,
   ProhibitIcon,
@@ -19,7 +20,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import {
   Dialog,
@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -52,7 +53,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useRoles } from "@/features/roles/hooks/use-roles";
-import { useCreateUser, useUpdateUser, useUsers } from "../hooks/use-users";
+import {
+  useCreateUser,
+  useSetUserPassword,
+  useUpdateUser,
+  useUsers,
+} from "../hooks/use-users";
 import type { UserDTO } from "../validators/user.schema";
 
 function CreateUserForm({
@@ -60,11 +66,12 @@ function CreateUserForm({
   onSuccess,
 }: {
   roles: { id: string; name: string }[];
-  onSuccess: (temporaryPassword: string) => void;
+  onSuccess: () => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [roleId, setRoleId] = useState("");
 
   // `roles` arrives from useRoles() after this form's first render, so the
@@ -80,17 +87,19 @@ function CreateUserForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const result = await createUser.mutateAsync({
+    await createUser.mutateAsync({
       name,
       email,
       username,
       roleId,
+      password,
     });
 
     setName("");
     setEmail("");
     setUsername("");
-    onSuccess(result.temporaryPassword);
+    setPassword("");
+    onSuccess();
   }
 
   return (
@@ -130,6 +139,23 @@ function CreateUserForm({
         />
       </div>
       <div className="flex flex-col gap-1">
+        <label htmlFor="new-user-password" className="text-sm font-medium">
+          Password
+        </label>
+        <PasswordInput
+          id="new-user-password"
+          autoComplete="new-password"
+          minLength={8}
+          maxLength={128}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          At least 8 characters. Share it with the new user yourself.
+        </p>
+      </div>
+      <div className="flex flex-col gap-1">
         <label htmlFor="new-user-role" className="text-sm font-medium">
           Role
         </label>
@@ -149,11 +175,58 @@ function CreateUserForm({
       {createUser.isError && (
         <p className="text-sm text-destructive">
           Couldn&apos;t create user — check the email/username aren&apos;t
-          already in use.
+          already in use and the password is at least 8 characters.
         </p>
       )}
       <Button type="submit" disabled={createUser.isPending}>
         {createUser.isPending ? "Creating…" : "Create user"}
+      </Button>
+    </form>
+  );
+}
+
+function SetPasswordForm({
+  userId,
+  onSuccess,
+}: {
+  userId: string;
+  onSuccess: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const setUserPassword = useSetUserPassword(userId);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    await setUserPassword.mutateAsync({ password });
+    setPassword("");
+    onSuccess();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor="set-user-password" className="text-sm font-medium">
+          New password
+        </label>
+        <PasswordInput
+          id="set-user-password"
+          autoComplete="new-password"
+          minLength={8}
+          maxLength={128}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          At least 8 characters. Takes effect immediately.
+        </p>
+      </div>
+      {setUserPassword.isError && (
+        <p className="text-sm text-destructive">Couldn&apos;t set password.</p>
+      )}
+      <Button type="submit" disabled={setUserPassword.isPending}>
+        {setUserPassword.isPending ? "Saving…" : "Set password"}
       </Button>
     </form>
   );
@@ -226,6 +299,7 @@ function UserRow({
 }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const updateUser = useUpdateUser(user.id);
 
   async function handleActivate() {
@@ -254,39 +328,56 @@ function UserRow({
       <TableCell>
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Actions"
-                  disabled={isSelf}
-                  title={isSelf ? "You can't edit your own account" : undefined}
-                >
-                  <DotsThreeVerticalIcon />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
-                  <PencilSimpleIcon />
-                  Edit
-                </DropdownMenuItem>
-                {user.isActive ? (
-                  <DropdownMenuItem
-                    onSelect={() => setIsConfirmOpen(true)}
-                    className="text-destructive focus:text-destructive"
+            <Dialog open={isPasswordOpen} onOpenChange={setIsPasswordOpen}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Actions"
+                    disabled={isSelf}
+                    title={
+                      isSelf ? "You can't edit your own account" : undefined
+                    }
                   >
-                    <ProhibitIcon />
-                    Deactivate
+                    <DotsThreeVerticalIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
+                    <PencilSimpleIcon />
+                    Edit
                   </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem onSelect={handleActivate}>
-                    <CheckCircleIcon />
-                    Activate
+                  <DropdownMenuItem onSelect={() => setIsPasswordOpen(true)}>
+                    <KeyIcon />
+                    Set password
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  {user.isActive ? (
+                    <DropdownMenuItem
+                      onSelect={() => setIsConfirmOpen(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <ProhibitIcon />
+                      Deactivate
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onSelect={handleActivate}>
+                      <CheckCircleIcon />
+                      Activate
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Set password for {user.name}</DialogTitle>
+                </DialogHeader>
+                <SetPasswordForm
+                  userId={user.id}
+                  onSuccess={() => setIsPasswordOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Deactivate user?</AlertDialogTitle>
@@ -321,9 +412,6 @@ function UserRow({
 export function UserManager({ currentUserId }: { currentUserId: string }) {
   const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(
-    null,
-  );
   const { data: result, isLoading } = useUsers({ page });
   const users = result?.data;
   const { data: rolesData } = useRoles();
@@ -345,33 +433,11 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
             </DialogHeader>
             <CreateUserForm
               roles={roles}
-              onSuccess={(password) => {
-                setIsCreateOpen(false);
-                setTemporaryPassword(password);
-              }}
+              onSuccess={() => setIsCreateOpen(false)}
             />
           </DialogContent>
         </Dialog>
       </div>
-      {temporaryPassword && (
-        <Card>
-          <CardContent className="flex flex-wrap items-center gap-2 text-sm">
-            <span>
-              Temporary password (shown once — share it with the new user):
-            </span>
-            <code className="rounded-md bg-muted px-2 py-1 font-mono">
-              {temporaryPassword}
-            </code>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setTemporaryPassword(null)}
-            >
-              Dismiss
-            </Button>
-          </CardContent>
-        </Card>
-      )}
       {isLoading ? (
         <TableSkeleton columns={6} mobileCard={false} />
       ) : (

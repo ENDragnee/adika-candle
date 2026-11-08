@@ -1,9 +1,7 @@
 import { APIError } from "better-auth";
 import { NextResponse } from "next/server";
-import { GenerateTemporaryPassword } from "@/features/users/services/generate-temporary-password.service";
 import {
   CreateUserInputSchema,
-  CreateUserResponseSchema,
   ToUserDTO,
   UserSchema,
   WITH_ROLE_INCLUDE,
@@ -43,18 +41,18 @@ export const POST = CreateApiRoute({
   moduleName: "users",
   schema: CreateUserInputSchema,
   requiresAuth: { status: true, permission: "user:manage" },
-  responseSchema: CreateUserResponseSchema,
+  responseSchema: UserSchema,
   handler: async (body) => {
-    const temporaryPassword = GenerateTemporaryPassword();
-
     try {
       // Same auth.api.signUpEmail call shape as prisma/seed.ts's
       // ensureDevUser — better-auth owns password hashing, so this handler
-      // never touches HashPassword itself.
+      // never touches hashing itself. The Manager types the password
+      // directly now (see docs/DECISIONS.md) rather than it being
+      // auto-generated.
       const result = await auth.api.signUpEmail({
         body: {
           email: body.email,
-          password: temporaryPassword,
+          password: body.password,
           name: body.name,
           username: body.username,
         },
@@ -66,7 +64,7 @@ export const POST = CreateApiRoute({
         include: WITH_ROLE_INCLUDE,
       });
 
-      return { user: ToUserDTO(user), temporaryPassword };
+      return ToUserDTO(user);
     } catch (err) {
       if (err instanceof APIError) {
         return NextResponse.json(

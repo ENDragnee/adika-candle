@@ -2,9 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationParams } from "@/lib/pagination";
-import { CreateUser, FetchUsers, UpdateUser } from "../services/user.service";
+import {
+  CreateUser,
+  FetchUsers,
+  SetUserPassword,
+  UpdateUser,
+} from "../services/user.service";
 import type {
   CreateUserInput,
+  SetUserPasswordInput,
   UpdateUserInput,
 } from "../validators/user.schema";
 
@@ -36,5 +42,11 @@ export function useUpdateUser(id: string) {
     mutationFn: (input: UpdateUserInput) => UpdateUser(id, input),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
+  });
+}
+
+export function useSetUserPassword(id: string) {
+  return useMutation({
+    mutationFn: (input: SetUserPasswordInput) => SetUserPassword(id, input),
   });
 }

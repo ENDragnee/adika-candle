@@ -1,5 +1,6 @@
 "use client";
 
+import { usePageTitle } from "@/components/shell/use-page-title";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useRawMaterial,
@@ -12,6 +13,7 @@ export function MaterialDetail({ materialId }: { materialId: string }) {
     useRawMaterial(materialId);
   const { data: balancesResult } = useRawMaterialBalances({ materialId });
   const balance = balancesResult?.data[0];
+  usePageTitle(material?.name);
 
   return (
     <div className="flex flex-col gap-4">

@@ -79,6 +79,27 @@ calls (the Epic 16 research-spike outcome, the Epic 17 charting-approach
 call, the new categorical/status color tokens) are logged in
 `docs/DECISIONS.md` under their own dated headings.
 
+Two more rounds landed outside the epic sequence after Epic 17. **Record
+Sale / Accept Stock / New product folded into modals**: the three
+remaining standalone create-pages that predated Epic 13's modal
+convention (`/inventory/sales/new`, `/inventory/stock/accept`,
+`/manager/products/new`) are gone — each is now a `Dialog` triggered from
+its list page (`InventorySalesView`, `InventoryStockView`,
+`CreateProductTrigger`), matching every other create flow in the app.
+**Top bar, bigger components, password visibility**: a persistent
+`TopBar` (`src/components/shell/top-bar.tsx`) shows the current page's
+name (nav-derived by default, overridable per-page via `usePageTitle()`
+— a small Zustand store, structured so a future `Breadcrumbs` component
+can slot into the same spot) plus a "Welcome back" greeting, replacing
+the old mobile-only `MobileHeader`; the shared `src/components/ui/*`
+primitives (`Card`/`Button`/`Input`/`Select`/`Table`/`Dialog`/etc.) got a
+systematic text/control-size bump (`text-xs`→`text-sm` and one height
+step up) for readability; and a reusable `PasswordInput` (show/hide
+toggle) is used on sign-in, user creation, and a new Manager-only "Set
+password" action — which also reverses Epic 7's original "auto-generated
+temp password, never manager-typed" call, per explicit user request. See
+`docs/DECISIONS.md` for the full reasoning on each.
+
 ## Tech stack
 
 Next.js (App Router) · React · TanStack Query · Axios · better-auth ·

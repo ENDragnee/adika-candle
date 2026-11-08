@@ -17,24 +17,25 @@ export type UserDTO = z.infer<typeof UserSchema>;
 
 export const UserListResponseSchema = z.array(UserSchema);
 
+// Password bounds mirror better-auth's own emailAndPassword defaults
+// (minPasswordLength 8 / maxPasswordLength 128) so this schema never
+// accepts something signUpEmail would then reject.
+const PasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128, "Password must be at most 128 characters");
+
 export const CreateUserInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(160),
   email: z.email(),
   username: z.string().trim().min(1, "Username is required").max(60),
   roleId: z.string().min(1, "Role is required"),
+  // The Manager sets this directly — see docs/DECISIONS.md for why this
+  // reverses Epic 7's original "auto-generated temp password" decision.
+  password: PasswordSchema,
 });
 
 export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
-
-// A temporary password is generated server-side and returned exactly once
-// in the create response — there's no password field on the create form.
-// See docs/DECISIONS.md, "Epic 7 decisions".
-export const CreateUserResponseSchema = z.object({
-  user: UserSchema,
-  temporaryPassword: z.string(),
-});
-
-export type CreateUserResponse = z.infer<typeof CreateUserResponseSchema>;
 
 // roleId/isActive only — name/email/username aren't editable from this UI.
 export const UpdateUserInputSchema = z.object({
@@ -43,6 +44,12 @@ export const UpdateUserInputSchema = z.object({
 });
 
 export type UpdateUserInput = z.infer<typeof UpdateUserInputSchema>;
+
+export const SetUserPasswordInputSchema = z.object({
+  password: PasswordSchema,
+});
+
+export type SetUserPasswordInput = z.infer<typeof SetUserPasswordInputSchema>;
 
 type UserWithRole = User & { role: Role | null };
 

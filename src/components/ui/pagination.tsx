@@ -32,7 +32,7 @@ export function Pagination({
         <CaretLeftIcon data-icon="inline-start" />
         Previous
       </Button>
-      <span className="text-xs text-muted-foreground">
+      <span className="text-sm text-muted-foreground">
         Page {page} of {totalPages}
       </span>
       <Button

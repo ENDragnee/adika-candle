@@ -1,10 +1,12 @@
 "use client";
 
+import { usePageTitle } from "@/components/shell/use-page-title";
 import { DetailSkeleton } from "@/components/ui/skeleton";
 import { useCustomer } from "../hooks/use-customers";
 
 export function CustomerHeader({ customerId }: { customerId: string }) {
   const { data: customer, isLoading } = useCustomer(customerId);
+  usePageTitle(customer?.name);
 
   if (isLoading || !customer) {
     return <DetailSkeleton rows={5} />;

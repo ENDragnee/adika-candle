@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePageTitle } from "@/components/shell/use-page-title";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -343,6 +344,8 @@ export function ProductDetail({
   canManage: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
+  const { data: product } = useProduct(productId);
+  usePageTitle(product?.name);
 
   return (
     <div className="flex flex-col gap-4">

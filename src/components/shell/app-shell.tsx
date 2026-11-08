@@ -10,8 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import type { AppUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./bottom-nav";
-import { MobileHeader } from "./mobile-header";
 import type { NavItem } from "./nav-config";
+import { TopBar } from "./top-bar";
 
 interface AppShellProps {
   user: AppUser;
@@ -76,7 +76,7 @@ export function AppShell({ user, navItems, children }: AppShellProps) {
         </AccountMenu>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <MobileHeader />
+        <TopBar user={user} navItems={navItems} />
         <main className="min-w-0 flex-1 p-4 pb-20 md:p-6 md:pb-6">
           {children}
         </main>

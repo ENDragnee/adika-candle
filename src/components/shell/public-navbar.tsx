@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "./theme-switcher";
 
 // Shared header for pre-auth pages (landing, sign-in) — the dashboard's
-// own AppShell/MobileHeader are unrelated and unaffected by this.
+// own AppShell/TopBar are unrelated and unaffected by this.
 export function PublicNavbar({ showSignIn = true }: { showSignIn?: boolean }) {
   return (
     <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">

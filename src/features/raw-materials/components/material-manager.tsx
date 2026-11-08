@@ -8,6 +8,7 @@ import {
   ProhibitIcon,
 } from "@phosphor-icons/react";
 import { type FormEvent, useState } from "react";
+import { usePageTitle } from "@/components/shell/use-page-title";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -220,6 +221,7 @@ function MaterialRow({ material }: { material: RawMaterialDTO }) {
 }
 
 export function MaterialManager() {
+  usePageTitle("Raw materials");
   const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: result, isLoading } = useRawMaterials({ page });
