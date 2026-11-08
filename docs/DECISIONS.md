@@ -12,6 +12,70 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 5 (Customers + Loans) decisions
+
+**`Customer` always gets a `LoanAccount` at creation time (balance 0),
+not lazily on first transaction.** `POST /api/v1/customers` creates both
+rows in the same `prisma.$transaction`. This differs from Epic 4's
+`StockBalance`, which is upserted lazily on first `ACCEPT` — chosen here
+because `api/v1/loans/[accountId]/transactions` is keyed by `accountId`
+per the epic doc, so an account must already exist before any loan
+activity can be recorded against a customer. Lazy creation would have
+required a different (customerId-keyed) route shape.
+
+**`CreateLoanTransactionInputSchema` is a Zod discriminated union on
+`type`.** `REPAYMENT_RECEIVED` and `ADVANCE_FROM_CUSTOMER` both always
+*decrease* `LoanAccount.balance` (direction is implied by type, per the
+model's own comment) — receiving money/value from the customer always
+reduces what they owe (or increases what the business owes them).
+`MANUAL_ADJUSTMENT` has no implied direction (it's a free-form
+correction), so its branch of the union adds an explicit
+`direction: "INCREASE" | "DECREASE"` field not present on the other
+branch. `balanceAfter` is still computed and stored as a plain signed
+snapshot — `direction` itself is never persisted on `LoanTransaction`.
+
+**`POST /api/v1/loans/[accountId]/transactions` is one handler with a
+type-conditional permission check inside it, not a route-level gate.**
+Route-level `requiresAuth.permission` is `["loan:manage", "loan:record"]`
+(either role may call the endpoint at all), but the handler additionally
+checks `session.permissions.includes("loan:manage")` and returns 403 when
+`body.type === "MANUAL_ADJUSTMENT"` and that check fails — `CreateApiRoute`
+has no per-request-body permission hook, so this couldn't be expressed as
+route-level config. Mirrors the epic doc's explicit callout that this is
+"a type-conditional permission check inside one handler, not a
+route-level gate."
+
+**`GET /api/v1/customers`, `GET /api/v1/customers/[id]`, and both
+`GET`/`POST` on `/api/v1/loans/[accountId]/transactions` use the
+`string[]` ANY-of form of `requiresAuth.permission`** (e.g.
+`["customer:manage", "customer:read"]`, `["loan:manage", "loan:record"]`)
+rather than a single string — continuing Epic 4's
+`CheckAnyPermission` convention. Both roles in each pair need read access
+to these endpoints at different permission grain (Manager via the
+"manage" permission, Inventory Manager via the narrower "read"/"record"
+permission), and relying on Manager's seed happening to also include the
+narrower permission (because `seedRoles` currently grants Manager *every*
+permission) would silently break if that seed ever changed to be more
+selective. `GET /api/v1/loans` (the Manager-only oversight queue) stays a
+single `"loan:manage"` string — Inventory Manager has no page that reads
+cross-customer oversight data.
+
+**`Customer.name` has no unique constraint** (unlike `Category.name`),
+matching the schema literally from the epic doc. Two customers can share
+a name (e.g. two different people both named "Alem" at different
+locations) — `POST /api/v1/customers` has no `P2002` handling because
+that error can't occur from a duplicate name.
+
+**Edit/deactivate for a customer lives on `/manager/customers`'s list
+(inline row editing), not on `/manager/customers/[id]`.** Matches the
+`CategoryManager` pattern from Epic 2 and the epic doc's own page table,
+which lists "list + create/edit/deactivate" under `/manager/customers`
+and reserves `/manager/customers/[id]` for "profile + loan ledger +
+manual adjustment + repayment." The detail page's customer header is
+read-only.
+
+---
+
 ## 2026-11-07 — Epic 4 (Stock) decisions
 
 **`CreateApiRoute`'s `requiresAuth.permission` now accepts `string | string[]`.**

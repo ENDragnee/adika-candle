@@ -12,7 +12,7 @@ conventions.
 | 2 | [Categories + Products + Pricing](./02-categories-products-pricing.md) | 1 | done |
 | 3 | [Unit Settings](./03-unit-settings.md) | 1 | done |
 | 4 | [Stock](./04-stock.md) | 1, 2, 3 | done |
-| 5 | [Customers + Loans](./05-customers-loans.md) | 1 | not-started |
+| 5 | [Customers + Loans](./05-customers-loans.md) | 1 | done |
 | 6 | [Unified Sales Flow](./06-unified-sales-flow.md) | 2, 3, 4, 5 | not-started |
 | 7 | [Users + RBAC Management UI](./07-users-rbac-ui.md) | 1 | not-started |
 | 8 | [Analytics / Dashboards](./08-analytics-dashboards.md) | 2, 4, 5, 6 | not-started |

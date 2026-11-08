@@ -224,6 +224,64 @@ model StockLedgerEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Customers + loans — standard customers (Merkato, Gondor, Moges, Mekele)
+// can lend/borrow items or money against future purchases. Balance + ledger
+// is the same cached-column + append-only-ledger hybrid as Stock (see
+// docs/DECISIONS.md, "Stock and loan balances: cached column + append-only
+// ledger"). LoanAccount.balance sign: + = customer owes the business,
+// - = business owes the customer (see docs/DECISIONS.md).
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id          String       @id @default(cuid())
+  name        String
+  phone       String?
+  location    String?
+  isActive    Boolean      @default(true)
+  loanAccount LoanAccount?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("customer")
+}
+
+model LoanAccount {
+  id           String            @id @default(cuid())
+  customerId   String            @unique
+  customer     Customer          @relation(fields: [customerId], references: [id])
+  balance      Decimal           @default(0)
+  transactions LoanTransaction[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@map("loan_account")
+}
+
+enum LoanTransactionType {
+  SALE_ON_CREDIT
+  REPAYMENT_RECEIVED
+  ADVANCE_FROM_CUSTOMER
+  ADVANCE_REDEEMED
+  MANUAL_ADJUSTMENT
+}
+
+model LoanTransaction {
+  id            String              @id @default(cuid())
+  loanAccountId String
+  loanAccount   LoanAccount         @relation(fields: [loanAccountId], references: [id])
+  type          LoanTransactionType
+  amount        Decimal
+  balanceAfter  Decimal
+  note          String?
+  saleId        String?             @unique
+  createdById   String
+  createdAt     DateTime            @default(now())
+
+  @@index([loanAccountId, createdAt])
+  @@map("loan_transaction")
+}
+
+// ---------------------------------------------------------------------------
 // Audit log — written from auth and domain events.
 // ---------------------------------------------------------------------------
 

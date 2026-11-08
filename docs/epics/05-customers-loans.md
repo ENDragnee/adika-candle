@@ -1,7 +1,7 @@
 # Epic 5 — Customers + Loans
 
 **Depends on:** 1 (Foundation/Shell)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 
