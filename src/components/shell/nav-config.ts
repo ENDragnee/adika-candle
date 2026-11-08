@@ -3,7 +3,6 @@
 import {
   ArchiveIcon,
   ChartLineUpIcon,
-  DownloadSimpleIcon,
   FlaskIcon,
   GaugeIcon,
   GearSixIcon,
@@ -11,7 +10,6 @@ import {
   PackageIcon,
   ReceiptIcon,
   ShieldCheckIcon,
-  ShoppingCartIcon,
   TagIcon,
   UserGearIcon,
   UsersIcon,
@@ -44,17 +42,7 @@ export const MANAGER_NAV_ITEMS: NavItem[] = [
 export const INVENTORY_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/inventory/dashboard", icon: GaugeIcon },
   { label: "Stock", href: "/inventory/stock", icon: ArchiveIcon },
-  {
-    label: "Accept Stock",
-    href: "/inventory/stock/accept",
-    icon: DownloadSimpleIcon,
-  },
   { label: "Materials", href: "/inventory/materials", icon: FlaskIcon },
   { label: "Sales", href: "/inventory/sales", icon: ReceiptIcon },
-  {
-    label: "Record Sale",
-    href: "/inventory/sales/new",
-    icon: ShoppingCartIcon,
-  },
   { label: "Customers", href: "/inventory/customers", icon: UsersIcon },
 ];

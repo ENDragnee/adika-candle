@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { SaleList } from "@/features/sales/components/sale-list";
+import { InventorySalesView } from "@/features/sales/components/inventory-sales-view";
 import { CheckPermission, GetApiSession } from "@/lib/session";
 
 // Reads the session directly — not a candidate for instant navigation.
@@ -22,7 +22,7 @@ export default async function InventorySalesPage() {
           Sales you've recorded.
         </p>
       </div>
-      <SaleList createdById={session?.user?.id} />
+      <InventorySalesView createdById={session?.user?.id} />
     </div>
   );
 }

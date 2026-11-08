@@ -12,6 +12,68 @@ undo.
 
 ---
 
+## 2026-11-08 — Record Sale / Accept Stock / New product folded into modals (outside the epic sequence)
+
+**Built directly on request, after Epics 14–17**: "Sale and record a sale
+should be one page... record a sale should be a modal... every page you
+created that could have been a modal should be a modal." Confirmed scope
+with the user first (one question) since none of the pages created in
+Epics 14–17 themselves were standalone create-pages (`InventoryMaterialsView`
+already used a modal) — the pattern the user was flagging predates this
+session: `/inventory/sales/new` (Record Sale), `/inventory/stock/accept`
+(Accept Stock), and `/manager/products/new` (New product) all pre-date
+Epic 13's modal/action-menu convention and were never retrofitted to it.
+User confirmed converting all three, not just Sales.
+
+**Each pair collapsed into the existing list page, with the create form as
+a `Dialog` triggered by a button** — same shape as `InventoryMaterialsView`
+(Epic 14): `RecordSaleForm`/`AcceptStockForm`/`CreateProductForm` all lost
+their own `Card`/`CardContent` wrapper (now supplied by `DialogContent`,
+per Epic 13's established pattern) and their `router.push` success
+handling, replaced with an `onSuccess: () => void` prop the composing
+view's `onOpenChange` is passed as. New `src/features/sales/components/
+inventory-sales-view.tsx` and `src/features/stock/components/
+inventory-stock-view.tsx` (each: a "Record sale"/"Accept stock" button +
+`Dialog` + the list) replace the old two-page split for `/inventory/sales`
+and `/inventory/stock`; `src/features/products/components/
+create-product-trigger.tsx` replaces `new-product-link.tsx` as the
+Client-Component-wrapped (Phosphor icon, per Epic 9's Server-Component
+constraint) trigger on `/manager/products`.
+
+**`CreateProductForm` is the one exception that still calls `router.push`**
+— after creating a product, it both calls `onSuccess()` (closing the
+modal) and navigates to the new product's detail page, preserving the
+pre-existing "set a price once the product is created" follow-up flow
+(the page itself says as much). `RecordSaleForm`/`AcceptStockForm` only
+call `onSuccess()` and stay on the list page, since neither sale nor
+stock-acceptance has a natural follow-up detail page to land on.
+
+**Removed nav items, not redirects:** `INVENTORY_NAV_ITEMS` dropped
+"Record Sale" (`/inventory/sales/new`) and "Accept Stock"
+(`/inventory/stock/accept`) entirely — both routes (and the now-unused
+`new-product-link.tsx`) were deleted outright rather than kept as
+redirects to the merged pages, since nothing else in the app links to
+them (confirmed by grep before deleting) and they were never public URLs
+a user could have bookmarked outside this app's own nav.
+
+**Files touched:** `src/features/sales/components/{record-sale-form,
+inventory-sales-view}.tsx`; `src/features/stock/components/
+{accept-stock-form,inventory-stock-view}.tsx`; `src/features/products/
+components/{create-product-form,create-product-trigger}.tsx` (new file,
+replacing deleted `new-product-link.tsx`); `src/app/(dashboard)/
+inventory/{sales,stock}/page.tsx`, `manager/products/page.tsx`;
+`src/components/shell/nav-config.ts`; deleted `inventory/sales/new/`,
+`inventory/stock/accept/`, `manager/products/new/`. Verified with `pnpm
+lint`, `pnpm test`, `npx tsc --noEmit` (all clean — `.next` was cleared
+and route types regenerated since Next's dev-mode route-type validator
+had cached the deleted routes) and a Playwright pass: recorded a real
+sale and accepted real stock through their new modals as `inventory`
+(list refreshed, modal closed, no page navigation), created a real
+product through its new modal as `manager` (modal closed, navigated to
+the new product's detail page exactly as before).
+
+---
+
 ## 2026-11-08 — Epic 17 (Analytics Hub) decisions
 
 **Charting approach: continued hand-building (no new charting dependency),

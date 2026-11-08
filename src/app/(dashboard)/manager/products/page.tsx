@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { NewProductLink } from "@/features/products/components/new-product-link";
+import { CreateProductTrigger } from "@/features/products/components/create-product-trigger";
 import { ProductList } from "@/features/products/components/product-list";
 import { CheckPermission } from "@/lib/session";
 
@@ -24,7 +24,7 @@ export default async function ProductsPage() {
             What&apos;s sellable, by category, with its current price.
           </p>
         </div>
-        {canManage && <NewProductLink />}
+        {canManage && <CreateProductTrigger />}
       </div>
       <ProductList />
     </div>

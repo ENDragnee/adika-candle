@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { StockBalanceList } from "@/features/stock/components/stock-balance-list";
+import { InventoryStockView } from "@/features/stock/components/inventory-stock-view";
 import { CheckPermission } from "@/lib/session";
 
 // Reads the session directly — not a candidate for instant navigation.
@@ -20,7 +20,7 @@ export default async function InventoryStockPage() {
           Current balances across all products.
         </p>
       </div>
-      <StockBalanceList />
+      <InventoryStockView />
     </div>
   );
 }
