@@ -12,6 +12,84 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 7 (Users + RBAC Management UI) decisions
+
+**`User.isActive` was added (not in the original schema) and deactivation
+is enforced entirely inside `customSession`, not in the auth flow itself.**
+The epic doc's `/manager/users` page table says "deactivate" but
+`prisma/schema.prisma`'s `User` model had no active/inactive flag —
+better-auth's own sign-in has no concept of it either. Added
+`isActive Boolean @default(true)` (matching Product/Category/Customer's
+convention) and made `customSession` (`src/lib/auth.ts`) return
+`role: null, permissions: []` whenever `dbUser.isActive` is false. A
+deactivated user can still complete sign-in (better-auth issues a valid
+session), but every `CheckPermission`/`CheckAnyPermission` call and the
+`ManagerLayout`/`InventoryLayout`/`RoleRedirector` role gates reject them
+on their very next request — no change to the auth flow itself, no
+session-revocation logic needed.
+
+**`POST /api/v1/users` generates a random temporary password server-side
+and returns it once in the response, rather than taking a password field
+on the create form or defaulting to a hardcoded string.** The epic doc
+says nothing about where an admin-created user's initial password comes
+from; `prisma/seed.ts`'s dev users use a hardcoded `"ChangeMe123!"`, which
+is fine for seed data but wrong for real accounts (reused/guessable,
+and an admin shouldn't be choosing — or seeing — another person's
+password). `GenerateTemporaryPassword()`
+(`src/features/users/services/generate-temporary-password.service.ts`)
+produces a 16-char random string using `node:crypto`'s `randomInt`;
+`POST /api/v1/users` calls the same `auth.api.signUpEmail` shape as
+`ensureDevUser` with it, then returns `{ user, temporaryPassword }` —
+`CreateUserResponseSchema`, not `UserSchema` — so the plaintext only ever
+exists in that one response. It's never stored, logged, or returned again
+from `GET`/`PATCH`; the UI shows it once in a dismissible banner.
+
+**Two self-lockout guards were added, scoped narrowly rather than
+blocking all self-edits.** Nothing in the epic doc addresses the risk that
+a Manager could deactivate their own account or strip `role:manage`/
+`user:manage` off the Manager role, leaving nobody able to fix it short of
+editing the DB directly. Decided this was worth guarding rather than
+accepting as risk, given the fix is cheap and the failure mode is a full
+lockout:
+1. `PATCH /api/v1/users/[id]` rejects `isActive: false` or any `roleId`
+   change when `params.id === session.id` — a Manager can't deactivate or
+   reassign their own account, full stop (not just "if it would remove
+   the last admin" — simpler to reason about and the only self-edit this
+   page exposes anyway).
+2. `PATCH /api/v1/roles/[id]/permissions` rejects removing `role:manage`
+   or `user:manage` from a role if no *other* role would still hold it
+   (`GUARDED_PERMISSION_NAMES` in `src/app/api/v1/roles/[id]/permissions/route.ts`).
+   This guards the system-wide invariant (someone can always manage
+   users/roles), not just "not yourself" — e.g. it also stops a Manager
+   from accidentally locking out a *different* Manager. Deliberately
+   narrow: only these two permissions are guarded, and only against total
+   removal, not against any other permission edit.
+
+**`GET /api/v1/roles` returns `{ roles, modules }`, not a bare
+`RoleDTO[]`** — the only REST list endpoint in the app that doesn't return
+a plain array. The epic doc's "group permissions by Module" instruction
+for `/manager/roles` means the UI needs the full Module/Permission catalog
+(including permissions a role doesn't have, to render their unchecked
+boxes) alongside each role's current assignment, and there's no separate
+modules/permissions catalog endpoint (nor should there be one per the
+epic's "no new permission types" scope). Bundling both in one response
+was simpler than inventing a second route for ~10 permissions across 2
+roles; `RoleSchema` itself still carries only `permissionIds: string[]`.
+
+**`PATCH /api/v1/roles/[id]/permissions` never touches `Role.name`,**
+even though `Role.name` is a plain editable string in the schema. Per the
+epic doc's own route description ("edit permission assignments per
+role"), and because `src/lib/redirector.ts`'s `ROLES.MANAGER`/
+`ROLES.INVENTORY_MANAGER` constants are string-compared against
+`session.user.role` in `RoleRedirector`, `(dashboard)/layout.tsx`,
+`manager/layout.tsx`, and `inventory/layout.tsx` — renaming either seeded
+role would silently break those gates (the user keeps their permissions
+but gets redirected to `/unauthorized`). `UpdateRolePermissionsInputSchema`
+has no `name` field at all, so this isn't a runtime check to remember —
+it's unrepresentable.
+
+---
+
 ## 2026-11-08 — Epic 6 (Unified Sales Flow) decisions
 
 **The referenceCode collision-retry loop retries the entire `$transaction`,

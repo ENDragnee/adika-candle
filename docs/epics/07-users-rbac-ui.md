@@ -1,7 +1,7 @@
 # Epic 7 — Users + RBAC Management UI
 
 **Depends on:** 1 (Foundation/Shell)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 

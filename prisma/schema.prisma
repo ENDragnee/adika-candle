@@ -19,6 +19,13 @@ model User {
   image           String?
   username        String?   @unique
   displayUsername String?
+  // Deactivation flag (Epic 7). better-auth's own sign-in has no concept of
+  // this — gating happens in customSession (src/lib/auth.ts), which returns
+  // role: null, permissions: [] for an inactive user so every
+  // CheckPermission/CheckAnyPermission call and layout role gate rejects
+  // them post-login without touching the auth flow itself. See
+  // docs/DECISIONS.md, "Epic 7 decisions".
+  isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

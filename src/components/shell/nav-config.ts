@@ -13,6 +13,8 @@ export const MANAGER_NAV_ITEMS: NavItem[] = [
   { label: "Sales", href: "/manager/sales" },
   { label: "Customers", href: "/manager/customers" },
   { label: "Loans", href: "/manager/loans" },
+  { label: "Users", href: "/manager/users" },
+  { label: "Roles", href: "/manager/roles" },
   { label: "Settings", href: "/manager/settings" },
 ];
 
