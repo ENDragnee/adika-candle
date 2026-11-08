@@ -20,16 +20,30 @@ fixed conversion ratios (see conversation history / future `docs/` notes —
 not yet encoded in the schema).
 
 **Status:** The full business-domain build (Epics 1–8) is done and
-verified — see `docs/epics/README.md`. A UI/UX overhaul (Epics 9–12) is
-in progress: Design System Foundation (Epic 9) and Loading States (Epic
-10) are done — warm accent color, Geist Sans in place of the previous
-global monospace, a shared `Card`/`DataTable`/`Skeleton` component base
-under `src/components/ui/`, and every `isLoading` data-view fallback
-across `src/features/**` now renders a shape-matched skeleton
-(`TableSkeleton`, `CardSkeleton`, `DetailSkeleton`, and the
-`SalesTrendChart`-specific bar skeleton) instead of literal "Loading X…"
-text. Landing/Sign-in (Epic 11) and Page-by-Page Polish (Epic 12) are
-planned but not yet built.
+verified, and so is the UI/UX overhaul (Epics 9–12) — see
+`docs/epics/README.md`. Design System Foundation (Epic 9): warm accent
+color, Geist Sans in place of the previous global monospace, a shared
+`Card`/`DataTable`/`Skeleton` component base under `src/components/ui/`.
+Loading States (Epic 10): every `isLoading` data-view fallback across
+`src/features/**` renders a shape-matched skeleton (`TableSkeleton`,
+`CardSkeleton`, `DetailSkeleton`, the `SalesTrendChart` bar skeleton)
+instead of literal "Loading X…" text. Landing/Sign-in (Epic 11): a
+Card-based sign-in page. Page-by-Page Polish (Epic 12): the remaining
+hand-rolled forms/boxes adopted `Input`/`Select`/`Card`.
+
+Two further rounds of work landed **outside the epic sequence** (built
+directly on request, not pre-planned as numbered epics — still logged in
+`docs/DECISIONS.md` under their own dated headings): a **mobile-responsive
+shell** (sidebar → bottom tab bar + top navbar below `md`, an
+avatar-based account menu with a theme switcher, `DataTable`'s mobile
+card view) and **backend + frontend pagination** (every REST list
+endpoint except `roles`, a shared `Pagination` component wired into
+`DataTable` and the composed tables). Modal & Action-Menu UX (Epic 13)
+is done: a new `AlertDialog` primitive, a per-row "..." `DropdownMenu`
+action menu (Edit/Activate/Deactivate) on the 4 composed tables, and
+every list-context create/edit form (plus `SetPriceForm`,
+`RepaymentForm`, `ManualAdjustmentForm`) moved from always-visible
+inline forms/rows into `Dialog`-based modals.
 
 ## Tech stack
 

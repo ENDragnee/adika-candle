@@ -1,6 +1,15 @@
 "use client";
 
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { TableSkeleton } from "@/components/ui/data-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoanLedger } from "@/features/loans/components/loan-ledger";
 import { RepaymentForm } from "@/features/loans/components/repayment-form";
@@ -12,21 +21,35 @@ import { CustomerHeader } from "./customer-header";
 // docs/epics/05-customers-loans.md.
 export function CustomerLedgerView({ customerId }: { customerId: string }) {
   const { data: customer, isLoading } = useCustomer(customerId);
+  const [isRepaymentOpen, setIsRepaymentOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-4">
       <CustomerHeader customerId={customerId} />
       {isLoading || !customer ? (
         <>
-          <Skeleton className="h-56 w-full max-w-sm" />
+          <Skeleton className="h-8 w-40" />
           <TableSkeleton columns={5} />
         </>
       ) : (
         <>
-          <RepaymentForm
-            accountId={customer.loanAccountId}
-            customerId={customerId}
-          />
+          <div>
+            <Dialog open={isRepaymentOpen} onOpenChange={setIsRepaymentOpen}>
+              <DialogTrigger asChild>
+                <Button>Record repayment</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Record repayment or advance</DialogTitle>
+                </DialogHeader>
+                <RepaymentForm
+                  accountId={customer.loanAccountId}
+                  customerId={customerId}
+                  onSuccess={() => setIsRepaymentOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
           <LoanLedger accountId={customer.loanAccountId} />
         </>
       )}

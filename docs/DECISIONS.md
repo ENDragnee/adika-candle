@@ -12,6 +12,126 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 13 (Modal & Action-Menu UX) decisions
+
+**Icon choice: `DotsThreeVerticalIcon` (Phosphor), `ghost` variant,
+`icon-sm` size, `aria-label="Actions"`** — the vertical "kebab" reads as
+a per-row menu trigger more conventionally than the horizontal
+"meatballs" form; `icon-sm` matches the existing `Button` size scale
+(same size `DialogContent`'s close button already uses). Dropdown items
+got matching Phosphor icons (`PencilSimpleIcon` for Edit,
+`CheckCircleIcon` for Activate, `ProhibitIcon` for Deactivate, the
+latter two styled `text-destructive focus:text-destructive` on
+Deactivate) — consistent with `AccountMenu`'s existing icon-per-item
+convention, not a new pattern.
+
+**`Dialog` (edit modal) and `AlertDialog` (deactivate confirm) are
+nested as siblings-of-children around one `DropdownMenu`, all three
+fully controlled by local `useState`, rather than wiring `DialogTrigger`/
+`AlertDialogTrigger` to the dropdown items directly.** A `DropdownMenuItem`'s
+`onSelect` only sets `isEditOpen`/`isConfirmOpen` state; `Dialog`/
+`AlertDialog`'s `open` prop reacts to that state independently of
+whatever the `DropdownMenu` is doing as it closes. This sidesteps any
+Radix focus-handoff ordering between a closing menu and an opening
+dialog — confirmed working with no focus-trap glitches in Playwright
+(Edit modal opens prefilled immediately after the menu's Edit item is
+clicked, repeatedly, light and dark). `ProductOverview`
+(`product-detail.tsx`) uses the same nesting even though it has no
+`DropdownMenu` — Edit/Activate/Deactivate are still plain buttons there
+per the epic doc, so only `Dialog`+`AlertDialog` nest, both controlled
+the same way.
+
+**Each of the 4 composed tables keeps its create/edit forms as local,
+unexported functions inside its own manager file (`CreateXForm`,
+`EditXForm`), not factored into a shared `src/components/ui/` row-actions
+component.** The four rows' data/mutation shapes differ enough
+(category/unit-conversion have a dedicated `useDeactivateX` hook,
+customer/user only have `useUpdateX({ isActive })`; user additionally
+disables its whole action-menu trigger for the signed-in user's own row)
+that a shared abstraction would mostly be parameter-passing, not reused
+logic — continues Epic 9's precedent of keeping these 4 files'
+row-components independent rather than forcing them through one
+generic component.
+
+**`UserRow` didn't have an `isEditing` toggle before this epic** (it
+only had an always-visible `Select` for role, no dedicated Edit button) —
+the epic doc's blanket "4 composed tables' per-row inline isEditing state
+→ Edit modal" is read as applying to it anyway, since the inline `Select`
+is the same "input swapped in place of display text" pattern the other
+3 rows had. `UserRow` now shows `user.roleName` as plain text and gets
+an Edit modal (disabled Name field + Role `Select`) from its action
+menu, matching the other 3 rows' shape. `UpdateUserInputSchema` already
+had no `name`/`email`/`username` fields (Epic 7's decision — see below),
+so the Edit modal has nothing to edit beyond role; this isn't a new
+restriction.
+
+**`EditUnitConversionForm`/`EditUserForm` show the immutable field
+(`unitName`/`name`) as a `disabled` `Input` rather than omitting it or
+rendering it as plain text**, for layout consistency with the other
+fields in the same modal — a minor presentational call, not a new
+editability rule (`unitName` was never editable via `PATCH`; `name` had
+no edit path either, per Epic 3's and Epic 7's decisions already on
+file).
+
+**`SetPriceForm`/`RepaymentForm`/`ManualAdjustmentForm` lost their own
+`Card`/`CardHeader`/`CardTitle` wrapper** — each is now rendered inside
+a `DialogContent` (which already supplies the panel chrome), and each
+gained an `onSuccess: () => void` prop the composing page's `onOpenChange`
+handler is passed as, called right after the mutation resolves so the
+modal closes on success. All three are single-call-site components
+(confirmed by grep before editing), so stripping the wrapper couldn't
+orphan a second consumer that still wanted the old standalone-Card look.
+
+**The "Price history" heading + "Set new price" button live in a new
+`PriceHistoryTab` component inside `product-detail.tsx` itself, not
+inside `price-history.tsx`.** `PriceHistory` (`price-history.tsx`) is a
+bare `DataTable` wrapper with no heading of its own today; adding one
+solely to host a modal trigger that only `product-detail.tsx` ever
+composes next to it would mean threading a slot/children prop through a
+component for a single call site. `product-detail.tsx` is the only file
+that renders `SetPriceForm` and `PriceHistory` together, so the heading
+row lives there.
+
+**`CreateUserForm`'s temporary-password banner moved from inside the
+(now-modal) create form to its own `Card` rendered unconditionally above
+the table, next to the "Create user" button row** — per the epic doc's
+explicit callout that this banner is "unaffected" and must keep
+rendering above the table after the modal closes. It's sibling markup
+to the modal trigger now, not nested inside the `Dialog`'s own content
+(the modal itself closes on success, before the banner would even be
+visible inside it).
+
+**Files touched:** new `src/components/ui/alert-dialog.tsx`;
+`src/features/categories/components/category-manager.tsx`,
+`src/features/customers/components/customer-manager.tsx`,
+`src/features/unit-conversions/components/unit-conversion-manager.tsx`,
+`src/features/users/components/user-manager.tsx` (create/edit → modals,
+row actions → `DropdownMenu`, deactivate → `AlertDialog`);
+`src/features/products/components/product-detail.tsx` (`ProductOverview`
+edit/deactivate → modal/`AlertDialog`; new `PriceHistoryTab` composing
+`SetPriceForm`'s new modal trigger), `set-price-form.tsx`;
+`src/features/customers/components/customer-ledger-view.tsx`,
+`customer-profile.tsx`; `src/features/loans/components/repayment-form.tsx`,
+`manual-adjustment-form.tsx`. Verified with `pnpm lint`, `pnpm test`,
+`npx tsc --noEmit` (all clean — the Next.js TS language-service plugin's
+"props must be serializable for components in the use client entry file"
+hint on the new `onSuccess` props is editor-only noise, not a `tsc`
+error; `Pagination`'s pre-existing `onPageChange` prop has the identical
+shape and was never flagged either) and a Playwright spot-check signed
+in as `manager`: Categories' full add → edit → deactivate → activate
+cycle through the new modal/action-menu/`AlertDialog` flow, the product
+detail page's Edit modal + "Set new price" modal (price actually applied
+and reflected in the history table), the customer profile's "Record
+repayment"/"Record adjustment" modals, and the Users page's Edit modal
+(role `Select`) with the signed-in user's own row's action-menu trigger
+confirmed disabled — light and dark mode, and a 375px mobile viewport
+(bottom nav + horizontally-scrolled composed table + the dropdown menu
+opening correctly over it), matching Epic 9/12's representative-spot-check
+approach rather than an exhaustive route-by-route pass, per the epic
+doc's own "out of scope" note.
+
+---
+
 ## 2026-11-08 — Backend + frontend pagination decisions
 
 **Every REST list endpoint got paginated, with two structural exceptions:

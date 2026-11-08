@@ -1,10 +1,39 @@
 "use client";
 
-import { PlusIcon } from "@phosphor-icons/react";
+import {
+  CheckCircleIcon,
+  DotsThreeVerticalIcon,
+  PencilSimpleIcon,
+  PlusIcon,
+  ProhibitIcon,
+} from "@phosphor-icons/react";
 import { type FormEvent, useEffect, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import {
@@ -26,7 +55,13 @@ import { useRoles } from "@/features/roles/hooks/use-roles";
 import { useCreateUser, useUpdateUser, useUsers } from "../hooks/use-users";
 import type { UserDTO } from "../validators/user.schema";
 
-function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
+function CreateUserForm({
+  roles,
+  onSuccess,
+}: {
+  roles: { id: string; name: string }[];
+  onSuccess: (temporaryPassword: string) => void;
+}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -40,9 +75,6 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
       setRoleId(roles[0].id);
     }
   }, [roleId, roles]);
-  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(
-    null,
-  );
   const createUser = useCreateUser();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -55,87 +87,272 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
       roleId,
     });
 
-    setTemporaryPassword(result.temporaryPassword);
     setName("");
     setEmail("");
     setUsername("");
+    onSuccess(result.temporaryPassword);
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <Card>
-        <CardContent>
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-wrap items-end gap-2"
-          >
-            <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
-              <label htmlFor="new-user-name" className="text-sm font-medium">
-                Name
-              </label>
-              <Input
-                id="new-user-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-              />
-            </div>
-            <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
-              <label htmlFor="new-user-email" className="text-sm font-medium">
-                Email
-              </label>
-              <Input
-                id="new-user-email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </div>
-            <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-40">
-              <label
-                htmlFor="new-user-username"
-                className="text-sm font-medium"
-              >
-                Username
-              </label>
-              <Input
-                id="new-user-username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                required
-              />
-            </div>
-            <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-40">
-              <label htmlFor="new-user-role" className="text-sm font-medium">
-                Role
-              </label>
-              <Select value={roleId} onValueChange={setRoleId}>
-                <SelectTrigger id="new-user-role" className="w-full">
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" disabled={createUser.isPending}>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor="new-user-name" className="text-sm font-medium">
+          Name
+        </label>
+        <Input
+          id="new-user-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="new-user-email" className="text-sm font-medium">
+          Email
+        </label>
+        <Input
+          id="new-user-email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="new-user-username" className="text-sm font-medium">
+          Username
+        </label>
+        <Input
+          id="new-user-username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="new-user-role" className="text-sm font-medium">
+          Role
+        </label>
+        <Select value={roleId} onValueChange={setRoleId}>
+          <SelectTrigger id="new-user-role" className="w-full">
+            <SelectValue placeholder="Select a role" />
+          </SelectTrigger>
+          <SelectContent>
+            {roles.map((role) => (
+              <SelectItem key={role.id} value={role.id}>
+                {role.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {createUser.isError && (
+        <p className="text-sm text-destructive">
+          Couldn&apos;t create user — check the email/username aren&apos;t
+          already in use.
+        </p>
+      )}
+      <Button type="submit" disabled={createUser.isPending}>
+        {createUser.isPending ? "Creating…" : "Create user"}
+      </Button>
+    </form>
+  );
+}
+
+function EditUserForm({
+  user,
+  roles,
+  onSuccess,
+}: {
+  user: UserDTO;
+  roles: { id: string; name: string }[];
+  onSuccess: () => void;
+}) {
+  const [roleId, setRoleId] = useState(user.roleId ?? "");
+  const updateUser = useUpdateUser(user.id);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    await updateUser.mutateAsync({ roleId });
+    onSuccess();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor="edit-user-name" className="text-sm font-medium">
+          Name
+        </label>
+        <Input id="edit-user-name" value={user.name} disabled />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="edit-user-role" className="text-sm font-medium">
+          Role
+        </label>
+        <Select value={roleId} onValueChange={setRoleId}>
+          <SelectTrigger id="edit-user-role" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {roles.map((role) => (
+              <SelectItem key={role.id} value={role.id}>
+                {role.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {updateUser.isError && (
+        <p className="text-sm text-destructive">
+          Couldn&apos;t save this user.
+        </p>
+      )}
+      <Button type="submit" disabled={updateUser.isPending}>
+        {updateUser.isPending ? "Saving…" : "Save"}
+      </Button>
+    </form>
+  );
+}
+
+function UserRow({
+  user,
+  roles,
+  isSelf,
+}: {
+  user: UserDTO;
+  roles: { id: string; name: string }[];
+  isSelf: boolean;
+}) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const updateUser = useUpdateUser(user.id);
+
+  async function handleActivate() {
+    await updateUser.mutateAsync({ isActive: true });
+  }
+
+  async function handleConfirmDeactivate() {
+    await updateUser.mutateAsync({ isActive: false });
+    setIsConfirmOpen(false);
+  }
+
+  return (
+    <TableRow>
+      <TableCell>
+        {user.name}
+        {isSelf && (
+          <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>
+        )}
+      </TableCell>
+      <TableCell className="text-muted-foreground">{user.email}</TableCell>
+      <TableCell className="text-muted-foreground">
+        {user.username ?? "—"}
+      </TableCell>
+      <TableCell>{user.roleName ?? "—"}</TableCell>
+      <TableCell>{user.isActive ? "Active" : "Inactive"}</TableCell>
+      <TableCell>
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Actions"
+                  disabled={isSelf}
+                  title={isSelf ? "You can't edit your own account" : undefined}
+                >
+                  <DotsThreeVerticalIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
+                  <PencilSimpleIcon />
+                  Edit
+                </DropdownMenuItem>
+                {user.isActive ? (
+                  <DropdownMenuItem
+                    onSelect={() => setIsConfirmOpen(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <ProhibitIcon />
+                    Deactivate
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onSelect={handleActivate}>
+                    <CheckCircleIcon />
+                    Activate
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Deactivate user?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  &ldquo;{user.name}&rdquo; will no longer be able to sign in.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDeactivate}>
+                  Deactivate
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit user</DialogTitle>
+            </DialogHeader>
+            <EditUserForm
+              user={user}
+              roles={roles}
+              onSuccess={() => setIsEditOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+export function UserManager({ currentUserId }: { currentUserId: string }) {
+  const [page, setPage] = useState(1);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(
+    null,
+  );
+  const { data: result, isLoading } = useUsers({ page });
+  const users = result?.data;
+  const { data: rolesData } = useRoles();
+  const roles = rolesData?.roles ?? [];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button>
               <PlusIcon data-icon="inline-start" />
-              {createUser.isPending ? "Creating…" : "Create user"}
+              Create user
             </Button>
-            {createUser.isError && (
-              <p className="w-full text-sm text-destructive">
-                Couldn&apos;t create user — check the email/username aren&apos;t
-                already in use.
-              </p>
-            )}
-          </form>
-        </CardContent>
-      </Card>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create user</DialogTitle>
+            </DialogHeader>
+            <CreateUserForm
+              roles={roles}
+              onSuccess={(password) => {
+                setIsCreateOpen(false);
+                setTemporaryPassword(password);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
       {temporaryPassword && (
         <Card>
           <CardContent className="flex flex-wrap items-center gap-2 text-sm">
@@ -155,85 +372,6 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
           </CardContent>
         </Card>
       )}
-    </div>
-  );
-}
-
-function UserRow({
-  user,
-  roles,
-  isSelf,
-}: {
-  user: UserDTO;
-  roles: { id: string; name: string }[];
-  isSelf: boolean;
-}) {
-  const updateUser = useUpdateUser(user.id);
-
-  async function handleRoleChange(roleId: string) {
-    await updateUser.mutateAsync({ roleId });
-  }
-
-  async function handleToggleActive() {
-    await updateUser.mutateAsync({ isActive: !user.isActive });
-  }
-
-  return (
-    <TableRow>
-      <TableCell>
-        {user.name}
-        {isSelf && (
-          <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>
-        )}
-      </TableCell>
-      <TableCell className="text-muted-foreground">{user.email}</TableCell>
-      <TableCell className="text-muted-foreground">
-        {user.username ?? "—"}
-      </TableCell>
-      <TableCell>
-        <Select
-          value={user.roleId ?? ""}
-          onValueChange={handleRoleChange}
-          disabled={isSelf || updateUser.isPending}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {roles.map((role) => (
-              <SelectItem key={role.id} value={role.id}>
-                {role.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </TableCell>
-      <TableCell>{user.isActive ? "Active" : "Inactive"}</TableCell>
-      <TableCell>
-        <Button
-          size="sm"
-          variant={user.isActive ? "destructive" : "secondary"}
-          onClick={handleToggleActive}
-          disabled={isSelf || updateUser.isPending}
-          title={isSelf ? "You can't deactivate your own account" : undefined}
-        >
-          {user.isActive ? "Deactivate" : "Activate"}
-        </Button>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-export function UserManager({ currentUserId }: { currentUserId: string }) {
-  const [page, setPage] = useState(1);
-  const { data: result, isLoading } = useUsers({ page });
-  const users = result?.data;
-  const { data: rolesData } = useRoles();
-  const roles = rolesData?.roles ?? [];
-
-  return (
-    <div className="flex flex-col gap-4">
-      <CreateUserForm roles={roles} />
       {isLoading ? (
         <TableSkeleton columns={6} mobileCard={false} />
       ) : (

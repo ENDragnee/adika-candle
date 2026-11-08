@@ -20,6 +20,7 @@ conventions.
 | 10 | [Loading States (Skeletons)](./10-loading-states.md) | 9 | done |
 | 11 | [Landing / Sign-in Page](./11-landing-sign-in.md) | 9 | done |
 | 12 | [Page-by-Page Polish](./12-page-polish.md) | 9 | done |
+| 13 | [Modal & Action-Menu UX](./13-modal-action-menu-ux.md) | 9 | done |
 
 Update the Status column as epics move through
 not-started → in-progress → done.

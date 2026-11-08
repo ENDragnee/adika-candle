@@ -1,10 +1,38 @@
 "use client";
 
-import { PlusIcon } from "@phosphor-icons/react";
+import {
+  CheckCircleIcon,
+  DotsThreeVerticalIcon,
+  PencilSimpleIcon,
+  PlusIcon,
+  ProhibitIcon,
+} from "@phosphor-icons/react";
 import { type FormEvent, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import {
@@ -23,7 +51,7 @@ import {
 } from "../hooks/use-unit-conversions";
 import type { UnitConversionDTO } from "../validators/unit-conversion.schema";
 
-function CreateUnitConversionForm() {
+function CreateUnitConversionForm({ onSuccess }: { onSuccess: () => void }) {
   const [unitName, setUnitName] = useState("");
   const [ratioToKg, setRatioToKg] = useState("");
   const createUnitConversion = useCreateUnitConversion();
@@ -38,117 +66,119 @@ function CreateUnitConversionForm() {
 
     setUnitName("");
     setRatioToKg("");
+    onSuccess();
   }
 
   return (
-    <Card>
-      <CardContent>
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-wrap items-end gap-2"
-        >
-          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
-            <label htmlFor="new-unit-name" className="text-sm font-medium">
-              Unit name
-            </label>
-            <Input
-              id="new-unit-name"
-              value={unitName}
-              onChange={(event) => setUnitName(event.target.value)}
-              placeholder="CARTON"
-              required
-            />
-          </div>
-          <div className="flex min-w-full flex-1 flex-col gap-1 sm:min-w-48">
-            <label htmlFor="new-unit-ratio" className="text-sm font-medium">
-              Ratio to KG
-            </label>
-            <Input
-              id="new-unit-ratio"
-              type="number"
-              step="any"
-              min="0"
-              value={ratioToKg}
-              onChange={(event) => setRatioToKg(event.target.value)}
-              required
-            />
-          </div>
-          <Button type="submit" disabled={createUnitConversion.isPending}>
-            <PlusIcon data-icon="inline-start" />
-            {createUnitConversion.isPending ? "Adding…" : "Add unit"}
-          </Button>
-          {createUnitConversion.isError && (
-            <p className="w-full text-sm text-destructive">
-              Couldn&apos;t create unit — check the name isn&apos;t already in
-              use.
-            </p>
-          )}
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor="new-unit-name" className="text-sm font-medium">
+          Unit name
+        </label>
+        <Input
+          id="new-unit-name"
+          value={unitName}
+          onChange={(event) => setUnitName(event.target.value)}
+          placeholder="CARTON"
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="new-unit-ratio" className="text-sm font-medium">
+          Ratio to KG
+        </label>
+        <Input
+          id="new-unit-ratio"
+          type="number"
+          step="any"
+          min="0"
+          value={ratioToKg}
+          onChange={(event) => setRatioToKg(event.target.value)}
+          required
+        />
+      </div>
+      {createUnitConversion.isError && (
+        <p className="text-sm text-destructive">
+          Couldn&apos;t create unit — check the name isn&apos;t already in use.
+        </p>
+      )}
+      <Button type="submit" disabled={createUnitConversion.isPending}>
+        {createUnitConversion.isPending ? "Adding…" : "Add unit"}
+      </Button>
+    </form>
   );
 }
 
-function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
-  const [isEditing, setIsEditing] = useState(false);
+function EditUnitConversionForm({
+  unit,
+  onSuccess,
+}: {
+  unit: UnitConversionDTO;
+  onSuccess: () => void;
+}) {
   const [ratioToKg, setRatioToKg] = useState(unit.ratioToKg);
   const updateUnitConversion = useUpdateUnitConversion();
-  const deactivateUnitConversion = useDeactivateUnitConversion();
 
-  async function handleSave() {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     await updateUnitConversion.mutateAsync({
       id: unit.id,
       input: { ratioToKg: Number(ratioToKg) },
     });
-    setIsEditing(false);
+    onSuccess();
   }
 
-  function handleCancel() {
-    setRatioToKg(unit.ratioToKg);
-    setIsEditing(false);
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor="edit-unit-name" className="text-sm font-medium">
+          Unit name
+        </label>
+        <Input id="edit-unit-name" value={unit.unitName} disabled />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="edit-unit-ratio" className="text-sm font-medium">
+          Ratio to KG
+        </label>
+        <Input
+          id="edit-unit-ratio"
+          type="number"
+          step="any"
+          min="0"
+          value={ratioToKg}
+          onChange={(event) => setRatioToKg(event.target.value)}
+          required
+        />
+      </div>
+      {updateUnitConversion.isError && (
+        <p className="text-sm text-destructive">
+          Couldn&apos;t save this unit.
+        </p>
+      )}
+      <Button type="submit" disabled={updateUnitConversion.isPending}>
+        {updateUnitConversion.isPending ? "Saving…" : "Save"}
+      </Button>
+    </form>
+  );
+}
+
+function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const updateUnitConversion = useUpdateUnitConversion();
+  const deactivateUnitConversion = useDeactivateUnitConversion();
+
+  async function handleActivate() {
+    await updateUnitConversion.mutateAsync({
+      id: unit.id,
+      input: { isActive: true },
+    });
   }
 
-  async function handleToggleActive() {
-    if (unit.isActive) {
-      await deactivateUnitConversion.mutateAsync(unit.id);
-    } else {
-      await updateUnitConversion.mutateAsync({
-        id: unit.id,
-        input: { isActive: true },
-      });
-    }
-  }
-
-  if (isEditing) {
-    return (
-      <TableRow>
-        <TableCell>{unit.unitName}</TableCell>
-        <TableCell>
-          <Input
-            type="number"
-            step="any"
-            min="0"
-            value={ratioToKg}
-            onChange={(event) => setRatioToKg(event.target.value)}
-          />
-        </TableCell>
-        <TableCell className="text-muted-foreground">
-          {unit.isActive ? "Active" : "Inactive"}
-        </TableCell>
-        <TableCell className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={updateUnitConversion.isPending}
-          >
-            Save
-          </Button>
-          <Button size="sm" variant="ghost" onClick={handleCancel}>
-            Cancel
-          </Button>
-        </TableCell>
-      </TableRow>
-    );
+  async function handleConfirmDeactivate() {
+    await deactivateUnitConversion.mutateAsync(unit.id);
+    setIsConfirmOpen(false);
   }
 
   return (
@@ -156,20 +186,62 @@ function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
       <TableCell>{unit.unitName}</TableCell>
       <TableCell className="text-muted-foreground">{unit.ratioToKg}</TableCell>
       <TableCell>{unit.isActive ? "Active" : "Inactive"}</TableCell>
-      <TableCell className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
-          Edit
-        </Button>
-        <Button
-          size="sm"
-          variant={unit.isActive ? "destructive" : "secondary"}
-          onClick={handleToggleActive}
-          disabled={
-            deactivateUnitConversion.isPending || updateUnitConversion.isPending
-          }
-        >
-          {unit.isActive ? "Deactivate" : "Activate"}
-        </Button>
+      <TableCell>
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Actions">
+                  <DotsThreeVerticalIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
+                  <PencilSimpleIcon />
+                  Edit
+                </DropdownMenuItem>
+                {unit.isActive ? (
+                  <DropdownMenuItem
+                    onSelect={() => setIsConfirmOpen(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <ProhibitIcon />
+                    Deactivate
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onSelect={handleActivate}>
+                    <CheckCircleIcon />
+                    Activate
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Deactivate unit?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  &ldquo;{unit.unitName}&rdquo; will no longer be available when
+                  accepting stock or recording sales.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDeactivate}>
+                  Deactivate
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit unit</DialogTitle>
+            </DialogHeader>
+            <EditUnitConversionForm
+              unit={unit}
+              onSuccess={() => setIsEditOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </TableCell>
     </TableRow>
   );
@@ -177,12 +249,30 @@ function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
 
 export function UnitConversionManager() {
   const [page, setPage] = useState(1);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: result, isLoading } = useUnitConversions({ page });
   const units = result?.data;
 
   return (
     <div className="flex flex-col gap-4">
-      <CreateUnitConversionForm />
+      <div className="flex justify-end">
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusIcon data-icon="inline-start" />
+              Add unit
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add unit</DialogTitle>
+            </DialogHeader>
+            <CreateUnitConversionForm
+              onSuccess={() => setIsCreateOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
       {isLoading ? (
         <TableSkeleton columns={4} mobileCard={false} />
       ) : (

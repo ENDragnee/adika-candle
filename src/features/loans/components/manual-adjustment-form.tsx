@@ -2,7 +2,6 @@
 
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -19,9 +18,11 @@ import { useCreateLoanTransaction } from "../hooks/use-loans";
 export function ManualAdjustmentForm({
   accountId,
   customerId,
+  onSuccess,
 }: {
   accountId: string;
   customerId: string;
+  onSuccess: () => void;
 }) {
   const [direction, setDirection] = useState<"INCREASE" | "DECREASE">(
     "INCREASE",
@@ -42,79 +43,70 @@ export function ManualAdjustmentForm({
 
     setAmount("");
     setNote("");
+    onSuccess();
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Manual adjustment</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="adjustment-direction"
-              className="text-sm font-medium"
-            >
-              Direction
-            </label>
-            <Select
-              value={direction}
-              onValueChange={(value) =>
-                setDirection(value as "INCREASE" | "DECREASE")
-              }
-            >
-              <SelectTrigger id="adjustment-direction" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="INCREASE">
-                  Increase balance (customer owes more)
-                </SelectItem>
-                <SelectItem value="DECREASE">
-                  Decrease balance (customer owes less)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="adjustment-amount" className="text-sm font-medium">
-              Amount
-            </label>
-            <Input
-              id="adjustment-amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="adjustment-note" className="text-sm font-medium">
-              Note
-            </label>
-            <Input
-              id="adjustment-note"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </div>
-          {createTransaction.isError && (
-            <p className="text-sm text-destructive">
-              Couldn&apos;t record this adjustment.
-            </p>
-          )}
-          <Button
-            type="submit"
-            variant="secondary"
-            disabled={createTransaction.isPending}
-          >
-            {createTransaction.isPending ? "Saving…" : "Apply adjustment"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor="adjustment-direction" className="text-sm font-medium">
+          Direction
+        </label>
+        <Select
+          value={direction}
+          onValueChange={(value) =>
+            setDirection(value as "INCREASE" | "DECREASE")
+          }
+        >
+          <SelectTrigger id="adjustment-direction" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="INCREASE">
+              Increase balance (customer owes more)
+            </SelectItem>
+            <SelectItem value="DECREASE">
+              Decrease balance (customer owes less)
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="adjustment-amount" className="text-sm font-medium">
+          Amount
+        </label>
+        <Input
+          id="adjustment-amount"
+          type="number"
+          step="0.01"
+          min="0.01"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="adjustment-note" className="text-sm font-medium">
+          Note
+        </label>
+        <Input
+          id="adjustment-note"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </div>
+      {createTransaction.isError && (
+        <p className="text-sm text-destructive">
+          Couldn&apos;t record this adjustment.
+        </p>
+      )}
+      <Button
+        type="submit"
+        variant="secondary"
+        disabled={createTransaction.isPending}
+      >
+        {createTransaction.isPending ? "Saving…" : "Apply adjustment"}
+      </Button>
+    </form>
   );
 }
