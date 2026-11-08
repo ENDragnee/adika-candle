@@ -2,7 +2,9 @@
 
 import {
   ArchiveIcon,
+  ChartLineUpIcon,
   DownloadSimpleIcon,
+  FlaskIcon,
   GaugeIcon,
   GearSixIcon,
   HandCoinsIcon,
@@ -26,9 +28,11 @@ export interface NavItem {
 // sync with routes that actually exist.
 export const MANAGER_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/manager/dashboard", icon: GaugeIcon },
+  { label: "Analytics", href: "/manager/analytics", icon: ChartLineUpIcon },
   { label: "Categories", href: "/manager/categories", icon: TagIcon },
   { label: "Products", href: "/manager/products", icon: PackageIcon },
   { label: "Stock", href: "/manager/stock", icon: ArchiveIcon },
+  { label: "Materials", href: "/manager/materials", icon: FlaskIcon },
   { label: "Sales", href: "/manager/sales", icon: ReceiptIcon },
   { label: "Customers", href: "/manager/customers", icon: UsersIcon },
   { label: "Loans", href: "/manager/loans", icon: HandCoinsIcon },
@@ -45,6 +49,7 @@ export const INVENTORY_NAV_ITEMS: NavItem[] = [
     href: "/inventory/stock/accept",
     icon: DownloadSimpleIcon,
   },
+  { label: "Materials", href: "/inventory/materials", icon: FlaskIcon },
   { label: "Sales", href: "/inventory/sales", icon: ReceiptIcon },
   {
     label: "Record Sale",

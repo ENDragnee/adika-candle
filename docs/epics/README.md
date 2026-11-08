@@ -21,6 +21,10 @@ conventions.
 | 11 | [Landing / Sign-in Page](./11-landing-sign-in.md) | 9 | done |
 | 12 | [Page-by-Page Polish](./12-page-polish.md) | 9 | done |
 | 13 | [Modal & Action-Menu UX](./13-modal-action-menu-ux.md) | 9 | done |
+| 14 | [Raw Materials & Production Tracking](./14-raw-materials-production-tracking.md) | 1, 2 | done |
+| 15 | [Product Cost & Margin Tracking](./15-product-cost-margin-tracking.md) | 2, 6 | done |
+| 16 | [Motion: Page Transitions & Chart Animations](./16-motion-page-transitions-chart-animations.md) | 9 | done |
+| 17 | [Analytics Hub (Tabbed)](./17-analytics-hub.md) | 8, 14, 15, 16 | done |
 
 Update the Status column as epics move through
 not-started → in-progress → done.

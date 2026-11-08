@@ -17,6 +17,10 @@ export const SaleSchema = z.object({
   quantityKg: z.string(),
   unitPriceAtSale: z.string(),
   totalAmount: z.string(),
+  // Snapshot of the active Cost.amountPerKg at sale time (Epic 15); null if
+  // no Cost had ever been set for this product. Margin isn't computable for
+  // that one sale — not an error, never backfilled.
+  costPerKgAtSale: z.string().nullable(),
   paymentType: SalePaymentTypeSchema,
   createdById: z.string(),
   createdAt: z.iso.datetime(),
@@ -43,6 +47,7 @@ export function ToSaleDTO(sale: SaleWithRelations): SaleDTO {
     quantityKg: sale.quantityKg.toString(),
     unitPriceAtSale: sale.unitPriceAtSale.toString(),
     totalAmount: sale.totalAmount.toString(),
+    costPerKgAtSale: sale.costPerKgAtSale?.toString() ?? null,
     paymentType: sale.paymentType,
     createdById: sale.createdById,
     createdAt: sale.createdAt.toISOString(),

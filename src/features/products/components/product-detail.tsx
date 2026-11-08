@@ -28,12 +28,15 @@ import {
 } from "@/components/ui/select";
 import { DetailSkeleton } from "@/components/ui/skeleton";
 import { useCategories } from "@/features/categories/hooks/use-categories";
+import { RecipeEditor } from "@/features/raw-materials/components/recipe-editor";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useProduct, useUpdateProduct } from "../hooks/use-products";
+import { CostHistory } from "./cost-history";
 import { PriceHistory } from "./price-history";
+import { SetCostForm } from "./set-cost-form";
 import { SetPriceForm } from "./set-price-form";
 
-type Tab = "overview" | "price-history";
+type Tab = "overview" | "price-history" | "cost-history" | "recipe";
 
 function EditProductForm({
   productId,
@@ -297,6 +300,41 @@ function PriceHistoryTab({
   );
 }
 
+function CostHistoryTab({
+  productId,
+  canManage,
+}: {
+  productId: string;
+  canManage: boolean;
+}) {
+  const [isSetCostOpen, setIsSetCostOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium">Cost history</h2>
+        {canManage && (
+          <Dialog open={isSetCostOpen} onOpenChange={setIsSetCostOpen}>
+            <Button size="sm" onClick={() => setIsSetCostOpen(true)}>
+              Set new cost
+            </Button>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Set new cost</DialogTitle>
+              </DialogHeader>
+              <SetCostForm
+                productId={productId}
+                onSuccess={() => setIsSetCostOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+      <CostHistory productId={productId} />
+    </div>
+  );
+}
+
 export function ProductDetail({
   productId,
   canManage,
@@ -313,6 +351,8 @@ export function ProductDetail({
           [
             { id: "overview", label: "Details" },
             { id: "price-history", label: "Price history" },
+            { id: "cost-history", label: "Cost history" },
+            { id: "recipe", label: "Recipe" },
           ] as const
         ).map((item) => (
           <button
@@ -330,10 +370,17 @@ export function ProductDetail({
         ))}
       </div>
 
-      {tab === "overview" ? (
+      {tab === "overview" && (
         <ProductOverview productId={productId} canManage={canManage} />
-      ) : (
+      )}
+      {tab === "price-history" && (
         <PriceHistoryTab productId={productId} canManage={canManage} />
+      )}
+      {tab === "cost-history" && (
+        <CostHistoryTab productId={productId} canManage={canManage} />
+      )}
+      {tab === "recipe" && (
+        <RecipeEditor productId={productId} canManage={canManage} />
       )}
     </div>
   );

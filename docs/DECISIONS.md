@@ -12,6 +12,382 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 17 (Analytics Hub) decisions
+
+**Charting approach: continued hand-building (no new charting dependency),
+reversing the "introduce a library" option the epic doc's Open Questions
+flagged as live.** The deciding factor wasn't code volume but Epic 16's own
+hard requirement ("every chart must use Epic 16's entrance animation on
+initial render... not optional") — that requirement is trivial to satisfy
+for a component this app fully controls (reuse the same `useChartEntrance`
+hook every other chart already uses) and would instead mean fighting a
+third-party library's own animation lifecycle to bolt the shared hook onto
+it. Two new hand-built primitives in `src/features/analytics/components/`:
+`TrendLineChart` (SVG `<path>` line chart, up to 2 series, legend only at
+2+ per the dataviz skill's "single series needs no legend" rule, hover
+crosshair+tooltip, draw-in via `stroke-dashoffset`/`pathLength=1` gated by
+`useChartEntrance` — the one spot in this app's charts where the animated
+property isn't composite-only `transform`/`opacity`, accepted as the
+standard SVG technique per `animation-performance`'s "layout animations
+don't always drop frames... pick the one with no downside" allowance for a
+single lightweight stroke) and `RankedBarChart` (horizontal bars, final
+`width` set directly, entrance via `scaleX` from the left edge — composite-
+only, same technique as `SalesTrendChart`'s vertical bars, rotated).
+
+**New `--chart-series-1`/`--chart-series-2` categorical pair and
+`--status-good`/`-warning`/`-serious`/`-critical`/`-info` tokens in
+`globals.css`, not the dataviz skill's full 8-hue categorical system.**
+No chart in this epic plots more than 2 series at once (checked each tab:
+Production's consumption-vs-output trend is the only 2-series case;
+Profitability/Best Sellers charts are single-series; Stock Health uses
+status colors, not categorical identity), so only 2 slots were needed —
+chosen deliberately small to stay inside Epic 9's "one accent, not accent-
+everywhere" restraint rather than introducing a wide saturated palette.
+`--chart-series-1` reuses the existing `--primary` amber in light mode but
+needed its own darker dark-mode step (`oklch(0.6 0.14 70)` = `#b46e00`,
+not the UI `--primary`'s `oklch(0.78 0.15 72)`) — the brighter UI primary
+measured outside the dataviz skill's categorical lightness band (L
+0.48–0.67) against the dark chart surface. `--chart-series-2` is blue
+(`#2a78d6` light / `#3987e5` dark), the skill's own reference-palette slot
+1 hex, reused as-is. Both validated with the skill's
+`validate_palette.js` against this app's actual rendered surfaces
+(`#ffffff` light / `#0a0a0a` dark, read via a canvas `fillStyle` roundtrip
+from the real `oklch()` CSS values, not eyeballed) — all checks pass in
+both modes. The status palette is the dataviz skill's fixed, pre-validated
+4-role hex set used verbatim (never re-derived — the skill documents this
+set as "fixed, never themed"); it intentionally fails the skill's own
+categorical CVD/contrast gates when validated as a generic palette, which
+the skill's own docs call out as by-design, mitigated by always pairing a
+status color with an icon + text label, never color alone — every
+`StatusBadge` in `stock-health-tab.tsx` does this. The 5th Stock Health
+status (`OVERSTOCKED`, not covered by the skill's 4-role good/warning/
+serious/critical set) reuses `--chart-series-2`'s blue as an "info" cue
+rather than inventing an unvalidated 5th hue.
+
+**Production tab's "Expected output" is computed from raw-material
+consumption that isn't attributed per-product — a known approximation,
+not a bug.** Epic 14 deliberately kept `RawMaterialLedgerEntry.CONSUMED`
+entries "free-standing," not linked to a specific product or batch (see
+its own Open Questions: "revisit only if Epic 17's variance report turns
+out to need tighter attribution"). Since that revisit didn't happen,
+`BuildProductionReport` (`src/app/api/graphql/route.ts`) computes each
+product's expected output as *(that material's total period consumption)
+÷ (recipe ratio)*, using the **minimum** across all of a product's recipe
+rows as the bottleneck constraint when it has more than one — correct
+when a material is used by only one product, an overestimate when shared
+across several. Flagged here explicitly rather than silently shipped;
+revisit by adding per-product attribution to `RawMaterialLedgerEntry` if
+this turns out to matter in practice.
+
+**Stock Health's 5-way status bucketing uses judgment-call multiplier
+constants against `Product.lowStockThresholdKg`** — the epic doc names
+the 5 statuses but not the thresholds. `STOCK_HEALTH_CRITICAL_RATIO = 0.5`
+(below half the threshold = Critical), `STOCK_HEALTH_OVERSTOCKED_RATIO = 3`
+(above 3× threshold = Overstocked), everything between Low and Healthy.
+A product with no threshold configured (Epic 8's opt-in nullable field)
+can't be bucketed into Critical/Low/Overstocked without a baseline, so it
+reads as Healthy whenever it has stock > 0, rather than blocking the
+report or inventing a 6th "unclassified" status. `daysOfCover` comes from
+a trailing-30-day average daily sale velocity (same window convention as
+`BuildSalesTrend`'s dashboard query), `null` when velocity is 0 rather
+than an infinite/divide-by-zero value.
+
+**Period semantics for `productionReport`: "current period" always means
+the day/week/month containing *now*, ending in the future relative to the
+query (not a historical closed period).** This lets `closing` read
+straight from the live cached balance (`StockBalance`/
+`RawMaterialBalance.quantityKg`) instead of a separate "find the last
+entry before period-end" query — correct specifically because period-end
+is always after "now" for a still-in-progress period, matching the paper
+Daily Stock Report's own "filled in as the day progresses" nature.
+`opening` is derived algebraically (`closing − received + consumed`)
+rather than queried, avoiding an extra per-material/per-product lookup.
+Trend windows are fixed per granularity (14 days / 8 weeks / 6 months) —
+not configurable, matching `BuildSalesTrend`'s precedent of a fixed
+window rather than a user-adjustable range.
+
+**Best Sellers' "day/week/month/custom range" period selector is a plain
+`days: Int` GraphQL arg, not real calendar date-range picking.** The UI
+offers Day/Week/Month preset buttons (1/7/30) plus a "Custom days" number
+input, all resolving to the same integer — chosen over building a full
+start/end date picker since every other analytics period in this app
+(dashboard's 30-day trend, Profitability's 30-day window) is already
+"trailing N days," not an arbitrary range; matching that convention here
+was simpler and consistent, not a compromise forced by time.
+
+**No new `DataTable<T>` sort/filter feature — Profitability's and Stock
+Health's "sortable"/"filterable" tables implement it locally (a sort-by
+`Select` + direction-toggle `Button`, plus a status `Select` + search
+`Input` for Stock Health), sorting/filtering the already-fetched array
+client-side via `useMemo` before passing to `DataTable`.** Deliberately
+scoped to these two call sites rather than adding column-header-click
+sorting to the shared `DataTable<T>` primitive (which all 9+ existing
+consumers would inherit) — these GraphQL queries return a small, already-
+fully-loaded array (no pagination), so client-side sort/filter needs no
+server round-trip, and a shared-primitive change wasn't needed for two
+call sites.
+
+**New `src/components/ui/tabs.tsx`** wraps Radix `Tabs` with the same
+radius/ring conventions as every other Epic 9-era primitive — floating-
+panel pieces aren't needed here (no popover), just a `border-b`
+underline-style `TabsList` matching `product-detail.tsx`'s existing
+hand-rolled tab switcher's visual language (that file's own switcher is
+explicitly out of scope for this epic, left untouched). `AnalyticsHub`
+relies on Radix `Tabs.Content`'s default behavior of not rendering
+inactive panels into the DOM — this alone gives every tab's GraphQL query
+its "fetched lazily when first opened" behavior with no manual `enabled`
+wiring needed at the composing layer (the `use*` hooks still accept an
+`enabled` param for flexibility, but every call site just passes `true`).
+
+**Files touched:** `prisma` unchanged (no new schema — reads Epics 8/14/15's
+tables only); `src/app/api/graphql/route.ts` (+4 queries/types/resolvers);
+`src/features/analytics/validators/analytics.schema.ts`,
+`services/analytics.service.ts`, `hooks/use-analytics.ts` (+4 each); new
+`src/features/analytics/components/{production,profitability,stock-health,
+best-sellers}-tab.tsx`, `analytics-hub.tsx`, `trend-line-chart.tsx`,
+`ranked-bar-chart.tsx`, `stat-tile.tsx`; new `src/components/ui/tabs.tsx`;
+`src/app/globals.css` (+categorical/status tokens); `nav-config.ts` (+
+Analytics item); new `src/app/(dashboard)/manager/analytics/page.tsx`.
+Verified with `pnpm lint`, `pnpm test`, `npx tsc --noEmit` (all clean) and
+a Playwright pass signed in as `manager`: all 4 tabs load real data end to
+end (Production's granularity toggle, Profitability's stat-tile count-up +
+excluded-sale note + sortable table, Stock Health's status badges +
+distribution chart + filter/search/sort, Best Sellers' preset/custom
+period buttons + both rankings' trend indicators), light and dark mode,
+and a 375px mobile viewport (tabs wrap, `DataTable`'s card view, bottom
+nav shows the new Analytics tab).
+
+---
+
+## 2026-11-08 — Epic 16 (Motion: Page Transitions & Chart Animations) decisions
+
+**Research spike outcome: the View Transitions API via React 19.3's native
+`<ViewTransition>` component, not a JS animation library (`motion`).**
+Confirmed via `node_modules/next/dist/docs/01-app/02-guides/view-
+transitions.md` (per AGENTS.md's "this is NOT the Next.js you know, read
+the docs first" rule) that Next 16.4.5 supports `<ViewTransition>` "in the
+App Router with no configuration," and that route navigations are
+Transitions automatically — no interaction with `cacheComponents`/the
+`instant = false` opt-outs beyond one documented nuance: if a destination
+page suspends (which every `instant = false` page does, by design, since
+it blocks on a session read), "no \[shared-element] pair forms, and the
+content animates with its enter animation instead when it arrives" — fine
+for a plain crossfade with no named/shared elements, which is all this
+epic uses. Chosen over `motion` per the `animate` skill's "cheapest tool
+that works" rule: zero new dependency, officially documented as
+compatible with this exact stack, and progressively enhances (no-ops on
+browsers without View Transitions support, confirmed by the doc).
+
+**The crossfade is a plain, unnamed `<ViewTransition>` wrapping `{children}`
+at each shell boundary — not Next's own documented directional-slide
+pattern (Step 3 of the guide), and not per-`page.tsx` wrapping.** The
+guide's directional-slide example explicitly requires wrapping every
+participating `page.tsx` individually ("layouts persist across
+navigations, so enter and exit never fire there"), but that's specific to
+*named* `transitionTypes`-driven slides — an unnamed `<ViewTransition>`
+wrapping `{children}` inside a Server Component layout still works for a
+plain crossfade, because the *children* passed to it change on every
+navigation (different page component tree), which is enough for React to
+treat it as changed content needing the browser's default old/new
+crossfade. This needed no client-side `usePathname()` tracking and no
+per-page edits — matches the epic's explicit "applied once at the shell
+level" scope far better than the directional pattern would have, and the
+epic's own "short and subtle... not a marketing site" framing favored a
+plain fade over directional slides anyway. New `src/components/motion/
+page-transition.tsx` (a 6-line wrapper, importable directly into Server
+Components — `<ViewTransition>` needs no `"use client"`, same as
+`Suspense`) is used in `(dashboard)/layout.tsx`, `app/page.tsx`, and
+`auth/layout.tsx` per the epic's file list. Styling (150ms, the skill's
+`cubic-bezier(0.23, 1, 0.32, 1)` strong ease-out, `pointer-events: none`
+on the transition overlay so clicks aren't lost mid-animation, and a
+`prefers-reduced-motion` override to a near-zero duration) lives in
+`globals.css` on the wildcard `::view-transition-old(*)`/`-new(*)`
+pseudo-elements, shortened from the browser's ~250ms default per the
+`animate` skill's "UI animations stay under 300ms" + this being daily-use
+functional chrome, not a marketing moment.
+
+**Chart-entrance primitives are three small, independent hooks in
+`src/components/motion/`, not one combined component** —
+`useReducedMotion` (shared `matchMedia` source of truth), `useChartEntrance`
+(a `hasEntered` boolean that flips `true` one frame after mount, gating a
+CSS transition between an initial and final state; renders already-entered
+under reduced motion, not disabled — "fewer and gentler, not zero" per the
+`animate` skill), and `useCountUp` (writes a formatted number to a ref's
+`textContent` inside `requestAnimationFrame`, never through `setState` —
+the `animation-performance` skill's explicit "React: Don't Animate Through
+State" rule, since a per-frame re-render would blow the frame budget for a
+dashboard stat tile). Split into three because each has a different
+reduced-motion behavior and a different "what gates it" signal (mount vs.
+data-ready vs. target-value-changed), and `useCountUp` in particular needs
+no entrance-boolean plumbing at all — it's self-contained.
+
+**`SalesTrendChart`'s bar entrance is a composite-only `scaleY` transform
+from a zero baseline (`transform-origin: bottom`), layered on top of the
+bar's existing `height: {percent}%` inline style rather than animating
+`height` itself.** `height` stays exactly as it was (set directly to its
+final value, no transition) — only `transform` animates, per
+`animation-performance`'s "swapping down a tier" table (`height`/`padding`
+→ `scale()`). Per-bar stagger is capped (`Math.min(index * 6, 220)ms`),
+not a flat 50ms-per-item like the `animate` skill's generic stagger
+recipe — a flat 50ms × 30 bars would spread the reveal over 1.5s, far past
+the "near-imperceptible... fast and subtle" bar this epic's gate check
+lands on (a dashboard chart reveals on every page load, closer to the
+skill's "tens of times/day" frequency tier than a rare marketing moment,
+even though the epic doc explicitly requires some entrance treatment).
+Total reveal is ~320ms + a 220ms-capped stagger spread, not 1.5s+.
+
+**Files touched:** new `src/components/motion/{page-transition,
+use-reduced-motion,use-chart-entrance,use-count-up}.{tsx,ts}`;
+`src/app/globals.css` (+view-transition CSS); `src/app/(dashboard)/
+layout.tsx`, `src/app/page.tsx`, `src/app/auth/layout.tsx` (+
+`PageTransition` wrapper); `src/features/analytics/components/
+sales-trend-chart.tsx` (bar entrance retrofit). Verified with `pnpm lint`,
+`pnpm test`, `npx tsc --noEmit` (all clean) and a Playwright pass: a real
+client-side navigation between `/manager/categories` and `/manager/
+products` completed with no console errors (confirming `<ViewTransition>`
+doesn't crash SSR or client navigation), the dashboard's retrofit chart
+rendered correctly in light and dark mode. The entrance animation's actual
+*feel* (stagger timing, draw-in smoothness) wasn't separately motion-
+captured/frame-profiled beyond this — flagged per the `animate` skill's
+own "what to feel-check" guidance for a future pass if it ever looks off
+on a real device.
+
+---
+
+## 2026-11-08 — Epic 15 (Product Cost & Margin Tracking) decisions
+
+**`Cost` mirrors `Price` exactly, field-for-field and route-for-route** —
+same `effectiveFrom`/`effectiveTo` open-row pattern, same
+"`SetNewProductCost` closes the previous open row before creating the new
+one in one transaction" logic as `SetNewProductPrice`, same
+`api/v1/products/[id]/costs` GET(paginated)/POST(`product:manage`) shape
+as `.../prices`. No deviation was needed or introduced — this is the
+epic doc's own explicit ask ("mirrors Price's own... design exactly").
+
+**`Sale.costPerKgAtSale` is populated by one additional `prisma.cost.
+findFirst({ effectiveTo: null })` lookup inside the existing `POST /api/
+v1/sales` handler, added right alongside the existing active-`Price`
+lookup — not a new mutation path.** Unlike the active-`Price` lookup
+(which 400s the whole sale if missing — "Product has no active price"),
+a missing active `Cost` does **not** block the sale: `costPerKgAtSale`
+is simply written as `null`. This is the one deliberate asymmetry between
+Price and Cost in this epic — Price is a hard precondition for selling at
+all (there'd be no `totalAmount` to compute), Cost is purely informational
+for later margin reporting, per the epic doc's own "doesn't block the
+sale" framing.
+
+**`ProductDetail`'s new "Cost history" tab is a close structural copy of
+the existing "Price history" tab (`CostHistoryTab`/`CostHistory`/
+`SetCostForm` mirroring `PriceHistoryTab`/`PriceHistory`/`SetPriceForm`
+line-for-line), added as a 3rd tab alongside Epic 14's new "Recipe" tab**
+(landed in the same session, same file) — `product-detail.tsx`'s tab list
+is now Details/Price history/Cost history/Recipe. `ProductOverview`'s
+`dl` (the Details tab) was **not** given a "Current cost" row the way it
+already has "Current price / kg" — the epic's own schema section only
+adds `currentPrice` precedent to `Price`, never asks for an equivalent
+`currentCost` field on the `Product` DTO, and Cost is meant purely as an
+internal COGS input feeding Epic 17's margin math, not a Manager-facing
+headline figure the way price is.
+
+**Files touched:** `prisma/schema.prisma` (+`Cost` model, +`Sale.
+costPerKgAtSale`); new `src/features/products/{validators/cost.schema,
+services/cost.service,hooks/use-costs,components/cost-history,
+components/set-cost-form}.ts(x)`; `src/features/products/components/
+product-detail.tsx` (+Cost history tab); `src/features/sales/validators/
+sale.schema.ts` (+`costPerKgAtSale` field); `src/app/api/v1/products/
+[id]/costs/route.ts` (new); `src/app/api/v1/sales/route.ts` (+Cost
+lookup). Schema pushed to the dev database via `prisma db push` (explicit
+user consent obtained first — Prisma's AI-agent safety gate blocks this
+command for any agent without it). Verified with `pnpm lint`, `pnpm test`,
+`npx tsc --noEmit` (all clean) and a Playwright pass signed in as
+`manager`: set a new cost on a product via the modal, confirmed it
+appeared in the Cost history table as the current row, light and dark
+mode.
+
+---
+
+## 2026-11-08 — Epic 14 (Raw Materials & Production Tracking) decisions
+
+**`RawMaterial`/`RawMaterialBalance`/`RawMaterialLedgerEntry` mirror
+`Product`(partial)/`StockBalance`/`StockLedgerEntry` field-for-field**
+(cached-balance + append-only-ledger hybrid, per the existing "Stock and
+loan balances" pattern) — `POST /api/v1/raw-materials/[id]/activity`
+mirrors `POST /api/v1/stock/accept`'s upsert-balance-then-create-ledger-
+entry transaction shape almost exactly, just with a signed `delta`
+(RECEIVED `+1`, CONSUMED `-1`) instead of Stock's always-positive ACCEPT.
+**No guard against consuming more of a material than is on hand** — the
+same deliberate non-guard Stock's own `SALE` path has ("no guard against
+overselling," logged under Epic 6), kept consistent rather than
+introducing a new validation rule Epic 14 never asked for.
+
+**`GET /api/v1/raw-materials` (the catalog list) and the balances/ledger
+routes accept either `raw-material:read` or `raw-material:manage`, not
+`raw-material:manage` alone** — unlike `GET /api/v1/categories`, which is
+Manager-only end to end. The difference: Inventory Manager needs to read
+the material *names* to populate the picker on "Record activity"
+(`/inventory/materials`), the same reason `product:read` was added to
+`INVENTORY_MANAGER_PERMISSIONS` back in Epic 4 for the product picker on
+Accept Stock. Mirrors the loans-transactions route's existing multi-
+permission-array pattern (`CreateApiRoute`'s `permission: string[]` →
+`CheckAnyPermission`).
+
+**The recipe/BOM editor (`ProductMaterialRequirement` CRUD) lives on the
+product detail page as a 3rd tab ("Recipe"), not on the materials
+settings page** — the epic doc left this an open implementation call.
+Chosen because a recipe is fundamentally *per-product* data best browsed
+from the product it belongs to (matching where Price/Cost history already
+live), and a materials-settings-page placement would mean either listing
+every product's full recipe on one page (noisy, mostly-irrelevant to a
+Manager editing one material's catalog entry) or adding per-material
+"used by which products" drill-down that isn't what the epic asked for.
+`api/v1/products/[id]/material-requirements` (GET/POST/PATCH, no DELETE —
+the epic's own API section lists exactly these three methods) backs it;
+PATCH takes `{materialId, quantityKgPerOutputKg}` in the body rather than
+a `/[materialId]` sub-route, since the epic doc names the route as the
+flat collection path for all three methods, not a nested one.
+
+**"Expected output" math wasn't built in this epic — intentionally.**
+The epic's own Open Questions resolve to "free-standing daily entry... not
+required for every product... revisit only if Epic 17's variance report
+turns out to need tighter attribution." `RawMaterialLedgerEntry.CONSUMED`
+rows carry no `productId`/batch link as a result. Epic 17 does build a
+variance report on top of this (see its own decisions entry above) using
+an approximation (total material consumption ÷ recipe ratio, not
+attributed per-product) rather than this epic's ledger shape being
+revisited — flagged there, not a defect in this epic's schema.
+
+**New "Materials" top-level nav item in both `MANAGER_NAV_ITEMS` and
+`INVENTORY_NAV_ITEMS`** (`FlaskIcon`), positioned right after "Stock" in
+both lists — mirrors Stock's own Manager-read-only-list vs. Inventory-
+operational-page split (`/manager/materials` + `/manager/materials/
+[materialId]` read-only ledger view; `/inventory/materials` balances +
+a modal "Record activity" trigger, Epic 13's modal pattern, not a
+separate `/inventory/materials/activity` page the way Stock's older
+"Accept Stock" predates Epic 13's modal convention). `/manager/settings/
+materials` (the catalog CRUD) is linked from the existing Settings hub,
+not a nav item, per the epic doc's explicit instruction.
+
+**Files touched:** `prisma/schema.prisma` (+`RawMaterial`,
+`RawMaterialBalance`, `RawMaterialLedgerEntry`, `RawMaterialEntryType`,
+`ProductMaterialRequirement`; `Product` +`materialRequirements` relation);
+`prisma/seed.ts` (+`raw-material` module/permissions); new
+`src/features/raw-materials/` (validators, services, hooks, 7 components);
+new `src/app/api/v1/raw-materials/**`, `src/app/api/v1/products/[id]/
+material-requirements/route.ts`; `src/features/products/components/
+product-detail.tsx` (+Recipe tab); `src/components/shell/nav-config.ts`
+(+Materials); `src/app/(dashboard)/manager/settings/page.tsx` (+link);
+new pages at `manager/settings/materials`, `manager/materials`,
+`manager/materials/[materialId]`, `inventory/materials`. Schema pushed
+to the dev database via `prisma db push` (explicit user consent obtained
+first). Verified with `pnpm lint`, `pnpm test`, `npx tsc --noEmit` (all
+clean) and a Playwright pass: full catalog CRUD (add/edit material) as
+`manager`, "Record activity" (Received, 200kg) as `inventory` confirmed
+the balance updated and the Manager-side ledger detail page showed the
+entry, a recipe row added to a product and reflected immediately — light
+and dark mode, 375px mobile viewport (bottom nav + `DataTable` card view).
+
+---
+
 ## 2026-11-08 — Public landing page + navbar (outside the epic sequence)
 
 **Built directly on request, after Epic 13** — reverses Epic 11's explicit

@@ -50,6 +50,35 @@ tables, and every list-context create/edit form (plus `SetPriceForm`,
 `RepaymentForm`, `ManualAdjustmentForm`) moved from always-visible
 inline forms/rows into `Dialog`-based modals.
 
+Epics 14–17 are done. Raw Materials & Production Tracking (14): a
+`RawMaterial`/`RawMaterialBalance`/`RawMaterialLedgerEntry` cached-balance
++ append-only-ledger trio mirroring Stock exactly, a `/manager/materials`
+(read-only) + `/inventory/materials` (balances + "Record activity"
+Received/Consumed modal) split mirroring Stock's own Manager/Inventory
+split, a `/manager/settings/materials` catalog CRUD, and an optional
+per-product recipe (`ProductMaterialRequirement`) editable from a new
+"Recipe" tab on the product detail page. Product Cost & Margin Tracking
+(15): a `Cost` model mirroring `Price` field-for-field, a "Cost history"
+tab + "Set new cost" modal on the product detail page, and
+`Sale.costPerKgAtSale` snapshotted at sale time (nullable — doesn't block
+sales, just means that one sale isn't counted in margin math). Motion (16):
+a single subtle route-change crossfade via React 19.3's native
+`<ViewTransition>` (zero new dependency) applied once at each shell
+boundary, plus three shared chart-entrance primitives in
+`src/components/motion/` (`useChartEntrance`, `useCountUp`,
+`useReducedMotion`) retrofitted onto `SalesTrendChart`'s bars. Analytics
+Hub (17): a new `/manager/analytics` route with 4 lazily-queried GraphQL-
+backed tabs (Production/Profitability/Stock Health/Best Sellers) informed
+by `idea-boards/old-report-papers.jpg`, the factory's existing paper
+"Daily Stock Report" — Production's table literally reuses its Opening/
+Received/Consumption/Closing column labels. Two new hand-built chart
+primitives (`TrendLineChart`, `RankedBarChart`) and a new `Tabs` primitive;
+no charting dependency was added (see `docs/DECISIONS.md`). See
+`docs/epics/README.md` and each epic doc for the full breakdown; non-obvious
+calls (the Epic 16 research-spike outcome, the Epic 17 charting-approach
+call, the new categorical/status color tokens) are logged in
+`docs/DECISIONS.md` under their own dated headings.
+
 ## Tech stack
 
 Next.js (App Router) · React · TanStack Query · Axios · better-auth ·

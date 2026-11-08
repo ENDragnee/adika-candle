@@ -12,12 +12,12 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   name            String
-  email           String    @unique
-  emailVerified   Boolean   @default(false)
+  email           String   @unique
+  emailVerified   Boolean  @default(false)
   image           String?
-  username        String?   @unique
+  username        String?  @unique
   displayUsername String?
   // Deactivation flag (Epic 7). better-auth's own sign-in has no concept of
   // this — gating happens in customSession (src/lib/auth.ts), which returns
@@ -25,9 +25,9 @@ model User {
   // CheckPermission/CheckAnyPermission call and layout role gate rejects
   // them post-login without touching the auth flow itself. See
   // docs/DECISIONS.md, "Epic 7 decisions".
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   roleId String?
   role   Role?   @relation(fields: [roleId], references: [id])
@@ -55,11 +55,11 @@ model Session {
 }
 
 model Account {
-  id         String  @id @default(cuid())
+  id         String @id @default(cuid())
   accountId  String
   providerId String
   userId     String
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   accessToken           String?
   refreshToken          String?
@@ -142,22 +142,24 @@ model Category {
 }
 
 model Product {
-  id         String   @id @default(cuid())
-  name       String
-  sku        String   @unique
-  isActive   Boolean  @default(true)
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  id                   String                       @id @default(cuid())
+  name                 String
+  sku                  String                       @unique
+  isActive             Boolean                      @default(true)
+  categoryId           String
+  category             Category                     @relation(fields: [categoryId], references: [id])
   // Manager-editable, nullable opt-in per product (Epic 8). Null means no
   // alert is ever raised for this product — there is no global default
   // threshold. See docs/DECISIONS.md, "Epic 8 decisions".
-  lowStockThresholdKg Decimal?
-  prices              Price[]
-  stockBalance        StockBalance?
-  stockLedgerEntries  StockLedgerEntry[]
-  sales               Sale[]
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  lowStockThresholdKg  Decimal?
+  prices               Price[]
+  costs                Cost[]
+  stockBalance         StockBalance?
+  stockLedgerEntries   StockLedgerEntry[]
+  sales                Sale[]
+  materialRequirements ProductMaterialRequirement[]
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
 
   @@map("product")
 }
@@ -174,6 +176,29 @@ model Price {
 
   @@index([productId, effectiveFrom])
   @@map("price")
+}
+
+// ---------------------------------------------------------------------------
+// Product cost (Epic 15) — variable over time, mirrors Price exactly (see
+// AGENTS.md "Pricing is variable over time..."). Powers margin computation
+// (Sale.totalAmount minus Sale.costPerKgAtSale) in Epic 17's Profitability
+// tab. Deliberately decoupled from Epic 14's raw-material recipe math — a
+// direct Manager-entered COGS estimate, not derived live. See
+// docs/DECISIONS.md.
+// ---------------------------------------------------------------------------
+
+model Cost {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  amountPerKg   Decimal
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  createdById   String
+  createdAt     DateTime  @default(now())
+
+  @@index([productId, effectiveFrom])
+  @@map("cost")
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +259,76 @@ model StockLedgerEntry {
 
   @@index([productId, createdAt])
   @@map("stock_ledger_entry")
+}
+
+// ---------------------------------------------------------------------------
+// Raw materials (Epic 14) — true production inputs (wax, color dye) that get
+// consumed *into* a finished product, distinct from Product/StockLedgerEntry
+// which already model the finished-goods side. Same append-only-ledger +
+// cached-balance hybrid as Stock (see docs/DECISIONS.md, "Stock and loan
+// balances: cached column + append-only ledger"). Tracked directly in KG —
+// no UnitConversion reuse, see docs/epics/14-raw-materials-production-tracking.md.
+// ---------------------------------------------------------------------------
+
+model RawMaterial {
+  id                   String                       @id @default(cuid())
+  name                 String                       @unique
+  isActive             Boolean                      @default(true)
+  balance              RawMaterialBalance?
+  ledgerEntries        RawMaterialLedgerEntry[]
+  materialRequirements ProductMaterialRequirement[]
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+
+  @@map("raw_material")
+}
+
+enum RawMaterialEntryType {
+  RECEIVED
+  CONSUMED
+  ADJUSTMENT
+}
+
+model RawMaterialBalance {
+  id         String      @id @default(cuid())
+  materialId String      @unique
+  material   RawMaterial @relation(fields: [materialId], references: [id])
+  quantityKg Decimal     @default(0)
+  updatedAt  DateTime    @updatedAt
+
+  @@map("raw_material_balance")
+}
+
+model RawMaterialLedgerEntry {
+  id             String               @id @default(cuid())
+  materialId     String
+  material       RawMaterial          @relation(fields: [materialId], references: [id])
+  type           RawMaterialEntryType
+  quantityKg     Decimal // always a positive magnitude; direction implied by type
+  balanceAfterKg Decimal
+  note           String?
+  createdById    String
+  createdAt      DateTime             @default(now())
+
+  @@index([materialId, createdAt])
+  @@map("raw_material_ledger_entry")
+}
+
+// Optional recipe/BOM row: "1kg of `product` requires `quantityKgPerOutputKg`
+// kg of `material`." A product with no rows here just has no computed
+// "expected output" in Epic 17 — never required for every product.
+model ProductMaterialRequirement {
+  id                    String      @id @default(cuid())
+  productId             String
+  product               Product     @relation(fields: [productId], references: [id])
+  materialId            String
+  material              RawMaterial @relation(fields: [materialId], references: [id])
+  quantityKgPerOutputKg Decimal
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@unique([productId, materialId])
+  @@map("product_material_requirement")
 }
 
 // ---------------------------------------------------------------------------
@@ -323,6 +418,11 @@ model Sale {
   quantityKg       Decimal // inputQuantity * inputRatioToKg
   unitPriceAtSale  Decimal // snapshot of Price.amountPerKg
   totalAmount      Decimal // quantityKg * unitPriceAtSale
+  // Snapshot of the active Cost.amountPerKg at sale time (Epic 15); null if
+  // no Cost had ever been set for this product — margin isn't computable
+  // for that one sale, not an error, doesn't block the sale. Never
+  // backfilled for sales recorded before Epic 15 shipped.
+  costPerKgAtSale  Decimal?
   paymentType      SalePaymentType
   createdById      String
   createdAt        DateTime          @default(now())

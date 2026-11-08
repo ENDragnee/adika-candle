@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SalesTrendPointDTO } from "../validators/analytics.schema";
+
+// Capped per-bar stagger (animation-performance skill: 30-80ms stagger
+// band, capped so a 30-bar chart doesn't stretch the whole reveal past
+// ~1s) — see docs/DECISIONS.md for the Epic 16 entrance-pattern writeup.
+const BAR_ENTRANCE_DURATION_MS = 320;
+const BAR_STAGGER_STEP_MS = 6;
+const BAR_STAGGER_CAP_MS = 220;
 
 const CHART_HEIGHT_PX = 140;
 
@@ -28,6 +36,7 @@ function FormatShortDate(dateKey: string) {
 // what's plotted.
 export function SalesTrendChart({ points }: { points: SalesTrendPointDTO[] }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const hasEntered = useChartEntrance();
 
   if (points.length === 0) {
     return <p className="text-sm text-muted-foreground">No sales data yet.</p>;
@@ -82,10 +91,25 @@ export function SalesTrendChart({ points }: { points: SalesTrendPointDTO[] }) {
                   onFocus={() => setHoveredIndex(index)}
                   onBlur={() => setHoveredIndex(null)}
                   aria-label={`${FormatShortDate(point.date)}: ${point.totalAmount}, ${point.saleCount} sale(s)`}
-                  className={`w-full max-w-6 min-h-0.5 rounded-t-[4px] outline-none transition-colors ${
+                  className={`w-full max-w-6 min-h-0.5 rounded-t-[4px] outline-none ${
                     isHovered ? "bg-foreground" : "bg-chart-3"
                   }`}
-                  style={{ height: `${heightPercent}%`, minHeight: 2 }}
+                  style={{
+                    height: `${heightPercent}%`,
+                    minHeight: 2,
+                    // Composite-only entrance: scaleY from a zero baseline
+                    // (transform-origin: bottom) rather than animating
+                    // `height` itself, which is already set to its final
+                    // value above — see animation-performance skill and
+                    // docs/DECISIONS.md's Epic 16 writeup.
+                    transform: hasEntered ? "scaleY(1)" : "scaleY(0)",
+                    transformOrigin: "bottom",
+                    transitionProperty: "background-color, transform",
+                    transitionDuration: `150ms, ${BAR_ENTRANCE_DURATION_MS}ms`,
+                    transitionTimingFunction:
+                      "ease, cubic-bezier(0.23, 1, 0.32, 1)",
+                    transitionDelay: `0ms, ${Math.min(index * BAR_STAGGER_STEP_MS, BAR_STAGGER_CAP_MS)}ms`,
+                  }}
                 />
               </div>
             );

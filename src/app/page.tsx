@@ -1,3 +1,4 @@
+import { PageTransition } from "@/components/motion/page-transition";
 import { PublicNavbar } from "@/components/shell/public-navbar";
 import { LandingPage } from "@/features/auth/components/landing-page";
 import { RoleRedirector } from "@/lib/redirector";
@@ -19,7 +20,9 @@ export default async function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       <PublicNavbar />
-      <LandingPage />
+      <PageTransition>
+        <LandingPage />
+      </PageTransition>
     </div>
   );
 }

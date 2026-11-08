@@ -1,3 +1,4 @@
+import { PageTransition } from "@/components/motion/page-transition";
 import { PublicNavbar } from "@/components/shell/public-navbar";
 import { RoleRedirector } from "@/lib/redirector";
 import { GetApiSession } from "@/lib/session";
@@ -20,7 +21,7 @@ export default async function AuthLayout({
     <div className="flex min-h-screen flex-col">
       <PublicNavbar showSignIn={false} />
       <main className="flex flex-1 items-center justify-center p-6">
-        {children}
+        <PageTransition>{children}</PageTransition>
       </main>
     </div>
   );

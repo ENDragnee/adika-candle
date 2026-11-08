@@ -1,3 +1,4 @@
+import { PageTransition } from "@/components/motion/page-transition";
 import { AppShell } from "@/components/shell/app-shell";
 import {
   INVENTORY_NAV_ITEMS,
@@ -22,7 +23,7 @@ export default async function DashboardLayout({
 
   return (
     <AppShell user={session.user} navItems={navItems}>
-      {children}
+      <PageTransition>{children}</PageTransition>
     </AppShell>
   );
 }

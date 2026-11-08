@@ -23,6 +23,13 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-chart-series-1: var(--chart-series-1);
+  --color-chart-series-2: var(--chart-series-2);
+  --color-status-good: var(--status-good);
+  --color-status-warning: var(--status-warning);
+  --color-status-serious: var(--status-serious);
+  --color-status-critical: var(--status-critical);
+  --color-status-info: var(--status-info);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -84,6 +91,28 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.7 0.13 68);
+  /* Epic 17 (Analytics Hub) categorical pair — reuses the existing
+     --primary amber as series 1, adds one cool blue as series 2. Only 2
+     slots needed (no chart in this app plots more than 2 series at once),
+     chosen over the dataviz skill's full 8-hue categorical system to stay
+     inside Epic 9's "one accent, not accent-everywhere" restraint. Both
+     validated with the dataviz skill's validate_palette.js against this
+     app's actual surfaces (#ffffff light / #0a0a0a dark) — see
+     docs/DECISIONS.md, "Epic 17 decisions". */
+  --chart-series-1: oklch(0.58 0.15 68);
+  --chart-series-2: #2a78d6;
+  /* Status palette (Stock Health badges) — the dataviz skill's fixed,
+     pre-validated 4-role status hexes, used as-is (never re-derived; see
+     skill's palette.md "fixed - never themed"). Same value in light/dark.
+     Always paired with an icon + text label, never color alone — the
+     skill's own documented mitigation for this set's sub-3:1 light
+     contrast on warning/serious. --status-info (Overstocked, not an
+     alert) reuses --chart-series-2. */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --status-info: #2a78d6;
 }
 
 .dark {
@@ -118,6 +147,17 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.65 0.13 70);
+  /* Dark-mode series 1 is a separate, darker amber than --primary
+     (oklch(0.60 0.14 70) = #b46e00) — the brighter UI --primary
+     (oklch(0.78 0.15 72)) fails the dataviz skill's categorical
+     lightness band (0.48-0.67) against the dark chart surface. */
+  --chart-series-1: oklch(0.6 0.14 70);
+  --chart-series-2: #3987e5;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --status-info: #3987e5;
 }
 
 @layer base {
@@ -129,5 +169,29 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Epic 16: page-transition crossfade (src/components/motion/page-transition.tsx).
+   Shortened + re-eased from the browser's default view-transition timing —
+   short and subtle, for a business admin tool's route changes, not a
+   marketing-style reveal. Wildcard selectors cover every <ViewTransition>
+   boundary's auto-generated name, matching Next's own reduced-motion
+   pattern for this feature. */
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Keeps the live page clickable while the transition overlay plays. */
+::view-transition {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
   }
 }

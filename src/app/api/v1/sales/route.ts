@@ -94,6 +94,13 @@ export const POST = CreateApiRoute({
       );
     }
 
+    // Epic 15: snapshot the active Cost, if any. Unlike Price, a missing
+    // Cost doesn't block the sale — null just means margin isn't
+    // computable for this one sale. See docs/DECISIONS.md.
+    const activeCost = await prisma.cost.findFirst({
+      where: { productId: body.productId, effectiveTo: null },
+    });
+
     let quantityKg: number;
 
     try {
@@ -162,6 +169,7 @@ export const POST = CreateApiRoute({
               quantityKg,
               unitPriceAtSale: activePrice.amountPerKg,
               totalAmount,
+              costPerKgAtSale: activeCost?.amountPerKg ?? null,
               paymentType: body.paymentType,
               createdById,
             },

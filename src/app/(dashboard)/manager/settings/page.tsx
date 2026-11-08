@@ -12,6 +12,12 @@ const SETTINGS_LINKS = [
     description:
       "Edit Carton/Packet/Wax/Kir → KG ratios used by stock and sales.",
   },
+  {
+    href: "/manager/settings/materials",
+    label: "Raw materials",
+    description:
+      "Manage the wax/color-dye catalog used by production tracking.",
+  },
 ];
 
 export default async function SettingsPage() {

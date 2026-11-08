@@ -16,6 +16,11 @@ const MODULE_PERMISSIONS: Record<string, string[]> = {
   user: ["user:manage"],
   role: ["role:manage"],
   "unit-conversion": ["unit-conversion:manage"],
+  "raw-material": [
+    "raw-material:read",
+    "raw-material:record",
+    "raw-material:manage",
+  ],
 };
 
 const INVENTORY_MANAGER_PERMISSIONS = [
@@ -29,6 +34,9 @@ const INVENTORY_MANAGER_PERMISSIONS = [
   "sale:read",
   "customer:read",
   "loan:record",
+  // Epic 14: record Received/Consumed activity against raw materials.
+  "raw-material:read",
+  "raw-material:record",
 ];
 
 async function seedModulesAndPermissions() {
