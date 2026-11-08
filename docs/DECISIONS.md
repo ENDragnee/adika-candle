@@ -12,6 +12,164 @@ undo.
 
 ---
 
+## 2026-11-08 — Epic 12 (Page-by-Page Polish) decisions
+
+**Resolved the task brief's "the same 13 files above" (for the Card
+conversion list) as the 7 standalone forms from its own input-swap list
+plus the 6 named manager/chart files — 13 total, not a separate,
+unstated set.** The brief's wording was internally inconsistent (its own
+item 1 lists 7 forms, not 13), but 7 + 6 = 13 lines up exactly with the
+count named in item 3, so this is almost certainly what was meant rather
+than a reference to Epic 9's unrelated "13 table files." Treated "Card
+treatment" as: wrap each file's plain `rounded-xl border border-border
+p-3` (or, for `repayment-form.tsx`/`manual-adjustment-form.tsx`,
+`border border-border p-3`) content box in `Card`/`CardContent`
+(`CardHeader`+`CardTitle` where there was a heading to promote).
+
+**`product-detail.tsx` got the `<input>`/`<select>` → `Input`/`Select`
+swap (per item 1) but deliberately did *not* get Card-wrapped**, unlike
+the other 12 files above. `ProductOverview`'s read-only `dl` and its edit
+form share a loading placeholder, `DetailSkeleton`
+(`src/components/ui/skeleton.tsx`), which Epic 10 explicitly built to
+match "the unwrapped `dl` shape" — wrapping the real content in `Card`
+would reintroduce the layout jump Epic 10 was built to eliminate, without
+also inventing a new Card-shaped skeleton variant that nothing in this
+epic's scope asked for. `CustomerHeader`
+(`src/features/customers/components/customer-header.tsx`) uses the same
+`DetailSkeleton` and was left untouched for the same reason — it wasn't
+in Epic 12's own file list anyway.
+
+**`role-manager.tsx`'s `RoleCardSkeleton` was updated in lockstep with
+`RoleCard`'s Card conversion**, even though only `RoleCard` was named in
+the file list. Epic 10's decision log ties `RoleCardSkeleton`'s shape
+explicitly to `RoleCard`'s real markup ("matches RoleCard's title +
+module/checkbox-group + save-button shape") — leaving the skeleton on
+the old `border border-border p-3` div while the real card moved to
+`Card` would have broken that invariant and reintroduced a loading→loaded
+layout jump. The skeleton now wraps the same `Skeleton` blocks in
+`Card`/`CardHeader`/`CardContent` instead of hand-rolling the border.
+
+**`sales-trend-chart.tsx`'s one "plain bordered box" — the hover
+tooltip — was converted to Epic 9's floating-panel convention
+(`rounded-lg bg-popover ring-1 ring-foreground/10 shadow-md`, matching
+`select-content`/dialog content), not wrapped in `Card`.** The chart
+itself has no bordered container at the top level (that's
+`manager-dashboard.tsx`'s plain `Section` wrapper, out of this epic's
+file list and shared by several non-Card dashboard sections, so changing
+it wasn't in scope); the tooltip was the only hard-edged element in the
+file, and it's a transient floating element like Select/Dialog content,
+not a persistent content block, so the floating-panel treatment fit
+better than `Card`.
+
+**Phosphor `PlusIcon` was added only to true "create a new X" front
+doors, not every submit button** — per the task's own "don't over-apply"
+instruction: the `/manager/products` "New product" link, `CreateProductForm`'s
+"Create product" submit, and each manager's "Add category"/"Add
+customer"/"Add unit"/"Create user" submit (`category-manager.tsx`,
+`customer-manager.tsx`, `unit-conversion-manager.tsx`,
+`user-manager.tsx`). Deliberately skipped on `SetPriceForm` ("Set new
+price"), `AcceptStockForm`/`RecordSaleForm` ("Accept stock"/"Record
+sale"), `RepaymentForm`/`ManualAdjustmentForm` ("Record"/"Apply
+adjustment"), and `ProductOverview`'s "Save" — these read as
+transactional/edit actions, not "New X" entity-creation fronts, even
+though some of them do create a row under the hood.
+
+**Split the "New product" link into a new Client Component,
+`src/features/products/components/new-product-link.tsx`, instead of
+importing `PlusIcon` directly into `src/app/(dashboard)/manager/products/page.tsx`.**
+That page is a Server Component (`async function`, no `"use client"`,
+calls `CheckPermission`) — importing `@phosphor-icons/react` there
+reproduces exactly the `createContext only works in Client Components`
+crash Epic 9 documented for `nav-config.ts`. Every other `PlusIcon` use
+this epic added lives in a file that was already `"use client"`, so this
+was the only call site that needed the split. **Convention going
+forward:** before adding a Phosphor icon to any button/link on a page or
+layout file, check whether that file has `"use client"` — if not, put the
+icon-bearing element in its own small Client Component instead of
+importing the icon into the Server Component file directly.
+
+**Labels on the 7 standalone forms stayed plain `<label>` elements, not
+the `Label` component** (`@/components/ui/label`) that Epic 11 paired
+with `Input` on `sign-in-form.tsx`. The task's own item 1 says this swap
+should follow "the same pattern Epic 9 used for the 13 table files" —
+and Epic 9's own 13 files (e.g. `category-manager.tsx`,
+`customer-manager.tsx`) kept plain `<label>` throughout; the `Label`
+component swap on `sign-in-form.tsx` was a separate, additional choice
+Epic 11 made for that one page, not a precedent this epic was asked to
+extend.
+
+**Files touched:** `create-product-form.tsx`, `set-price-form.tsx`,
+`product-detail.tsx`, `accept-stock-form.tsx`, `record-sale-form.tsx`,
+`repayment-form.tsx`, `manual-adjustment-form.tsx` (input/select swap +
+Card, except `product-detail.tsx` — swap only); `category-manager.tsx`,
+`customer-manager.tsx`, `unit-conversion-manager.tsx`, `user-manager.tsx`,
+`role-manager.tsx` (+ its skeleton), `sales-trend-chart.tsx` (Card /
+floating-panel treatment); `src/app/(dashboard)/manager/products/page.tsx`
+(new "New product" icon, delegated to a new file); new file
+`src/features/products/components/new-product-link.tsx`. Verified with
+`pnpm lint`, `pnpm test`, `npx tsc --noEmit`, and a Playwright spot-check
+(products list/create, categories, customers + detail, units, users,
+roles, product detail's both tabs and edit mode, inventory's accept-stock
+and record-sale forms, the dashboard tooltip) in both light and dark mode
+plus a 320px-wide check on the customer ledger page — matching Epic 9's
+representative-spot-check approach rather than an exhaustive route pass,
+per the epic doc's own "out of scope" note.
+
+---
+
+## 2026-11-08 — Epic 11 (Landing / Sign-in Page) decisions
+
+**The "what Adika Candle is" line lives inside the `Card` (as `CardHeader` →
+`CardTitle` + `CardDescription`), not in `AuthLayout` or as separate markup
+on `SignInPage`.** `AuthLayout` only centers `{children}` and runs the
+session check — the epic doc is explicit this stays untouched, and it has
+no business owning page copy since future auth screens (if any were ever
+added) might not want the same line. `SignInPage` previously hand-rolled
+its own `<h1>`/`<p>` above `<SignInForm />`; replaced with one `Card`
+(`w-full max-w-sm`, matching the old wrapper's width) containing
+`CardHeader` (title + description) and `CardContent` (the form) — this is
+the first real usage of `CardHeader`/`CardTitle`/`CardDescription`/
+`CardContent` together anywhere in the app (Epic 8's `manager-dashboard.tsx`
+only ever used bare `Card`+`CardContent`). `CardTitle` is given a layout-only
+className override (`text-2xl font-semibold tracking-tight`, replacing its
+default `text-sm font-medium`) rather than a general component change,
+since every other `CardTitle` use case to date is content-dense (stat
+tiles), not a welcome screen.
+
+**Copy: "Adika Candle" / "Sales, stock, and loan management for the candle
+factory."** — a shortened, sentence-cased rephrasing of the epic doc's own
+parenthetical ("candle factory sales/stock/loan management") and
+`src/app/layout.tsx`'s metadata description ("Sales, production, and
+inventory management for Adika Candle"), not copied verbatim from either.
+Dropped "production" (nothing in the built app manages production) and
+reordered to lead with the product name as a plain heading — no eyebrow
+label, no tagline-style accent word, per `frontend-design`'s restraint
+guidance.
+
+**`sign-in-form.tsx`'s two `<input>`s became `Input` (`@/components/ui/input`)
+and its `<label>`s became `Label` (`@/components/ui/label`, Radix-backed,
+already used elsewhere but never previously paired with `Input` on this
+form).** This is the same `rounded-none` → design-system swap Epic 9 did
+for the 13 table files' inputs, explicitly deferred for this form at the
+time (see Epic 9's decision entry below) and explicitly reclaimed by this
+epic's own scope doc. The form's outer `<form>` lost its own `max-w-sm`
+(now just `w-full`) since it's nested inside the Card's already-`max-w-sm`
+container — keeping both was redundant, not a conflict.
+
+**Verified via Playwright**, not just `tsc`/`vitest`: loaded `/auth/sign-in`
+after clearing the session (the in-app "Sign out" button — direct cookie
+deletion via `page.evaluate` didn't work since the session cookie is
+`httpOnly`), confirmed light and dark mode (`localStorage.theme` + reload,
+not just toggling the `dark` class directly — `next-themes` needs the
+reload to apply it consistently), signed in end-to-end as
+`manager`/`ChangeMe123!` (note: the seeded **username** is `manager`, not
+`manager@adika.local` — confirmed against `prisma/seed.ts`) and confirmed
+the redirect to `/manager/dashboard`, and checked a 320px-wide viewport for
+overflow. No code changes resulted from this pass; the design worked on
+the first implementation.
+
+---
+
 ## 2026-11-08 — Epic 10 (Loading States / Skeletons) decisions
 
 **`TableSkeleton` takes a plain `columns: number`, not a `DataTableColumn<T>[]`

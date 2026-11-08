@@ -1,7 +1,7 @@
 # Epic 12 — Page-by-Page Polish
 
 **Depends on:** 9 (Design System Foundation)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 

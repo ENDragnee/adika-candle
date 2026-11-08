@@ -1,7 +1,9 @@
 "use client";
 
+import { PlusIcon } from "@phosphor-icons/react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,45 +40,51 @@ function CreateUnitConversionForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-2 rounded-xl border border-border p-3"
-    >
-      <div className="flex min-w-48 flex-1 flex-col gap-1">
-        <label htmlFor="new-unit-name" className="text-sm font-medium">
-          Unit name
-        </label>
-        <Input
-          id="new-unit-name"
-          value={unitName}
-          onChange={(event) => setUnitName(event.target.value)}
-          placeholder="CARTON"
-          required
-        />
-      </div>
-      <div className="flex min-w-48 flex-1 flex-col gap-1">
-        <label htmlFor="new-unit-ratio" className="text-sm font-medium">
-          Ratio to KG
-        </label>
-        <Input
-          id="new-unit-ratio"
-          type="number"
-          step="any"
-          min="0"
-          value={ratioToKg}
-          onChange={(event) => setRatioToKg(event.target.value)}
-          required
-        />
-      </div>
-      <Button type="submit" disabled={createUnitConversion.isPending}>
-        {createUnitConversion.isPending ? "Adding…" : "Add unit"}
-      </Button>
-      {createUnitConversion.isError && (
-        <p className="w-full text-sm text-destructive">
-          Couldn&apos;t create unit — check the name isn&apos;t already in use.
-        </p>
-      )}
-    </form>
+    <Card>
+      <CardContent>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-wrap items-end gap-2"
+        >
+          <div className="flex min-w-48 flex-1 flex-col gap-1">
+            <label htmlFor="new-unit-name" className="text-sm font-medium">
+              Unit name
+            </label>
+            <Input
+              id="new-unit-name"
+              value={unitName}
+              onChange={(event) => setUnitName(event.target.value)}
+              placeholder="CARTON"
+              required
+            />
+          </div>
+          <div className="flex min-w-48 flex-1 flex-col gap-1">
+            <label htmlFor="new-unit-ratio" className="text-sm font-medium">
+              Ratio to KG
+            </label>
+            <Input
+              id="new-unit-ratio"
+              type="number"
+              step="any"
+              min="0"
+              value={ratioToKg}
+              onChange={(event) => setRatioToKg(event.target.value)}
+              required
+            />
+          </div>
+          <Button type="submit" disabled={createUnitConversion.isPending}>
+            <PlusIcon data-icon="inline-start" />
+            {createUnitConversion.isPending ? "Adding…" : "Add unit"}
+          </Button>
+          {createUnitConversion.isError && (
+            <p className="w-full text-sm text-destructive">
+              Couldn&apos;t create unit — check the name isn&apos;t already in
+              use.
+            </p>
+          )}
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { NewProductLink } from "@/features/products/components/new-product-link";
 import { ProductList } from "@/features/products/components/product-list";
 import { CheckPermission } from "@/lib/session";
 
@@ -25,11 +24,7 @@ export default async function ProductsPage() {
             What&apos;s sellable, by category, with its current price.
           </p>
         </div>
-        {canManage && (
-          <Button asChild>
-            <Link href="/manager/products/new">New product</Link>
-          </Button>
-        )}
+        {canManage && <NewProductLink />}
       </div>
       <ProductList />
     </div>

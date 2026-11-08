@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 
 export function SignInForm() {
@@ -34,29 +36,21 @@ export function SignInForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex w-full max-w-sm flex-col gap-3"
-    >
-      <div className="flex flex-col gap-1">
-        <label htmlFor="username" className="text-sm font-medium">
-          Username
-        </label>
-        <input
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="username">Username</Label>
+        <Input
           id="username"
           name="username"
           autoComplete="username"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
           required
-          className="h-9 rounded-none border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
         />
       </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="text-sm font-medium">
-          Password
-        </label>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="password">Password</Label>
+        <Input
           id="password"
           name="password"
           type="password"
@@ -64,7 +58,6 @@ export function SignInForm() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
-          className="h-9 rounded-none border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

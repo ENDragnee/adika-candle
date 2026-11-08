@@ -1,7 +1,9 @@
 "use client";
 
+import { PlusIcon } from "@phosphor-icons/react";
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import {
@@ -60,87 +62,97 @@ function CreateUserForm({ roles }: { roles: { id: string; name: string }[] }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-wrap items-end gap-2 rounded-xl border border-border p-3"
-      >
-        <div className="flex min-w-48 flex-1 flex-col gap-1">
-          <label htmlFor="new-user-name" className="text-sm font-medium">
-            Name
-          </label>
-          <Input
-            id="new-user-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-          />
-        </div>
-        <div className="flex min-w-48 flex-1 flex-col gap-1">
-          <label htmlFor="new-user-email" className="text-sm font-medium">
-            Email
-          </label>
-          <Input
-            id="new-user-email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </div>
-        <div className="flex min-w-40 flex-1 flex-col gap-1">
-          <label htmlFor="new-user-username" className="text-sm font-medium">
-            Username
-          </label>
-          <Input
-            id="new-user-username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-          />
-        </div>
-        <div className="flex min-w-40 flex-1 flex-col gap-1">
-          <label htmlFor="new-user-role" className="text-sm font-medium">
-            Role
-          </label>
-          <Select value={roleId} onValueChange={setRoleId}>
-            <SelectTrigger id="new-user-role" className="w-full">
-              <SelectValue placeholder="Select a role" />
-            </SelectTrigger>
-            <SelectContent>
-              {roles.map((role) => (
-                <SelectItem key={role.id} value={role.id}>
-                  {role.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button type="submit" disabled={createUser.isPending}>
-          {createUser.isPending ? "Creating…" : "Create user"}
-        </Button>
-        {createUser.isError && (
-          <p className="w-full text-sm text-destructive">
-            Couldn&apos;t create user — check the email/username aren&apos;t
-            already in use.
-          </p>
-        )}
-      </form>
-      {temporaryPassword && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/50 p-3 text-sm">
-          <span>
-            Temporary password (shown once — share it with the new user):
-          </span>
-          <code className="rounded-md bg-background px-2 py-1 font-mono">
-            {temporaryPassword}
-          </code>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setTemporaryPassword(null)}
+      <Card>
+        <CardContent>
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-wrap items-end gap-2"
           >
-            Dismiss
-          </Button>
-        </div>
+            <div className="flex min-w-48 flex-1 flex-col gap-1">
+              <label htmlFor="new-user-name" className="text-sm font-medium">
+                Name
+              </label>
+              <Input
+                id="new-user-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+              />
+            </div>
+            <div className="flex min-w-48 flex-1 flex-col gap-1">
+              <label htmlFor="new-user-email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="new-user-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
+            <div className="flex min-w-40 flex-1 flex-col gap-1">
+              <label
+                htmlFor="new-user-username"
+                className="text-sm font-medium"
+              >
+                Username
+              </label>
+              <Input
+                id="new-user-username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+              />
+            </div>
+            <div className="flex min-w-40 flex-1 flex-col gap-1">
+              <label htmlFor="new-user-role" className="text-sm font-medium">
+                Role
+              </label>
+              <Select value={roleId} onValueChange={setRoleId}>
+                <SelectTrigger id="new-user-role" className="w-full">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={createUser.isPending}>
+              <PlusIcon data-icon="inline-start" />
+              {createUser.isPending ? "Creating…" : "Create user"}
+            </Button>
+            {createUser.isError && (
+              <p className="w-full text-sm text-destructive">
+                Couldn&apos;t create user — check the email/username aren&apos;t
+                already in use.
+              </p>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+      {temporaryPassword && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-2 text-sm">
+            <span>
+              Temporary password (shown once — share it with the new user):
+            </span>
+            <code className="rounded-md bg-muted px-2 py-1 font-mono">
+              {temporaryPassword}
+            </code>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setTemporaryPassword(null)}
+            >
+              Dismiss
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

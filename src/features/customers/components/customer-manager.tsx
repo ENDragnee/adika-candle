@@ -1,8 +1,10 @@
 "use client";
 
+import { PlusIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,50 +43,58 @@ function CreateCustomerForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-2 rounded-xl border border-border p-3"
-    >
-      <div className="flex min-w-48 flex-1 flex-col gap-1">
-        <label htmlFor="new-customer-name" className="text-sm font-medium">
-          Name
-        </label>
-        <Input
-          id="new-customer-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
-      </div>
-      <div className="flex min-w-40 flex-1 flex-col gap-1">
-        <label htmlFor="new-customer-phone" className="text-sm font-medium">
-          Phone
-        </label>
-        <Input
-          id="new-customer-phone"
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
-        />
-      </div>
-      <div className="flex min-w-40 flex-1 flex-col gap-1">
-        <label htmlFor="new-customer-location" className="text-sm font-medium">
-          Location
-        </label>
-        <Input
-          id="new-customer-location"
-          value={location}
-          onChange={(event) => setLocation(event.target.value)}
-        />
-      </div>
-      <Button type="submit" disabled={createCustomer.isPending}>
-        {createCustomer.isPending ? "Adding…" : "Add customer"}
-      </Button>
-      {createCustomer.isError && (
-        <p className="w-full text-sm text-destructive">
-          Couldn&apos;t create customer.
-        </p>
-      )}
-    </form>
+    <Card>
+      <CardContent>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-wrap items-end gap-2"
+        >
+          <div className="flex min-w-48 flex-1 flex-col gap-1">
+            <label htmlFor="new-customer-name" className="text-sm font-medium">
+              Name
+            </label>
+            <Input
+              id="new-customer-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
+          </div>
+          <div className="flex min-w-40 flex-1 flex-col gap-1">
+            <label htmlFor="new-customer-phone" className="text-sm font-medium">
+              Phone
+            </label>
+            <Input
+              id="new-customer-phone"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+            />
+          </div>
+          <div className="flex min-w-40 flex-1 flex-col gap-1">
+            <label
+              htmlFor="new-customer-location"
+              className="text-sm font-medium"
+            >
+              Location
+            </label>
+            <Input
+              id="new-customer-location"
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+            />
+          </div>
+          <Button type="submit" disabled={createCustomer.isPending}>
+            <PlusIcon data-icon="inline-start" />
+            {createCustomer.isPending ? "Adding…" : "Add customer"}
+          </Button>
+          {createCustomer.isError && (
+            <p className="w-full text-sm text-destructive">
+              Couldn&apos;t create customer.
+            </p>
+          )}
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 

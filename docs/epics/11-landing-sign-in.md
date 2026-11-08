@@ -1,7 +1,7 @@
 # Epic 11 — Landing / Sign-in Page
 
 **Depends on:** 9 (Design System Foundation)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 

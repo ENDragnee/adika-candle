@@ -1,7 +1,9 @@
 "use client";
 
+import { PlusIcon } from "@phosphor-icons/react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,44 +40,49 @@ function CreateCategoryForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-2 rounded-xl border border-border p-3"
-    >
-      <div className="flex min-w-48 flex-1 flex-col gap-1">
-        <label htmlFor="new-category-name" className="text-sm font-medium">
-          Name
-        </label>
-        <Input
-          id="new-category-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
-      </div>
-      <div className="flex min-w-48 flex-1 flex-col gap-1">
-        <label
-          htmlFor="new-category-description"
-          className="text-sm font-medium"
+    <Card>
+      <CardContent>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-wrap items-end gap-2"
         >
-          Description
-        </label>
-        <Input
-          id="new-category-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </div>
-      <Button type="submit" disabled={createCategory.isPending}>
-        {createCategory.isPending ? "Adding…" : "Add category"}
-      </Button>
-      {createCategory.isError && (
-        <p className="w-full text-sm text-destructive">
-          Couldn&apos;t create category — check the name isn&apos;t already in
-          use.
-        </p>
-      )}
-    </form>
+          <div className="flex min-w-48 flex-1 flex-col gap-1">
+            <label htmlFor="new-category-name" className="text-sm font-medium">
+              Name
+            </label>
+            <Input
+              id="new-category-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
+          </div>
+          <div className="flex min-w-48 flex-1 flex-col gap-1">
+            <label
+              htmlFor="new-category-description"
+              className="text-sm font-medium"
+            >
+              Description
+            </label>
+            <Input
+              id="new-category-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </div>
+          <Button type="submit" disabled={createCategory.isPending}>
+            <PlusIcon data-icon="inline-start" />
+            {createCategory.isPending ? "Adding…" : "Add category"}
+          </Button>
+          {createCategory.isError && (
+            <p className="w-full text-sm text-destructive">
+              Couldn&apos;t create category — check the name isn&apos;t already
+              in use.
+            </p>
+          )}
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 

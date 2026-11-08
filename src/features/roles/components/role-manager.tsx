@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRoles, useUpdateRolePermissions } from "../hooks/use-roles";
 import type { ModuleDTO, RoleDTO } from "../validators/role.schema";
@@ -37,64 +44,64 @@ function RoleCard({ role, modules }: { role: RoleDTO; modules: ModuleDTO[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 border border-border p-3">
-      <div>
-        <h3 className="text-sm font-semibold">{role.name}</h3>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-semibold">{role.name}</CardTitle>
         {role.description && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {role.description}
+          <CardDescription>{role.description}</CardDescription>
+        )}
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
+          {modules.map((module) => (
+            <div key={module.id} className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium capitalize">
+                {module.name}
+              </span>
+              <div className="flex flex-wrap gap-3">
+                {module.permissions.map((permission) => (
+                  <label
+                    key={permission.id}
+                    className="flex items-center gap-1.5 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(permission.id)}
+                      onChange={() => toggle(permission.id)}
+                      className="size-4"
+                    />
+                    {permission.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!isDirty || updatePermissions.isPending}
+          >
+            {updatePermissions.isPending ? "Saving…" : "Save"}
+          </Button>
+          {isDirty && (
+            <Button size="sm" variant="ghost" onClick={handleReset}>
+              Reset
+            </Button>
+          )}
+        </div>
+        {updatePermissions.isError && (
+          <p className="text-sm text-destructive">
+            {(
+              updatePermissions.error as {
+                response?: { data?: { error?: string } };
+              }
+            )?.response?.data?.error ?? "Couldn't save permissions."}
           </p>
         )}
-      </div>
-      <div className="flex flex-col gap-3">
-        {modules.map((module) => (
-          <div key={module.id} className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium capitalize">
-              {module.name}
-            </span>
-            <div className="flex flex-wrap gap-3">
-              {module.permissions.map((permission) => (
-                <label
-                  key={permission.id}
-                  className="flex items-center gap-1.5 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(permission.id)}
-                    onChange={() => toggle(permission.id)}
-                    className="size-4"
-                  />
-                  {permission.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={!isDirty || updatePermissions.isPending}
-        >
-          {updatePermissions.isPending ? "Saving…" : "Save"}
-        </Button>
-        {isDirty && (
-          <Button size="sm" variant="ghost" onClick={handleReset}>
-            Reset
-          </Button>
-        )}
-      </div>
-      {updatePermissions.isError && (
-        <p className="text-sm text-destructive">
-          {(
-            updatePermissions.error as {
-              response?: { data?: { error?: string } };
-            }
-          )?.response?.data?.error ?? "Couldn't save permissions."}
-        </p>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -103,26 +110,28 @@ function RoleCard({ role, modules }: { role: RoleDTO; modules: ModuleDTO[] }) {
 // Manager), see docs/DECISIONS.md "RBAC modeled as data".
 function RoleCardSkeleton() {
   return (
-    <div className="flex flex-col gap-3 border border-border p-3">
-      <div className="flex flex-col gap-1.5">
+    <Card>
+      <CardHeader>
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-3 w-48" />
-      </div>
-      <div className="flex flex-col gap-3">
-        {Array.from({ length: 2 }, (_, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static group count, never reordered
-          <div key={index} className="flex flex-col gap-1.5">
-            <Skeleton className="h-4 w-20" />
-            <div className="flex flex-wrap gap-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-24" />
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 2 }, (_, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static group count, never reordered
+            <div key={index} className="flex flex-col gap-1.5">
+              <Skeleton className="h-4 w-20" />
+              <div className="flex flex-wrap gap-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-24" />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-      <Skeleton className="h-8 w-20" />
-    </div>
+          ))}
+        </div>
+        <Skeleton className="h-8 w-20" />
+      </CardContent>
+    </Card>
   );
 }
 

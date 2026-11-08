@@ -44,7 +44,7 @@ export function SalesTrendChart({ points }: { points: SalesTrendPointDTO[] }) {
       <div className="relative">
         {hovered && (
           <div
-            className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 -translate-y-full border border-border bg-background px-2 py-1 text-xs shadow-sm"
+            className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-popover px-2 py-1 text-xs text-popover-foreground ring-1 ring-foreground/10 shadow-md"
             style={{
               left: `${((hoveredIndex ?? 0) + 0.5) * (100 / points.length)}%`,
             }}

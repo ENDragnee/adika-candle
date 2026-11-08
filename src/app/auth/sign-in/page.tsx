@@ -1,15 +1,26 @@
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 
 export default function SignInPage() {
   return (
-    <div className="flex w-full max-w-sm flex-col gap-6">
-      <div>
-        <h1 className="text-lg font-semibold">Sign in</h1>
-        <p className="text-sm text-muted-foreground">
-          Adika Candle factory management
-        </p>
-      </div>
-      <SignInForm />
-    </div>
+    <Card className="w-full max-w-sm">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold tracking-tight">
+          Adika Candle
+        </CardTitle>
+        <CardDescription>
+          Sales, stock, and loan management for the candle factory.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <SignInForm />
+      </CardContent>
+    </Card>
   );
 }

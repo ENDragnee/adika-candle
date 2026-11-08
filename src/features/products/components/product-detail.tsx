@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DetailSkeleton } from "@/components/ui/skeleton";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useProduct, useUpdateProduct } from "../hooks/use-products";
 import { PriceHistory } from "./price-history";
 import { SetPriceForm } from "./set-price-form";
-
-const inputClassName =
-  "h-8 w-full rounded-none border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50";
 
 type Tab = "overview" | "price-history";
 
@@ -61,11 +66,10 @@ function ProductOverview({
           <label htmlFor="edit-product-name" className="text-sm font-medium">
             Name
           </label>
-          <input
+          <Input
             id="edit-product-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className={inputClassName}
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -75,18 +79,18 @@ function ProductOverview({
           >
             Category
           </label>
-          <select
-            id="edit-product-category"
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-            className={inputClassName}
-          >
-            {categories?.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+          <Select value={categoryId} onValueChange={setCategoryId}>
+            <SelectTrigger id="edit-product-category" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories?.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-col gap-1">
           <label
@@ -95,7 +99,7 @@ function ProductOverview({
           >
             Low-stock alert threshold (kg)
           </label>
-          <input
+          <Input
             id="edit-product-low-stock-threshold"
             type="number"
             min="0"
@@ -103,7 +107,6 @@ function ProductOverview({
             placeholder="No alert"
             value={lowStockThresholdKg}
             onChange={(event) => setLowStockThresholdKg(event.target.value)}
-            className={inputClassName}
           />
           <p className="text-xs text-muted-foreground">
             Flagged on the Manager dashboard when stock falls below this. Leave
