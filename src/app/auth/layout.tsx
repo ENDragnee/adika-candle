@@ -1,3 +1,4 @@
+import { PublicNavbar } from "@/components/shell/public-navbar";
 import { RoleRedirector } from "@/lib/redirector";
 import { GetApiSession } from "@/lib/session";
 
@@ -16,8 +17,11 @@ export default async function AuthLayout({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      {children}
-    </main>
+    <div className="flex min-h-screen flex-col">
+      <PublicNavbar showSignIn={false} />
+      <main className="flex flex-1 items-center justify-center p-6">
+        {children}
+      </main>
+    </div>
   );
 }

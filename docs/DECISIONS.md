@@ -12,6 +12,68 @@ undo.
 
 ---
 
+## 2026-11-08 — Public landing page + navbar (outside the epic sequence)
+
+**Built directly on request, after Epic 13** — reverses Epic 11's explicit
+scope call ("no public marketing content... no new public routes for
+unauthenticated visitors beyond `/auth/sign-in`") now that the user
+specifically asked for a real landing page at `/` instead of `/` being a
+pure redirect. Confirmed with the user first (two quick scope questions)
+rather than guessing: kept it minimal — brand + one-line description +
+"Sign in" CTA, no marketing sections/photography — and a shared navbar
+with just brand + theme switcher + "Sign in" (no nav links, since there's
+still only one public destination).
+
+**`src/app/page.tsx` no longer unconditionally calls `RoleRedirector()`.**
+It now calls `GetApiSession()` directly first: a signed-in session still
+goes through `RoleRedirector()` exactly as before (dashboard by role, or
+`/unauthorized`); a signed-out visitor now renders the new landing page
+instead of being redirected to `/auth/sign-in`. `src/proxy.ts`'s
+one-directional protected-route redirect (`/manager`, `/inventory`) and
+`src/app/auth/layout.tsx`'s own already-signed-in redirect are both
+unchanged — this only touches the one path that used to force every
+visitor through sign-in.
+
+**New `src/components/shell/public-navbar.tsx` + `theme-switcher.tsx`,
+not a reuse/refactor of `AccountMenu`'s embedded theme section.**
+`AccountMenu` bundles its `THEME_OPTIONS` list directly into its own
+account dropdown (trigger is the user's avatar) — there's no signed-in
+user on these pages to anchor that trigger to, so `ThemeSwitcher` is a
+small standalone dropdown (icon-only trigger, same `THEME_OPTIONS` shape
+duplicated rather than extracted, per the "three similar lines beats a
+premature abstraction" rule — the two components' triggers are
+structurally different enough that sharing would mean passing the
+trigger markup through as a prop for a 5-line array). `ThemeSwitcher`'s
+trigger icon reflects the resolved theme only after mount (`useEffect`
++ `mounted` guard) to avoid a server/client hydration mismatch, same
+problem class `next-themes`' own docs call out.
+
+**`PublicNavbar` takes a `showSignIn` prop (default `true`) rather than
+sniffing the current route** — explicit prop over `usePathname()`
+cleverness, matching this codebase's existing preference for explicit
+props (`AccountMenu`'s `align`/`side`). `src/app/auth/layout.tsx` passes
+`showSignIn={false}` so the sign-in page's navbar doesn't show a
+redundant "Sign in" button while the whole page below it is the sign-in
+form; the landing page keeps the default.
+
+**New `src/features/auth/components/landing-page.tsx`** — plain
+`LandingPage` component (brand heading, one-line description, "Sign in"
+button), composed into `page.tsx` below the new navbar. `SignInPage`
+(`src/app/auth/sign-in/page.tsx`) itself was left untouched — its
+Card-based "Adika Candle" title + description (Epic 11) now reads as
+slightly redundant with the navbar above it, but that's a minor,
+separate polish call this request didn't ask for.
+
+**Verified via Playwright**, signed out: `/` renders the landing page
+(no redirect) with the navbar, theme switcher cycles light/dark/system
+and persists across navigation to `/auth/sign-in` (navbar renders there
+too, no duplicate "Sign in" button), and a 375px viewport. Signed in as
+`manager`: `/` and `/auth/sign-in` both still redirect to
+`/manager/dashboard` exactly as before — no regression to the existing
+one-directional auth-gate behavior.
+
+---
+
 ## 2026-11-08 — Epic 13 (Modal & Action-Menu UX) decisions
 
 **Icon choice: `DotsThreeVerticalIcon` (Phosphor), `ghost` variant,

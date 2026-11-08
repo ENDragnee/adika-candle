@@ -31,17 +31,22 @@ instead of literal "Loading X…" text. Landing/Sign-in (Epic 11): a
 Card-based sign-in page. Page-by-Page Polish (Epic 12): the remaining
 hand-rolled forms/boxes adopted `Input`/`Select`/`Card`.
 
-Two further rounds of work landed **outside the epic sequence** (built
+Three further rounds of work landed **outside the epic sequence** (built
 directly on request, not pre-planned as numbered epics — still logged in
 `docs/DECISIONS.md` under their own dated headings): a **mobile-responsive
 shell** (sidebar → bottom tab bar + top navbar below `md`, an
 avatar-based account menu with a theme switcher, `DataTable`'s mobile
-card view) and **backend + frontend pagination** (every REST list
-endpoint except `roles`, a shared `Pagination` component wired into
-`DataTable` and the composed tables). Modal & Action-Menu UX (Epic 13)
-is done: a new `AlertDialog` primitive, a per-row "..." `DropdownMenu`
-action menu (Edit/Activate/Deactivate) on the 4 composed tables, and
-every list-context create/edit form (plus `SetPriceForm`,
+card view), **backend + frontend pagination** (every REST list endpoint
+except `roles`, a shared `Pagination` component wired into `DataTable`
+and the composed tables), and a **public landing page + navbar**
+(`/` renders a real landing page for signed-out visitors instead of
+redirecting straight to sign-in; a shared `PublicNavbar` +
+`ThemeSwitcher` render on both `/` and `/auth/sign-in` — this reverses
+Epic 11's original "no landing page beyond sign-in" scope call, since
+the user explicitly asked for one afterward). Modal & Action-Menu UX
+(Epic 13) is done: a new `AlertDialog` primitive, a per-row "..."
+`DropdownMenu` action menu (Edit/Activate/Deactivate) on the 4 composed
+tables, and every list-context create/edit form (plus `SetPriceForm`,
 `RepaymentForm`, `ManualAdjustmentForm`) moved from always-visible
 inline forms/rows into `Dialog`-based modals.
 
