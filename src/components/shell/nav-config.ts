@@ -2,6 +2,7 @@
 
 import {
   ArchiveIcon,
+  BookOpenIcon,
   ChartLineUpIcon,
   FlaskIcon,
   GaugeIcon,
@@ -37,6 +38,7 @@ export const MANAGER_NAV_ITEMS: NavItem[] = [
   { label: "Users", href: "/manager/users", icon: UserGearIcon },
   { label: "Roles", href: "/manager/roles", icon: ShieldCheckIcon },
   { label: "Settings", href: "/manager/settings", icon: GearSixIcon },
+  { label: "Legend", href: "/legend", icon: BookOpenIcon },
 ];
 
 export const INVENTORY_NAV_ITEMS: NavItem[] = [
@@ -45,4 +47,5 @@ export const INVENTORY_NAV_ITEMS: NavItem[] = [
   { label: "Materials", href: "/inventory/materials", icon: FlaskIcon },
   { label: "Sales", href: "/inventory/sales", icon: ReceiptIcon },
   { label: "Customers", href: "/inventory/customers", icon: UsersIcon },
+  { label: "Legend", href: "/legend", icon: BookOpenIcon },
 ];

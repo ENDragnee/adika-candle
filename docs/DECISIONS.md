@@ -12,6 +12,77 @@ undo.
 
 ---
 
+## 2026-11-09 — Epic 19 (Legend & Walkthrough Reference Page) decisions
+
+Implemented exactly as specced — the epic doc already pinned down the route
+shape (`/legend`, a sibling of `manager/`/`inventory/`, inheriting only the
+shared `(dashboard)/layout.tsx`'s plain signed-in check), the permission gate
+(none), and nav placement (a top-level item in both `MANAGER_NAV_ITEMS` and
+`INVENTORY_NAV_ITEMS`), so no routing/permission call was left to make.
+
+**`legend/page.tsx` does not set `export const instant = false;`.** The
+epic doc's own text reads as slightly ambiguous on this ("still applies...
+unless it wants `session.user.role`..."), but AGENTS.md's actual rule is
+narrower: only a page/layout whose **own body** calls `GetSession`/
+`GetApiSession`/`CheckPermission`/`CheckAnyPermission` needs the flag itself.
+`legend/page.tsx` reads no session at all (it renders unconditionally,
+identically for both roles) — the shared `(dashboard)/layout.tsx` already
+carries `instant = false` for the session read it does on every route's
+behalf. This is the first page in the app with no page-level permission
+check of its own, so there was no existing precedent to copy; every other
+`page.tsx` under `(dashboard)/` calls `CheckPermission` and therefore carries
+the flag.
+
+**Content is a mix of a small TOC data array (`src/features/legend/
+legend-sections.ts`) and plain JSX (`src/features/legend/components/
+legend-content.tsx`)** — matches the epic doc's "a sectioned data array or
+plain JSX" framing; a full data-driven renderer wasn't warranted for 7
+fixed, differently-shaped sections (tables, badges, status cards, a
+two-column role comparison) that are each written once and never iterated
+generically.
+
+**The "Daily Stock Report columns" and "Ledger entry types" sections use a
+plain flex-row definition-list layout, not the shared `src/components/ui/
+table.tsx` primitive**, discovered during browser verification: `Table`'s
+auto table-layout sizes each column to its widest cell's *unwrapped*
+preferred width, and with the `overflow-x-auto` wrapper that primitive uses
+for scrollable data tables, a long prose "meaning" cell (the Closing Stock
+row, mentioning both `StockBalance` and `RawMaterialBalance`) rendered as
+one long line that ran off the card's right edge instead of wrapping —
+invisible until an actual Playwright screenshot caught it (the accessibility
+snapshot alone didn't show it). `Table` is correctly built for the compact,
+genuinely-tabular data it's used for everywhere else in this app; this
+page's content is closer to a glossary than a data grid, so a reusable local
+`DefinitionRow` (term + wrapping description, `flex-col` on mobile/
+`flex-row` on `sm+`) replaced both tables rather than patching `Table`
+itself or this one page's content to avoid the primitive's auto-layout
+behavior.
+
+**Stock Health's 5 status rows duplicate `STATUS_META`'s icon/label/color
+mapping from `stock-health-tab.tsx` locally rather than importing it** — this
+app's feature-folder convention keeps features independent (`src/features/
+legend/` importing from `src/features/analytics/` would cross that
+boundary), and it's five display rows, not logic worth sharing. The
+threshold prose (50%/100%/300% of `Product.lowStockThresholdKg`) is copied
+from the real `STOCK_HEALTH_CRITICAL_RATIO`/`STOCK_HEALTH_OVERSTOCKED_RATIO`
+constants in `src/app/api/graphql/route.ts`, not re-derived, so it can't
+silently drift from the actual bucketing logic.
+
+**Files touched:** new `src/features/legend/{legend-sections.ts,
+components/legend-content.tsx}`; new `src/app/(dashboard)/legend/page.tsx`;
+`src/components/shell/nav-config.ts` (+Legend in both nav arrays, new
+`BookOpenIcon` import). Verified with `pnpm lint`, `pnpm test`, `npx tsc
+--noEmit` (all clean) and a Playwright pass against the real dev server as
+both `manager` and `inventory`: the nav item appears in the correct
+position for each role's nav array, `TopBar` shows "Legend" as the title
+with the page's description as its subtitle and no permission redirect for
+either role, all 7 sections and the anchor-link TOC render correctly, no
+console errors, light and dark mode, and a 375px mobile viewport (bottom
+nav + full-width stacked content). The table-overflow bug above was caught
+and fixed during this same verification pass, not left for a later session.
+
+---
+
 ## 2026-11-09 — Epic 18 (Page Header Consolidation) decisions
 
 **`usePageTitle`/`page-title-store.ts` replaced outright with

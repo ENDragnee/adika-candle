@@ -2,7 +2,7 @@
 
 **Depends on:** 3 (Unit Settings), 4 (Stock), 5 (Customers + Loans), 14
 (Raw Materials & Production Tracking), 17 (Analytics Hub)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 
