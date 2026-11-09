@@ -12,6 +12,75 @@ undo.
 
 ---
 
+## 2026-11-09 — Epic 18 (Page Header Consolidation) decisions
+
+**`usePageTitle`/`page-title-store.ts` replaced outright with
+`usePageHeader`/`page-header-store.ts`** (new `description: string | null`
+field alongside `title`, same mount/unmount-clear semantics) — a straight
+rename+extend, not a back-compat shim, per this repo's "change the code,
+don't alias it" convention. New `src/components/shell/page-header.tsx`
+exports `<PageHeader title? description? />`, a `"use client"` leaf that
+just calls the hook and renders `null` — exists purely so the many
+**Server Component** `page.tsx` files (which can't call hooks directly)
+can set `TopBar`'s description declaratively, in the exact spot their old
+inline `<h1>/<p>` block used to sit, without being converted into Client
+Components themselves. `TopBar` renders the description as a truncated
+second line under the title.
+
+**Removed all 19 redundant inline headings found by the planned
+`grep -rn "text-lg font-semibold" "src/app/(dashboard)"` audit**: 16 flat
+list-page `page.tsx` files had their own `<h1>{label}</h1><p>{description}</p>`
+duplicating the nav-derived `TopBar` title — each now renders
+`<PageHeader description="..." />` instead, carrying the same description
+text forward. 3 generic entity-wrapper `<h1>`s (`manager/products/[id]/page.tsx`
+→ `"Product"`, `manager/customers/[id]/page.tsx` and
+`inventory/customers/[id]/page.tsx` → `"Customer"`) were dropped outright
+rather than kept as section labels — confirmed first that the child
+Client Component each page renders (`ProductDetail`, `CustomerProfile`,
+`CustomerLedgerView` — the latter two both via `CustomerHeader`) already
+sets the entity's own name as the `TopBar` title, so the generic label
+added nothing. Note these three lived in the page wrapper, not in
+`product-detail.tsx`/`ProductOverview` itself, which already had no such
+heading.
+
+**`product-stock-detail.tsx` and `material-detail.tsx` folded their own
+in-component `<h1>{name}</h1><p>Current balance: {x} kg</p>` into a single
+`usePageHeader({ title, description })` call** (title carries the
+entity name + SKU for the stock case, description carries the balance
+line) — same pattern `unit-conversion-manager.tsx`/`material-manager.tsx`
+now follow for their two settings pages, which previously set the *same*
+title twice (once via their own `usePageTitle("...")` call, once via
+their `page.tsx` wrapper's independent inline heading) — now only the
+feature component's `usePageHeader` call remains, carrying title +
+description together, and the wrapper page just renders the bare
+component.
+
+**Verified** with `pnpm lint`, `pnpm test`, `npx tsc --noEmit` (all clean)
+and a Playwright pass as both `manager` and `inventory` against the real
+dev server: every converted list page, the product/stock/material/customer
+detail pages, and the two settings pages render their title+description
+correctly with no leftover inline heading; a 375px mobile viewport check
+(`manager/settings/units`, `manager/dashboard`) confirmed the new
+three-line mobile header (brand / title / description) truncates cleanly
+with no overlap or crowding against the page content below.
+
+**Files touched:** new `src/components/shell/{page-header-store.ts,
+use-page-header.ts, page-header.tsx}`; deleted `src/components/shell/
+{page-title-store.ts, use-page-title.ts}`; `src/components/shell/top-bar.tsx`;
+`src/features/{products/components/product-detail.tsx,
+stock/components/product-stock-detail.tsx,
+raw-materials/components/{material-detail.tsx, material-manager.tsx},
+customers/components/customer-header.tsx,
+unit-conversions/components/unit-conversion-manager.tsx}`; 16 flat
+`page.tsx` files under `src/app/(dashboard)/{manager,inventory}/**`; 3
+`[id]/page.tsx` detail-page wrappers (`manager/products/[id]`,
+`manager/customers/[id]`, `inventory/customers/[id]`);
+`src/app/(dashboard)/manager/settings/{units,materials}/page.tsx`
+(inline heading removed entirely, now just render their feature
+component).
+
+---
+
 ## 2026-11-08 — Top bar, bigger components, and password visibility (outside the epic sequence)
 
 **Built directly on request, after the modal-folding round above**: a persistent top bar (page name + a welcome greeting, structured to host breadcrumbs later), a general sizing bump across the shared UI primitives ("font, cards and components... hard for the eye"), and a password show/hide toggle. The third ask ("this includes when the manager creates new user and updates passwords") named flows that didn't exist yet — confirmed scope with the user first (one question) rather than guessing, since the only options were (a) wire the toggle into sign-in only, (b) also add self-service change-password, or (c) reverse Epic 7's "auto-generated temp password, never manager-typed" decision and let a Manager set passwords directly. User chose (c).

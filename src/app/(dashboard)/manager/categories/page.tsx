@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { CategoryManager } from "@/features/categories/components/category-manager";
 import { CheckPermission } from "@/lib/session";
 
@@ -14,13 +15,7 @@ export default async function CategoriesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Categories</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Define product categories. Deactivating a category hides it from new
-          product assignment without deleting its history.
-        </p>
-      </div>
+      <PageHeader description="Define product categories. Deactivating a category hides it from new product assignment without deleting its history." />
       <CategoryManager />
     </div>
   );

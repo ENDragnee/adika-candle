@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { RoleManager } from "@/features/roles/components/role-manager";
 import { CheckPermission } from "@/lib/session";
 
@@ -14,13 +15,7 @@ export default async function RolesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Roles</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Edit which permissions each role has. Role names aren&apos;t editable
-          here — only the permission assignments.
-        </p>
-      </div>
+      <PageHeader description="Edit which permissions each role has. Role names aren't editable here — only the permission assignments." />
       <RoleManager />
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePageTitle } from "@/components/shell/use-page-title";
+import { usePageHeader } from "@/components/shell/use-page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -345,7 +345,7 @@ export function ProductDetail({
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const { data: product } = useProduct(productId);
-  usePageTitle(product?.name);
+  usePageHeader({ title: product?.name });
 
   return (
     <div className="flex flex-col gap-4">

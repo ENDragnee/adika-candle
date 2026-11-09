@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { SaleList } from "@/features/sales/components/sale-list";
 import { StockBalanceList } from "@/features/stock/components/stock-balance-list";
 import { CheckPermission, GetApiSession } from "@/lib/session";
@@ -20,12 +21,7 @@ export default async function InventoryDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-lg font-semibold">Inventory dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your recent sales and current stock levels.
-        </p>
-      </div>
+      <PageHeader description="Your recent sales and current stock levels." />
 
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">My recent sales</h2>

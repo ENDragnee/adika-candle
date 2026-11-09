@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { InventoryMaterialsView } from "@/features/raw-materials/components/inventory-materials-view";
 import { CheckPermission } from "@/lib/session";
 
@@ -14,13 +15,7 @@ export default async function InventoryMaterialsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Raw materials</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Current balances across all raw materials. Record incoming or consumed
-          activity below.
-        </p>
-      </div>
+      <PageHeader description="Current balances across all raw materials. Record incoming or consumed activity below." />
       <InventoryMaterialsView />
     </div>
   );

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { CustomerManager } from "@/features/customers/components/customer-manager";
 import { CheckPermission } from "@/lib/session";
 
@@ -14,12 +15,7 @@ export default async function CustomersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Customers</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Standard customers who can lend/borrow against future purchases.
-        </p>
-      </div>
+      <PageHeader description="Standard customers who can lend/borrow against future purchases." />
       <CustomerManager />
     </div>
   );

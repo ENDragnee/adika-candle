@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { SaleList } from "@/features/sales/components/sale-list";
 import { CheckPermission } from "@/lib/session";
 
@@ -14,12 +15,7 @@ export default async function ManagerSalesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Sales</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Read-only sales history across every customer and product.
-        </p>
-      </div>
+      <PageHeader description="Read-only sales history across every customer and product." />
       <SaleList />
     </div>
   );

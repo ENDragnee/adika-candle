@@ -3,14 +3,16 @@
 import { usePathname } from "next/navigation";
 import type { AppUser } from "@/lib/auth";
 import type { NavItem } from "./nav-config";
-import { usePageTitleStore } from "./page-title-store";
+import { usePageHeaderStore } from "./page-header-store";
 
 // Persistent header above every page's own content — the page name (so the
 // person always knows where they are) plus a welcome greeting. The title
 // defaults to whichever nav item matches the current route (same
 // active-route logic AppShell/BottomNav already use for highlighting), but
-// a page can override it via usePageTitle() for something more specific
-// (e.g. a product's own name instead of the generic "Products" label).
+// a page can override the title and/or add a description via
+// usePageHeader()/<PageHeader /> for something more specific (e.g. a
+// product's own name instead of the generic "Products" label, or a one-line
+// explainer that used to live in the page's own now-removed inline heading).
 //
 // The left side is deliberately just a title container today, not a
 // breadcrumb trail — but it's the one place a future Breadcrumbs component
@@ -30,7 +32,8 @@ export function TopBar({
   navItems: NavItem[];
 }) {
   const pathname = usePathname();
-  const overrideTitle = usePageTitleStore((state) => state.title);
+  const overrideTitle = usePageHeaderStore((state) => state.title);
+  const description = usePageHeaderStore((state) => state.description);
   const title = overrideTitle ?? DeriveDefaultTitle(pathname, navItems);
   const firstName = user.name.split(" ")[0];
 
@@ -46,6 +49,11 @@ export function TopBar({
         <h1 className="truncate text-lg font-semibold text-foreground">
           {title}
         </h1>
+        {description && (
+          <p className="truncate text-sm text-muted-foreground">
+            {description}
+          </p>
+        )}
       </div>
       <p className="shrink-0 text-sm text-muted-foreground">
         Welcome back,{" "}

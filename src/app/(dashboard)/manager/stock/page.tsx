@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { StockBalanceList } from "@/features/stock/components/stock-balance-list";
 import { CheckPermission } from "@/lib/session";
 
@@ -14,13 +15,7 @@ export default async function ManagerStockPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Stock</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Current balances across all products. Select a product for its full
-          ledger.
-        </p>
-      </div>
+      <PageHeader description="Current balances across all products. Select a product for its full ledger." />
       <StockBalanceList detailHrefBase="/manager/stock" />
     </div>
   );

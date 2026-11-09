@@ -17,10 +17,5 @@ export default async function ProductDetailPage(
   const canManage = await CheckPermission("product:manage");
   const { id } = await props.params;
 
-  return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Product</h1>
-      <ProductDetail productId={id} canManage={canManage} />
-    </div>
-  );
+  return <ProductDetail productId={id} canManage={canManage} />;
 }

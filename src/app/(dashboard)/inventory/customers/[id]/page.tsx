@@ -17,10 +17,5 @@ export default async function InventoryCustomerDetailPage(
 
   const { id } = await props.params;
 
-  return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Customer</h1>
-      <CustomerLedgerView customerId={id} />
-    </div>
-  );
+  return <CustomerLedgerView customerId={id} />;
 }

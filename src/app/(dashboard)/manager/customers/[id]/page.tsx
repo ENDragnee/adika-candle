@@ -17,10 +17,5 @@ export default async function ManagerCustomerDetailPage(
 
   const { id } = await props.params;
 
-  return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Customer</h1>
-      <CustomerProfile customerId={id} />
-    </div>
-  );
+  return <CustomerProfile customerId={id} />;
 }

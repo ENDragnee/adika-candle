@@ -25,6 +25,9 @@ conventions.
 | 15 | [Product Cost & Margin Tracking](./15-product-cost-margin-tracking.md) | 2, 6 | done |
 | 16 | [Motion: Page Transitions & Chart Animations](./16-motion-page-transitions-chart-animations.md) | 9 | done |
 | 17 | [Analytics Hub (Tabbed)](./17-analytics-hub.md) | 8, 14, 15, 16 | done |
+| 18 | [Page Header Consolidation](./18-page-header-consolidation.md) | 9 | done |
+| 19 | [Legend & Walkthrough Reference Page](./19-legend-walkthrough-reference.md) | 3, 4, 5, 14, 17 | not-started |
+| 20 | [Interactive Product Tutorial](./20-interactive-product-tutorial.md) | 9, 16 | not-started |
 
 Update the Status column as epics move through
 not-started → in-progress → done.

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { CheckPermission } from "@/lib/session";
 
 // Reads the session directly — not a candidate for instant navigation.
@@ -29,12 +30,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          System-wide configuration.
-        </p>
-      </div>
+      <PageHeader description="System-wide configuration." />
       <div className="flex flex-col gap-2">
         {SETTINGS_LINKS.map((link) => (
           <Link

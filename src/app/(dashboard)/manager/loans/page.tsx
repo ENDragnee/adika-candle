@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { LoanOversightList } from "@/features/loans/components/loan-oversight-list";
 import { CheckPermission } from "@/lib/session";
 
@@ -14,13 +15,7 @@ export default async function LoansPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Loans</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Cross-customer oversight — outstanding balances across every loan
-          account, highest first.
-        </p>
-      </div>
+      <PageHeader description="Cross-customer oversight — outstanding balances across every loan account, highest first." />
       <LoanOversightList />
     </div>
   );

@@ -8,7 +8,7 @@ import {
   ProhibitIcon,
 } from "@phosphor-icons/react";
 import { type FormEvent, useState } from "react";
-import { usePageTitle } from "@/components/shell/use-page-title";
+import { usePageHeader } from "@/components/shell/use-page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -249,7 +249,11 @@ function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
 }
 
 export function UnitConversionManager() {
-  usePageTitle("Unit conversions");
+  usePageHeader({
+    title: "Unit conversions",
+    description:
+      "Carton/Packet/Wax/Kir → KG ratios. Deactivating a unit hides it from new stock and sales entries without deleting its history.",
+  });
   const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: result, isLoading } = useUnitConversions({ page });

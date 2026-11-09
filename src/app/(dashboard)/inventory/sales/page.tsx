@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { InventorySalesView } from "@/features/sales/components/inventory-sales-view";
 import { CheckPermission, GetApiSession } from "@/lib/session";
 
@@ -16,12 +17,7 @@ export default async function InventorySalesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">My sales</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Sales you've recorded.
-        </p>
-      </div>
+      <PageHeader description="Sales you've recorded." />
       <InventorySalesView createdById={session?.user?.id} />
     </div>
   );

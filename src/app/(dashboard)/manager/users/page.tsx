@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { UserManager } from "@/features/users/components/user-manager";
 import { GetSession } from "@/lib/session";
 
@@ -14,12 +15,7 @@ export default async function UsersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">Users</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create accounts, assign roles, and deactivate access.
-        </p>
-      </div>
+      <PageHeader description="Create accounts, assign roles, and deactivate access." />
       <UserManager currentUserId={session.user.id} />
     </div>
   );

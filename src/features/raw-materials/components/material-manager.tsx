@@ -8,7 +8,7 @@ import {
   ProhibitIcon,
 } from "@phosphor-icons/react";
 import { type FormEvent, useState } from "react";
-import { usePageTitle } from "@/components/shell/use-page-title";
+import { usePageHeader } from "@/components/shell/use-page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -221,7 +221,11 @@ function MaterialRow({ material }: { material: RawMaterialDTO }) {
 }
 
 export function MaterialManager() {
-  usePageTitle("Raw materials");
+  usePageHeader({
+    title: "Raw materials",
+    description:
+      "The catalog of production inputs (wax, color dye) tracked separately from finished-goods stock. Deactivating a material hides it from new activity entries and recipe rows without deleting its history.",
+  });
   const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: result, isLoading } = useRawMaterials({ page });
