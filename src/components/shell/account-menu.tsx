@@ -2,6 +2,7 @@
 
 import {
   CheckIcon,
+  CompassIcon,
   DesktopIcon,
   MoonIcon,
   SignOutIcon,
@@ -10,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import type * as React from "react";
+import { useProductTour } from "@/components/tour/use-product-tour";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +58,7 @@ export function AccountMenu({
 }: AccountMenuProps) {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const startTour = useProductTour(user.role);
 
   async function handleSignOut() {
     await authClient.signOut();
@@ -96,6 +99,11 @@ export function AccountMenu({
             </DropdownMenuItem>
           );
         })}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={startTour}>
+          <CompassIcon />
+          Take a tour
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={handleSignOut}>
           <SignOutIcon />

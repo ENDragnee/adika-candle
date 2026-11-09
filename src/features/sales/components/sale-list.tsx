@@ -6,7 +6,11 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
+import type { ExportColumn } from "@/lib/export/export-column";
+import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useSales } from "../hooks/use-sales";
+import { FetchSales } from "../services/sale.service";
 import type { SaleDTO } from "../validators/sale.schema";
 
 function FormatDateTime(value: string) {
@@ -48,6 +52,22 @@ const columns: DataTableColumn<SaleDTO>[] = [
   },
 ];
 
+const exportColumns: ExportColumn<SaleDTO>[] = [
+  { header: "Reference", value: (sale) => sale.referenceCode },
+  {
+    header: "Product",
+    value: (sale) => `${sale.productName} (${sale.productSku})`,
+  },
+  { header: "Customer", value: (sale) => sale.customerName ?? "Walk-in" },
+  {
+    header: "Quantity",
+    value: (sale) => `${sale.inputQuantity} ${sale.inputUnitName}`,
+  },
+  { header: "Total", value: (sale) => sale.totalAmount },
+  { header: "Payment", value: (sale) => sale.paymentType },
+  { header: "Date", value: (sale) => FormatDateTime(sale.createdAt) },
+];
+
 export function SaleList({
   // When set (the Inventory Manager's "own recent sales" page), the list is
   // scoped to sales created by this user id. Omitted on /manager/sales,
@@ -67,16 +87,31 @@ export function SaleList({
   }
 
   return (
-    <DataTable
-      columns={columns}
-      data={result?.data ?? []}
-      getRowKey={(sale) => sale.id}
-      emptyMessage="No sales yet."
-      pagination={{
-        page,
-        totalPages: result?.pagination.totalPages ?? 1,
-        onPageChange: setPage,
-      }}
-    />
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <ExportMenu
+          filename="sales"
+          title="Sales"
+          columns={exportColumns}
+          rows={() =>
+            FetchSales({
+              pageSize: MAX_PAGE_SIZE,
+              ...(createdById && { createdById }),
+            }).then((result) => result.data)
+          }
+        />
+      </div>
+      <DataTable
+        columns={columns}
+        data={result?.data ?? []}
+        getRowKey={(sale) => sale.id}
+        emptyMessage="No sales yet."
+        pagination={{
+          page,
+          totalPages: result?.pagination.totalPages ?? 1,
+          onPageChange: setPage,
+        }}
+      />
+    </div>
   );
 }

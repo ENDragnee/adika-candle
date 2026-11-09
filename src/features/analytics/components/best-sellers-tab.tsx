@@ -8,8 +8,10 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
 import { Input } from "@/components/ui/input";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import type { ExportColumn } from "@/lib/export/export-column";
 import { cn } from "@/lib/utils";
 import { useBestSellers } from "../hooks/use-analytics";
 import type { BestSellerRowDTO } from "../validators/analytics.schema";
@@ -81,6 +83,43 @@ const quantityColumns = BuildColumns(
 );
 const revenueColumns = BuildColumns("revenue", "priorRevenue", "Revenue");
 
+function FormatTrendValue(current: number, prior: number): string {
+  if (prior === 0) return "—";
+  const changePercent = ((current - prior) / prior) * 100;
+  return `${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(0)}%`;
+}
+
+function BuildExportColumns(
+  valueKey: "unitsSoldKg" | "revenue",
+  priorKey: "priorUnitsSoldKg" | "priorRevenue",
+  valueHeader: string,
+): ExportColumn<BestSellerRowDTO>[] {
+  return [
+    {
+      header: "Product",
+      value: (row) => `${row.productName} (${row.productSku})`,
+    },
+    { header: "Category", value: (row) => row.categoryName },
+    { header: valueHeader, value: (row) => row[valueKey] },
+    {
+      header: "vs. prior period",
+      value: (row) =>
+        FormatTrendValue(Number(row[valueKey]), Number(row[priorKey])),
+    },
+  ];
+}
+
+const quantityExportColumns = BuildExportColumns(
+  "unitsSoldKg",
+  "priorUnitsSoldKg",
+  "Units sold (kg)",
+);
+const revenueExportColumns = BuildExportColumns(
+  "revenue",
+  "priorRevenue",
+  "Revenue",
+);
+
 export function BestSellersTab() {
   const [days, setDays] = useState<number>(7);
   const [customDays, setCustomDays] = useState("");
@@ -144,7 +183,17 @@ export function BestSellersTab() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Ranked by quantity</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-medium">Ranked by quantity</h3>
+          {data && (
+            <ExportMenu
+              filename="best-sellers-quantity"
+              title="Best Sellers — by quantity"
+              columns={quantityExportColumns}
+              rows={data.byQuantity}
+            />
+          )}
+        </div>
         {isLoading || !data ? (
           <CardSkeleton />
         ) : (
@@ -166,7 +215,17 @@ export function BestSellersTab() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Ranked by revenue</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-medium">Ranked by revenue</h3>
+          {data && (
+            <ExportMenu
+              filename="best-sellers-revenue"
+              title="Best Sellers — by revenue"
+              columns={revenueExportColumns}
+              rows={data.byRevenue}
+            />
+          )}
+        </div>
         {isLoading || !data ? (
           <CardSkeleton />
         ) : (

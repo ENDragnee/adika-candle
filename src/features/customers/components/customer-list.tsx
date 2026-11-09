@@ -7,9 +7,13 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
 import { Input } from "@/components/ui/input";
+import type { ExportColumn } from "@/lib/export/export-column";
+import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useDebounce } from "@/lib/use-debounce";
 import { useCustomers } from "../hooks/use-customers";
+import { FetchCustomers } from "../services/customer.service";
 import type { CustomerDTO } from "../validators/customer.schema";
 
 export function CustomerList({
@@ -75,18 +79,42 @@ export function CustomerList({
     },
   ];
 
+  const exportColumns: ExportColumn<CustomerDTO>[] = [
+    { header: "Name", value: (customer) => customer.name },
+    { header: "Phone", value: (customer) => customer.phone ?? "—" },
+    { header: "Location", value: (customer) => customer.location ?? "—" },
+    { header: "Loan balance", value: (customer) => customer.loanBalance },
+    {
+      header: "Status",
+      value: (customer) => (customer.isActive ? "Active" : "Inactive"),
+    },
+  ];
+
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <Input
-        value={search}
-        onChange={(event) => handleSearchChange(event.target.value)}
-        placeholder="Search by name…"
-        className="max-w-sm"
-      />
+      <div className="flex items-center justify-between gap-2">
+        <Input
+          value={search}
+          onChange={(event) => handleSearchChange(event.target.value)}
+          placeholder="Search by name…"
+          className="max-w-sm"
+        />
+        <ExportMenu
+          filename="customers"
+          title="Customers"
+          columns={exportColumns}
+          rows={() =>
+            FetchCustomers({
+              pageSize: MAX_PAGE_SIZE,
+              ...(debouncedSearch && { search: debouncedSearch }),
+            }).then((result) => result.data)
+          }
+        />
+      </div>
       <DataTable
         columns={columns}
         data={result?.data ?? []}

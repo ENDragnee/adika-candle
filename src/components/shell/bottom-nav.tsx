@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AccountMenu, GetInitials } from "@/components/shell/account-menu";
+import {
+  ACCOUNT_TRIGGER_TOUR_ID,
+  NavTourId,
+} from "@/components/tour/tour-elements";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { AppUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -34,6 +38,7 @@ export function BottomNav({ user, navItems }: BottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
+              data-tour={NavTourId(item.href)}
               className={cn(
                 "flex min-w-16 shrink-0 flex-col items-center justify-center gap-0.5 px-3 py-2 text-[10px] whitespace-nowrap transition-colors",
                 isActive
@@ -50,6 +55,7 @@ export function BottomNav({ user, navItems }: BottomNavProps) {
       <AccountMenu user={user} align="end" side="top">
         <button
           type="button"
+          data-tour={ACCOUNT_TRIGGER_TOUR_ID}
           className="flex min-w-16 shrink-0 flex-col items-center justify-center gap-0.5 border-l border-border px-3 py-2 text-[10px] text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
         >
           <Avatar className="size-5">

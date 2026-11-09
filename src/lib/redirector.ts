@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
+import { ROLES } from "./roles";
 import { GetSession } from "./session";
 
-export const ROLES = {
-  MANAGER: "MANAGER",
-  INVENTORY_MANAGER: "INVENTORY_MANAGER",
-} as const;
+export { ROLES };
 
 export async function RoleRedirector() {
   const session = await GetSession();

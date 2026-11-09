@@ -5,6 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
 import { AccountMenu, GetInitials } from "@/components/shell/account-menu";
+import {
+  ACCOUNT_TRIGGER_TOUR_ID,
+  NavTourId,
+} from "@/components/tour/tour-elements";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import type { AppUser } from "@/lib/auth";
@@ -38,6 +42,7 @@ export function AppShell({ user, navItems, children }: AppShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={NavTourId(item.href)}
                 className={cn(
                   "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
                   isActive
@@ -58,6 +63,7 @@ export function AppShell({ user, navItems, children }: AppShellProps) {
         <AccountMenu user={user} align="start" side="top">
           <button
             type="button"
+            data-tour={ACCOUNT_TRIGGER_TOUR_ID}
             className="flex items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-sidebar-accent"
           >
             <Avatar className="size-7">

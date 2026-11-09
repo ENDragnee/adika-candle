@@ -18,6 +18,7 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -27,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import type { ExportColumn } from "@/lib/export/export-column";
 import { useStockHealth } from "../hooks/use-analytics";
 import type {
   StockHealthRowDTO,
@@ -140,6 +142,18 @@ const columns: DataTableColumn<StockHealthRowDTO>[] = [
   },
 ];
 
+const exportColumns: ExportColumn<StockHealthRowDTO>[] = [
+  {
+    header: "Product",
+    value: (row) => `${row.productName} (${row.productSku})`,
+  },
+  { header: "On hand (kg)", value: (row) => row.quantityKg },
+  { header: "Threshold (kg)", value: (row) => row.thresholdKg ?? "—" },
+  { header: "Status", value: (row) => STATUS_META[row.status].label },
+  { header: "Avg. daily sales (kg)", value: (row) => row.averageDailySalesKg },
+  { header: "Days of cover", value: (row) => row.daysOfCover ?? "—" },
+];
+
 export function StockHealthTab() {
   const { data, isLoading } = useStockHealth(true);
   const [statusFilter, setStatusFilter] = useState<StockHealthStatus | "ALL">(
@@ -203,6 +217,14 @@ export function StockHealthTab() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-medium">Products</h3>
           <div className="flex flex-wrap items-center gap-2">
+            {data && (
+              <ExportMenu
+                filename="stock-health"
+                title="Stock Health"
+                columns={exportColumns}
+                rows={filteredRows}
+              />
+            )}
             <div className="relative">
               <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

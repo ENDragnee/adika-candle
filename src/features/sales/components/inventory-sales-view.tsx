@@ -21,7 +21,7 @@ export function InventorySalesView({ createdById }: { createdById?: string }) {
       <div className="flex justify-end">
         <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button data-tour="record-sale-trigger">
               <PlusIcon data-icon="inline-start" />
               Record sale
             </Button>

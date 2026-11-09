@@ -27,7 +27,7 @@ conventions.
 | 17 | [Analytics Hub (Tabbed)](./17-analytics-hub.md) | 8, 14, 15, 16 | done |
 | 18 | [Page Header Consolidation](./18-page-header-consolidation.md) | 9 | done |
 | 19 | [Legend & Walkthrough Reference Page](./19-legend-walkthrough-reference.md) | 3, 4, 5, 14, 17 | done |
-| 20 | [Interactive Product Tutorial](./20-interactive-product-tutorial.md) | 9, 16 | not-started |
+| 20 | [Interactive Product Tutorial](./20-interactive-product-tutorial.md) | 9, 16 | done |
 
 Update the Status column as epics move through
 not-started → in-progress → done.

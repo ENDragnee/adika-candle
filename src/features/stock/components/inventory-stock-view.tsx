@@ -21,7 +21,7 @@ export function InventoryStockView() {
       <div className="flex justify-end">
         <Dialog open={isAcceptOpen} onOpenChange={setIsAcceptOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button data-tour="accept-stock-trigger">
               <PlusIcon data-icon="inline-start" />
               Accept stock
             </Button>

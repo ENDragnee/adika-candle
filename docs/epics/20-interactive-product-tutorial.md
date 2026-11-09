@@ -2,7 +2,7 @@
 
 **Depends on:** 9 (Design System Foundation), 16 (Motion: Page
 Transitions & Chart Entrance Animations)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 

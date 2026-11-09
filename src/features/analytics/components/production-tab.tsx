@@ -6,6 +6,7 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
 import {
   Select,
   SelectContent,
@@ -14,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import type { ExportColumn } from "@/lib/export/export-column";
 import { useProductionReport } from "../hooks/use-analytics";
 import type {
   MaterialProductionRowDTO,
@@ -58,6 +60,27 @@ const productColumns: DataTableColumn<ProductProductionRowDTO>[] = [
     cell: (row) => row.variancePercent ?? "—",
     className: "text-muted-foreground",
   },
+];
+
+const materialExportColumns: ExportColumn<MaterialProductionRowDTO>[] = [
+  { header: "Material", value: (row) => row.materialName },
+  { header: "Opening Stock", value: (row) => row.openingKg },
+  { header: "Received", value: (row) => row.receivedKg },
+  { header: "Consumption", value: (row) => row.consumedKg },
+  { header: "Closing Stock", value: (row) => row.closingKg },
+];
+
+const productExportColumns: ExportColumn<ProductProductionRowDTO>[] = [
+  {
+    header: "Product",
+    value: (row) => `${row.productName} (${row.productSku})`,
+  },
+  { header: "Opening Stock", value: (row) => row.openingKg },
+  { header: "Received", value: (row) => row.receivedKg },
+  { header: "Consumption", value: (row) => row.consumedKg },
+  { header: "Closing Stock", value: (row) => row.closingKg },
+  { header: "Expected output", value: (row) => row.expectedOutputKg ?? "—" },
+  { header: "Variance %", value: (row) => row.variancePercent ?? "—" },
 ];
 
 export function ProductionTab() {
@@ -119,7 +142,17 @@ export function ProductionTab() {
       )}
 
       <div>
-        <h3 className="mb-2 text-sm font-medium">Raw materials</h3>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-medium">Raw materials</h3>
+          {data && (
+            <ExportMenu
+              filename="production-materials"
+              title="Production — raw materials"
+              columns={materialExportColumns}
+              rows={data.materials}
+            />
+          )}
+        </div>
         {isLoading || !data ? (
           <TableSkeleton columns={materialColumns.length} />
         ) : (
@@ -133,7 +166,17 @@ export function ProductionTab() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-medium">Finished goods</h3>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-medium">Finished goods</h3>
+          {data && (
+            <ExportMenu
+              filename="production-products"
+              title="Production — finished goods"
+              columns={productExportColumns}
+              rows={data.products}
+            />
+          )}
+        </div>
         {isLoading || !data ? (
           <TableSkeleton columns={productColumns.length} />
         ) : (

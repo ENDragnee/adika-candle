@@ -7,7 +7,11 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
+import type { ExportColumn } from "@/lib/export/export-column";
+import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useLoanAccounts } from "../hooks/use-loans";
+import { FetchLoanAccounts } from "../services/loan.service";
 import type { LoanAccountDTO } from "../validators/loan.schema";
 
 function FormatDateTime(value: string) {
@@ -36,6 +40,15 @@ const columns: DataTableColumn<LoanAccountDTO>[] = [
   },
 ];
 
+const exportColumns: ExportColumn<LoanAccountDTO>[] = [
+  { header: "Customer", value: (account) => account.customerName },
+  { header: "Balance", value: (account) => account.balance },
+  {
+    header: "Last activity",
+    value: (account) => FormatDateTime(account.updatedAt),
+  },
+];
+
 export function LoanOversightList() {
   const [page, setPage] = useState(1);
   const { data: result, isLoading } = useLoanAccounts({ page });
@@ -45,16 +58,30 @@ export function LoanOversightList() {
   }
 
   return (
-    <DataTable
-      columns={columns}
-      data={result?.data ?? []}
-      getRowKey={(account) => account.id}
-      emptyMessage="No loan accounts yet."
-      pagination={{
-        page,
-        totalPages: result?.pagination.totalPages ?? 1,
-        onPageChange: setPage,
-      }}
-    />
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <ExportMenu
+          filename="loan-accounts"
+          title="Loan oversight"
+          columns={exportColumns}
+          rows={() =>
+            FetchLoanAccounts({ pageSize: MAX_PAGE_SIZE }).then(
+              (result) => result.data,
+            )
+          }
+        />
+      </div>
+      <DataTable
+        columns={columns}
+        data={result?.data ?? []}
+        getRowKey={(account) => account.id}
+        emptyMessage="No loan accounts yet."
+        pagination={{
+          page,
+          totalPages: result?.pagination.totalPages ?? 1,
+          onPageChange: setPage,
+        }}
+      />
+    </div>
   );
 }

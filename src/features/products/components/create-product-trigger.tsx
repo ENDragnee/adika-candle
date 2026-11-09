@@ -22,7 +22,7 @@ export function CreateProductTrigger() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button data-tour="create-product-trigger">
           <PlusIcon data-icon="inline-start" />
           New product
         </Button>

@@ -12,6 +12,253 @@ undo.
 
 ---
 
+## 2026-11-09 — CSV/PDF report export (outside the epic sequence)
+
+**Built directly on request, after Epic 20**: "add export report such as
+analytics, stock, loan and sales to csv and pdf format. also add it for
+other subject you deem needs it." Confirmed the one real architectural
+fork with the user first — CSV needs no library (hand-rolled, trivial),
+but PDF does — offering jsPDF+jspdf-autotable (new MIT dependency,
+real downloadable `.pdf`) against a zero-dependency `window.print()`
+fallback; user picked jsPDF+autotable.
+
+**Scope — which "other subjects" got export, decided by inventorying
+every `DataTable<T>` consumer in `src/features/**` rather than guessing:**
+alongside the four named (Stock balances + per-product ledger, Materials
+balances + per-material ledger — mirrors Stock exactly, Sales, Loan
+oversight + per-customer ledger), added Products catalog, Customers list,
+and all four Analytics tabs (Production's two tables, Profitability's
+margin table, Stock Health's product table, Best Sellers' two rankings) —
+13 export points total. **Deliberately left out:** Users, Roles,
+Categories, Unit Conversions, and the Settings pages (administrative
+config, not reporting subjects a Manager would hand to someone outside
+the app) and the per-product Price/Cost history tabs (niche, granular;
+revisit only if asked).
+
+**One shared mechanism, not 13 bespoke exporters**: new `src/lib/export/`
+(`ExportColumn<T>` — `{header, value: (row: T) => string | number}`,
+`ToCsv`, `ToPdf`, `DownloadBlob`) plus a shared `src/components/ui/
+export-menu.tsx` (`<ExportMenu columns rows filename title />`, a
+`DropdownMenu`-based "Export" button offering CSV/PDF, built on the same
+`Button`/`DropdownMenu` primitives every other dropdown in this app uses —
+no bespoke styling needed, themes automatically). **`ExportColumn<T>` is
+intentionally a separate type from `DataTableColumn<T>`** (`data-table.tsx`,
+whose `cell` returns a React node for on-screen rendering — links, badges,
+`<TrendIndicator>`) rather than extending it with an optional export hook:
+most columns' `value` is trivially the same primitive their `cell` already
+renders, but the handful that render JSX (Stock Health's `StatusBadge`,
+Best Sellers' `TrendIndicator`) need a genuinely different plain-text
+rule, and forcing every one of this app's 10+ other `DataTableColumn`
+consumers to grow an unused `exportValue` field for three call sites that
+need it wasn't worth the coupling.
+
+**Export always fetches the full result set, not the current page** —
+paginated lists (Stock, Materials, Sales, Loans, Products, Customers) pass
+`ExportMenu` a lazy `() => Promise<T[]>` that calls the feature's own
+service function directly (bypassing the `use*` hook, which can't be
+invoked conditionally on click) with `{ pageSize: MAX_PAGE_SIZE }` —
+reusing the exact same "need everything, not a page" pattern the pagination
+work already established for dropdown pickers (see this file's "Backend +
+frontend pagination decisions" entry), not a new unbounded-fetch endpoint.
+**Same known limit applies and isn't solved here either**: a resource with
+more than 100 active rows would silently export only the first 100 —
+acceptable for this app's current scale, flagged rather than engineered
+around, consistent with the precedent. Analytics tabs need no lazy fetch
+at all — Epic 17 already loads each tab's full, unpaginated array up
+front, so `ExportMenu` there gets the already-rendered array directly
+(`rows={data.materials}`, `rows={sortedProducts}`, etc.) — exporting
+exactly what's on screen, including any client-side sort/filter/search
+already applied (Profitability's sort, Stock Health's filter+search,
+Customers' server-side search term).
+
+**CSV**: RFC 4180 quoting (quote only cells containing a comma/quote/
+newline, not unconditionally), CRLF line endings, and a leading UTF-8 BOM
+specifically so Excel — still the most common opener for a downloaded
+`.csv` — auto-detects UTF-8 instead of guessing a local 8-bit codepage and
+mangling anything non-ASCII. No library; this is a ~15-line string-join
+function, well under the bar for adding a dependency.
+
+**PDF**: one `jsPDF` instance per export, a title + "Generated <timestamp>"
+line, then `jspdf-autotable` for the actual table (striped alternate rows,
+a header row filled with the same amber hex already validated as
+Epic 17's dark-mode `--chart-series-1` token — a PDF page has no
+light/dark concept of its own, so the token's *value* is reused directly,
+not the CSS variable). Confirmed both packages' license/maintenance via
+`npm view` before installing (both MIT; jsPDF last published ~8 months
+ago, autotable within the last month) — same spike discipline as Epic 20's
+driver.js check, done here without a separate user-facing write-up since
+the user had already picked this option explicitly.
+
+**`pnpm install` started failing after adding jsPDF** (`ERR_PNPM_IGNORED_BUILDS`
+blocking `core-js`'s postinstall, a new transitive dependency pulled in by
+the install) — read `core-js`'s actual `postinstall.js` before approving
+anything: it only prints a one-time sponsorship banner to the console
+(rate-limited via a tmpdir file), no other side effect. Approved via
+`pnpm-workspace.yaml`'s existing `allowBuilds` map (`core-js: true`),
+same mechanism already used there for `@prisma/engines`/`bcrypt`/`prisma`.
+
+**Files touched:** new `src/lib/export/{export-column,to-csv,to-pdf,
+download-blob}.ts`; new `src/components/ui/export-menu.tsx`;
+`src/features/stock/components/{stock-balance-list,stock-ledger}.tsx`;
+`src/features/raw-materials/components/{material-balance-list,
+material-ledger}.tsx`; `src/features/sales/components/sale-list.tsx`;
+`src/features/loans/components/{loan-oversight-list,loan-ledger}.tsx`;
+`src/features/products/components/product-list.tsx`;
+`src/features/customers/components/customer-list.tsx`;
+`src/features/analytics/components/{production-tab,profitability-tab,
+stock-health-tab,best-sellers-tab}.tsx`; `package.json`/`pnpm-lock.yaml`
+(+`jspdf@4.2.1`, +`jspdf-autotable@5.0.9`); `pnpm-workspace.yaml`
+(`core-js: true`). Verified with `pnpm lint`, `pnpm test`, `npx tsc
+--noEmit` (all clean) and a Playwright pass signed in as `manager`:
+clicked "Export as CSV" on Stock balances and inspected the actual
+downloaded file byte-for-byte (UTF-8 BOM present, CRLF endings, correct
+quoting on a comma-containing date cell, all 4 rows present); clicked
+"Export as PDF" on the same list and parsed the downloaded file (valid
+`%PDF-1.3`, correct title/timestamp/every row's text extracted); exported
+Production's "Raw materials" table (the already-loaded-array path, no
+service call) and confirmed its CSV matched exactly what was on screen;
+confirmed the Export button/dropdown themes correctly in dark mode with
+no custom CSS (it's built entirely from existing `Button`/`DropdownMenu`
+primitives).
+
+---
+
+## 2026-11-09 — Epic 20 (Interactive Product Tutorial) decisions
+
+**Research spike outcome: driver.js, confirming (not just accepting) the
+epic doc's lean.** Checked `npm view driver.js license version time` live
+rather than trusting the doc's write-up: MIT license, version 1.11.0
+published the day before this session (2026-11-08), with releases roughly
+every 1-2 weeks through October-November 2026 — actively maintained, no
+licensing question mark (unlike intro.js's AGPL/commercial split), no React
+coupling to fight (unlike reactour), no Bootstrap-flavored default CSS to
+undo (unlike shepherd.js). Got explicit user sign-off on the library choice
+before installing, per the epic doc's instruction. Installed pinned to
+`1.11.0` (`pnpm add driver.js@1.11.0` — pnpm's default resolution picked a
+stale cached `1.10.2` otherwise).
+
+**One shared tour-engine hook (`useProductTour`), two role-scoped step-list
+arrays (`MANAGER_TOUR_STEPS`/`INVENTORY_TOUR_STEPS`), as the epic doc
+specified — the one non-obvious implementation problem it left unsolved is
+cross-page navigation mid-tour.** driver.js drives one static DOM at a
+time; this tour's own target elements don't all live on one page (the
+epic doc explicitly calls out `InventorySalesView`'s "Record sale" and
+`InventoryStockView`'s "Accept stock" buttons, each page-specific). Each
+step definition (`tour-steps.ts`) carries an optional `route`; the engine
+(`use-product-tour.ts`) overrides every step's `popover.onNextClick`/
+`onPrevClick` (driver.js routes arrow-key navigation through these too, not
+just the footer buttons) to call Next's `router.push(nextStep.route)`
+*before* calling `driver.moveNext()`/`movePrevious()` when the target
+step's route differs from the current pathname, then lets driver.js's own
+`waitForElement` + `MutationObserver` machinery (already built for "this
+element hasn't mounted yet") do the actual waiting — no polling or custom
+wait loop needed. Verified in a real browser: Manager's tour navigates
+`/manager/dashboard` → `/manager/products` for "New product", Inventory's
+navigates `/inventory/dashboard` → `/inventory/stock` → `/inventory/sales`
+for "Accept stock"/"Record sale" respectively, both directions (Next and
+Previous).
+
+**Nav items render twice at once (desktop `AppShell` sidebar +
+mobile `BottomNav`), both tagged with the same `data-tour` id for a given
+href** (`NavTourId(href)`, derived from `nav-config.ts`'s own hrefs so
+there's one source of truth, not two hand-typed id lists) — `FindTourElement`
+picks whichever of the two matching elements is actually rendered.
+**First attempt at "actually rendered" was wrong and only caught in
+browser verification at a 375px viewport**: checking the element's own
+`getComputedStyle().display !== "none"` is not enough, because AppShell's
+desktop-only wrapper hides via `hidden md:flex` on the ancestor `<aside>`,
+not on the `<Link>` itself — the link's own computed `display` is still
+`flex` from its own class list regardless of the ancestor. driver.js
+correctly received the desktop (hidden, zero-size) element on mobile and
+highlighted nothing. Fixed by switching to `element.getClientRects().length
+> 0`, which reflects the full rendering pipeline (any hidden ancestor, not
+just the element's own `display`) and — unlike the classic `offsetParent
+!== null` trick — isn't broken by `BottomNav` being `position: fixed`.
+Re-verified at 375px after the fix: the tour correctly spotlights
+`BottomNav`'s tab, not the invisible sidebar link.
+
+**`ROLES` moved out of `src/lib/redirector.ts` into its own
+`src/lib/roles.ts`, re-exported from `redirector.ts` for its existing
+importers.** `useProductTour` needs the plain `{MANAGER, INVENTORY_MANAGER}`
+string-constant object to pick a step list by `user.role`, but
+`redirector.ts` is a server-only module (it also exports `RoleRedirector`,
+which calls `GetSession` → `next/headers`) — importing `ROLES` from it in a
+`"use client"` file still pulls `next/headers` into the client/SSR bundle
+through that file's top-level imports, even though the constant itself has
+no server dependency. This broke `(dashboard)/layout.tsx` with a hard 500
+("You're importing a module that depends on 'next/headers'... in the Pages
+Router") the first time the tour code was wired into `AccountMenu`, caught
+immediately by a Playwright pass, not shipped. No other importer of `ROLES`
+(`prisma/seed.ts`, the three server layouts) needed to change.
+
+**Theming: driver.js's popover restyled against this app's own
+border/background/foreground/ring tokens in a dedicated
+`src/components/tour/tour-theme.css`, imported directly after
+`driver.js/dist/driver.css` inside `use-product-tour.ts`** (not added to
+`globals.css`) — both per the epic's explicit "Feature folder" instruction
+("Holds... any theming/CSS override needed") and because same-module
+sequential CSS imports have a bundler-guaranteed order that a root-loaded
+`globals.css` vs. a leaf-client-component's lazily-loaded package CSS does
+not. Several of the override rules depend on that guarantee: they win a
+same-specificity cascade tie against driver.css's own rules by loading
+later, not via a selector-specificity trick. The one rule that needed
+special handling rather than a blanket override: driver.js's popover arrow
+is a single `<div>` whose *default* `border: 5px solid #fff` paints all
+four sides, with four side-specific classes (`.driver-popover-arrow-side-
+{top,right,bottom,left}`) each zeroing three of the four sides to
+transparent, leaving the fourth (the visible, pointing side) at the base
+rule's color. Recoloring the base rule itself (or using any selector with
+equal-or-higher specificity than the side classes) would also re-color the
+three sides meant to stay transparent, turning the arrow into a solid
+square — so each side's color is set individually, scoped to the matching
+side-specific class, touching only that one side's `border-*-color`.
+Entrance easing is the same strong ease-out `cubic-bezier(0.23, 1, 0.32,
+1)` Epic 16 uses for its route-change crossfade, applied via `animation-
+timing-function` on `.driver-fade .driver-popover` (driver.css's own rule
+omits a timing-function, defaulting to the weaker browser `ease`).
+
+**Reduced motion: checked once via `matchMedia` at tour-launch time (not a
+mounted `useReducedMotion()` hook) and passed straight into driver.js's own
+`animate`/`smoothScroll` config flags, fully disabling both the stage-move
+tween and the popover fade rather than a partial "keep the fade, drop the
+move" split.** The tour is user-triggered by a click, not rendered
+reactively, so there's no SSR-mismatch window to guard against the way the
+mounted hook exists for chart entrances. driver.js's `animate` boolean
+gates both effects together with no finer-grained config knob exposed (confirmed
+by reading `node_modules/driver.js/dist/driver.js.mjs` directly, not just
+its `.d.ts`) — accepted as the closest achievable match to "fewer and
+gentler, not zero" without patching the library: the mechanical tween is
+removed, the actual information (new popover text at the new highlighted
+element) still updates immediately, just without animation. Verified via
+Playwright's `browser_emulate_media({reducedMotion: 'reduce'})`: `document.
+body` gets driver.js's `driver-simple` class, not `driver-fade`.
+
+**No "mark as seen" persistence, as the epic doc leaned** — not revisited;
+nothing in this session's verification suggested the lean was wrong.
+
+**Files touched:** new `src/components/tour/{tour-elements.ts,
+tour-steps.ts, tour-theme.css, use-product-tour.ts}`; new `src/lib/roles.ts`;
+`src/lib/redirector.ts` (now imports+re-exports `ROLES` from `roles.ts`
+instead of defining it); `src/components/shell/account-menu.tsx` (+"Take a
+tour" item); `src/components/shell/{app-shell.tsx, bottom-nav.tsx,
+top-bar.tsx}` (+`data-tour` anchors on nav links, the account-menu trigger,
+and the `TopBar` header); `src/features/sales/components/
+inventory-sales-view.tsx`, `src/features/stock/components/
+inventory-stock-view.tsx`, `src/features/products/components/
+create-product-trigger.tsx` (+`data-tour` on each action button);
+`package.json`/`pnpm-lock.yaml` (+`driver.js@1.11.0`). Verified with `pnpm
+lint`, `pnpm test`, `npx tsc --noEmit` (all clean) and a Playwright pass
+against the real dev server as both `manager` and `inventory`: the tour
+launches from the account menu for both roles, all 16 (Manager) / 10
+(Inventory) steps highlight the correct real element in the correct
+role-scoped order including both cross-page action-button steps in both
+directions, Previous/Next/keyboard-equivalent navigation, light and dark
+mode (including the arrow-color fix), a 375px mobile viewport (confirming
+the `BottomNav`-vs-`AppShell` visibility fix), and `prefers-reduced-motion`
+correctly dropping to driver.js's non-animated mode.
+
+---
+
 ## 2026-11-09 — Epic 19 (Legend & Walkthrough Reference Page) decisions
 
 Implemented exactly as specced — the epic doc already pinned down the route

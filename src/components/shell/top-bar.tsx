@@ -38,7 +38,10 @@ export function TopBar({
   const firstName = user.name.split(" ")[0];
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-border bg-background px-4 py-3 md:px-6">
+    <header
+      data-tour="topbar"
+      className="flex items-center justify-between gap-4 border-b border-border bg-background px-4 py-3 md:px-6"
+    >
       <div className="flex min-w-0 flex-col">
         {/* The sidebar already carries the brand on desktop (md+); on
             mobile the sidebar is hidden, so this is the only brand mark

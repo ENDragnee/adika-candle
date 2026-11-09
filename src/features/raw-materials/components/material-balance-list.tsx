@@ -7,7 +7,11 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
+import type { ExportColumn } from "@/lib/export/export-column";
+import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useRawMaterialBalances } from "../hooks/use-raw-materials";
+import { FetchRawMaterialBalances } from "../services/raw-material.service";
 import type { RawMaterialBalanceDTO } from "../validators/raw-material.schema";
 
 function FormatDateTime(value: string | null) {
@@ -54,21 +58,44 @@ export function MaterialBalanceList({
     },
   ];
 
+  const exportColumns: ExportColumn<RawMaterialBalanceDTO>[] = [
+    { header: "Name", value: (balance) => balance.materialName },
+    { header: "Quantity (kg)", value: (balance) => balance.quantityKg },
+    {
+      header: "Last updated",
+      value: (balance) => FormatDateTime(balance.updatedAt),
+    },
+  ];
+
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
   }
 
   return (
-    <DataTable
-      columns={columns}
-      data={result?.data ?? []}
-      getRowKey={(balance) => balance.materialId}
-      emptyMessage="No raw materials yet."
-      pagination={{
-        page,
-        totalPages: result?.pagination.totalPages ?? 1,
-        onPageChange: setPage,
-      }}
-    />
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <ExportMenu
+          filename="material-balances"
+          title="Raw material balances"
+          columns={exportColumns}
+          rows={() =>
+            FetchRawMaterialBalances({ pageSize: MAX_PAGE_SIZE }).then(
+              (result) => result.data,
+            )
+          }
+        />
+      </div>
+      <DataTable
+        columns={columns}
+        data={result?.data ?? []}
+        getRowKey={(balance) => balance.materialId}
+        emptyMessage="No raw materials yet."
+        pagination={{
+          page,
+          totalPages: result?.pagination.totalPages ?? 1,
+          onPageChange: setPage,
+        }}
+      />
+    </div>
   );
 }

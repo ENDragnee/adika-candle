@@ -7,7 +7,11 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
+import type { ExportColumn } from "@/lib/export/export-column";
+import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useProducts } from "../hooks/use-products";
+import { FetchProducts } from "../services/product.service";
 import type { ProductDTO } from "../validators/product.schema";
 
 const columns: DataTableColumn<ProductDTO>[] = [
@@ -46,6 +50,20 @@ const columns: DataTableColumn<ProductDTO>[] = [
   },
 ];
 
+const exportColumns: ExportColumn<ProductDTO>[] = [
+  { header: "Name", value: (product) => product.name },
+  { header: "SKU", value: (product) => product.sku },
+  { header: "Category", value: (product) => product.category.name },
+  {
+    header: "Current price / kg",
+    value: (product) => product.currentPrice ?? "—",
+  },
+  {
+    header: "Status",
+    value: (product) => (product.isActive ? "Active" : "Inactive"),
+  },
+];
+
 export function ProductList() {
   const [page, setPage] = useState(1);
   const { data: result, isLoading } = useProducts({ page });
@@ -55,16 +73,30 @@ export function ProductList() {
   }
 
   return (
-    <DataTable
-      columns={columns}
-      data={result?.data ?? []}
-      getRowKey={(product) => product.id}
-      emptyMessage="No products yet."
-      pagination={{
-        page,
-        totalPages: result?.pagination.totalPages ?? 1,
-        onPageChange: setPage,
-      }}
-    />
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <ExportMenu
+          filename="products"
+          title="Products"
+          columns={exportColumns}
+          rows={() =>
+            FetchProducts({ pageSize: MAX_PAGE_SIZE }).then(
+              (result) => result.data,
+            )
+          }
+        />
+      </div>
+      <DataTable
+        columns={columns}
+        data={result?.data ?? []}
+        getRowKey={(product) => product.id}
+        emptyMessage="No products yet."
+        pagination={{
+          page,
+          totalPages: result?.pagination.totalPages ?? 1,
+          onPageChange: setPage,
+        }}
+      />
+    </div>
   );
 }

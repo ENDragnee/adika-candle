@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { ExportMenu } from "@/components/ui/export-menu";
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import type { ExportColumn } from "@/lib/export/export-column";
 import { useProfitability } from "../hooks/use-analytics";
 import type { ProductMarginRowDTO } from "../validators/analytics.schema";
 import { StatTile } from "./stat-tile";
@@ -50,6 +52,21 @@ const columns: DataTableColumn<ProductMarginRowDTO>[] = [
   },
   { key: "units", header: "Units sold (kg)", cell: (row) => row.unitsSoldKg },
   { key: "profit", header: "Total profit", cell: (row) => row.totalProfit },
+];
+
+const exportColumns: ExportColumn<ProductMarginRowDTO>[] = [
+  {
+    header: "Product",
+    value: (row) => `${row.productName} (${row.productSku})`,
+  },
+  { header: "Sell price / kg", value: (row) => row.sellPricePerKg ?? "—" },
+  { header: "Cost / kg", value: (row) => row.costPerKg ?? "—" },
+  {
+    header: "Margin %",
+    value: (row) => (row.marginPercent ? `${row.marginPercent}%` : "—"),
+  },
+  { header: "Units sold (kg)", value: (row) => row.unitsSoldKg },
+  { header: "Total profit", value: (row) => row.totalProfit },
 ];
 
 export function ProfitabilityTab() {
@@ -136,6 +153,14 @@ export function ProfitabilityTab() {
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium">Per-product margin</h3>
           <div className="flex items-center gap-2">
+            {data && (
+              <ExportMenu
+                filename="profitability"
+                title="Profitability"
+                columns={exportColumns}
+                rows={sortedProducts}
+              />
+            )}
             <Select
               value={sortKey}
               onValueChange={(value) => setSortKey(value as SortKey)}
