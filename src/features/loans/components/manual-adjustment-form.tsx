@@ -95,11 +95,6 @@ export function ManualAdjustmentForm({
           onChange={(event) => setNote(event.target.value)}
         />
       </div>
-      {createTransaction.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t record this adjustment.
-        </p>
-      )}
       <Button
         type="submit"
         variant="secondary"

@@ -105,11 +105,6 @@ function CreateCustomerForm({ onSuccess }: { onSuccess: () => void }) {
           onChange={(event) => setLocation(event.target.value)}
         />
       </div>
-      {createCustomer.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t create customer.
-        </p>
-      )}
       <Button type="submit" disabled={createCustomer.isPending}>
         {createCustomer.isPending ? "Adding…" : "Add customer"}
       </Button>
@@ -173,11 +168,6 @@ function EditCustomerForm({
           onChange={(event) => setLocation(event.target.value)}
         />
       </div>
-      {updateCustomer.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t save this customer.
-        </p>
-      )}
       <Button type="submit" disabled={updateCustomer.isPending}>
         {updateCustomer.isPending ? "Saving…" : "Save"}
       </Button>

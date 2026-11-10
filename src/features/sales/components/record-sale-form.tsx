@@ -200,12 +200,6 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
           No active units yet — ask a Manager to set one up under Settings.
         </p>
       )}
-      {createSale.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t record the sale — check the product has an active price
-          and the quantity/unit are valid.
-        </p>
-      )}
       <Button
         type="submit"
         disabled={

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateUnitConversion,
@@ -30,8 +32,13 @@ export function useCreateUnitConversion() {
   return useMutation({
     mutationFn: (input: CreateUnitConversionInput) =>
       CreateUnitConversion(input),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY });
+      toast.success("Unit added");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't add unit"));
+    },
   });
 }
 
@@ -46,8 +53,13 @@ export function useUpdateUnitConversion() {
       id: string;
       input: UpdateUnitConversionInput;
     }) => UpdateUnitConversion(id, input),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY });
+      toast.success("Unit updated");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't save unit"));
+    },
   });
 }
 
@@ -56,7 +68,12 @@ export function useDeactivateUnitConversion() {
 
   return useMutation({
     mutationFn: (id: string) => DeactivateUnitConversion(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY });
+      toast.success("Unit deactivated");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't deactivate unit"));
+    },
   });
 }

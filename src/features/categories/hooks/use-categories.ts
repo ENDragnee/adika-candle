@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateCategory,
@@ -29,8 +31,13 @@ export function useCreateCategory() {
 
   return useMutation({
     mutationFn: (input: CreateCategoryInput) => CreateCategory(input),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      toast.success("Category added");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't add category"));
+    },
   });
 }
 
@@ -40,8 +47,13 @@ export function useUpdateCategory() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateCategoryInput }) =>
       UpdateCategory(id, input),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      toast.success("Category updated");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't save category"));
+    },
   });
 }
 
@@ -50,7 +62,12 @@ export function useDeactivateCategory() {
 
   return useMutation({
     mutationFn: (id: string) => DeactivateCategory(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      toast.success("Category deactivated");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't deactivate category"));
+    },
   });
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   AcceptStock,
@@ -46,6 +48,10 @@ export function useAcceptStock() {
       queryClient.invalidateQueries({
         queryKey: stockLedgerQueryKey(variables.productId),
       });
+      toast.success("Stock accepted");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't accept stock"));
     },
   });
 }

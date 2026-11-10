@@ -125,11 +125,6 @@ export function AcceptStockForm({ onSuccess }: { onSuccess: () => void }) {
           No active units yet — ask a Manager to set one up under Settings.
         </p>
       )}
-      {acceptStock.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t accept stock — check the quantity and unit.
-        </p>
-      )}
       <Button
         type="submit"
         disabled={

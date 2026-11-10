@@ -118,11 +118,6 @@ function AddRequirementForm({
           has a requirement row, or none exist yet.
         </p>
       )}
-      {createRequirement.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t add this requirement.
-        </p>
-      )}
       <Button
         type="submit"
         disabled={
@@ -185,11 +180,6 @@ function EditRequirementForm({
           required
         />
       </div>
-      {updateRequirement.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t save this requirement.
-        </p>
-      )}
       <Button type="submit" disabled={updateRequirement.isPending}>
         {updateRequirement.isPending ? "Saving…" : "Save"}
       </Button>

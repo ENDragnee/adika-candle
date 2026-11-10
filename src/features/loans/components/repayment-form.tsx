@@ -94,11 +94,6 @@ export function RepaymentForm({
           onChange={(event) => setNote(event.target.value)}
         />
       </div>
-      {createTransaction.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t record this transaction.
-        </p>
-      )}
       <Button type="submit" disabled={createTransaction.isPending}>
         {createTransaction.isPending ? "Recording…" : "Record"}
       </Button>

@@ -15,7 +15,7 @@ export default async function RolesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="Edit which permissions each role has. Role names aren't editable here — only the permission assignments." />
+      <PageHeader description="Turn features on or off for each role. Role names aren't editable here — only what each role can do." />
       <RoleManager />
     </div>
   );

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   FetchProductPrices,
@@ -39,6 +41,10 @@ export function useSetNewProductPrice(productId: string) {
         queryKey: productQueryKey(productId),
       });
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      toast.success("New price set");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't set new price"));
     },
   });
 }

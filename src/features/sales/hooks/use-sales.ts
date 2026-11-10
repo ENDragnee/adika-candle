@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { GetErrorMessage } from "@/lib/get-error-message";
 import {
   CreateSale,
   FetchSale,
@@ -38,6 +40,10 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["loans"] });
+      toast.success("Sale recorded");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't record sale"));
     },
   });
 }

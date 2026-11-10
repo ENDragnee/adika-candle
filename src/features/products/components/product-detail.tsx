@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DetailSkeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { RecipeEditor } from "@/features/raw-materials/components/recipe-editor";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
@@ -124,11 +125,6 @@ function EditProductForm({
           blank to disable alerts for this product.
         </p>
       </div>
-      {updateProduct.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t save this product.
-        </p>
-      )}
       <div className="flex gap-2">
         <Button
           size="sm"
@@ -348,43 +344,29 @@ export function ProductDetail({
   usePageHeader({ title: product?.name });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-1 border-b border-border">
-        {(
-          [
-            { id: "overview", label: "Details" },
-            { id: "price-history", label: "Price history" },
-            { id: "cost-history", label: "Cost history" },
-            { id: "recipe", label: "Recipe" },
-          ] as const
-        ).map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setTab(item.id)}
-            className={`px-3 py-2 text-sm font-medium ${
-              tab === item.id
-                ? "border-b-2 border-foreground text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "overview" && (
+    <Tabs
+      value={tab}
+      onValueChange={(value) => setTab(value as Tab)}
+      className="gap-4"
+    >
+      <TabsList>
+        <TabsTrigger value="overview">Details</TabsTrigger>
+        <TabsTrigger value="price-history">Price history</TabsTrigger>
+        <TabsTrigger value="cost-history">Cost history</TabsTrigger>
+        <TabsTrigger value="recipe">Recipe</TabsTrigger>
+      </TabsList>
+      <TabsContent value="overview">
         <ProductOverview productId={productId} canManage={canManage} />
-      )}
-      {tab === "price-history" && (
+      </TabsContent>
+      <TabsContent value="price-history">
         <PriceHistoryTab productId={productId} canManage={canManage} />
-      )}
-      {tab === "cost-history" && (
+      </TabsContent>
+      <TabsContent value="cost-history">
         <CostHistoryTab productId={productId} canManage={canManage} />
-      )}
-      {tab === "recipe" && (
+      </TabsContent>
+      <TabsContent value="recipe">
         <RecipeEditor productId={productId} canManage={canManage} />
-      )}
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 }

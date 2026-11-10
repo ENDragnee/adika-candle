@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateProduct,
@@ -38,8 +40,13 @@ export function useCreateProduct() {
 
   return useMutation({
     mutationFn: (input: CreateProductInput) => CreateProduct(input),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      toast.success("Product added");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't add product"));
+    },
   });
 }
 
@@ -51,6 +58,10 @@ export function useUpdateProduct(id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: productQueryKey(id) });
+      toast.success("Product updated");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't save product"));
     },
   });
 }

@@ -58,7 +58,12 @@ export function TopBar({
           </p>
         )}
       </div>
-      <p className="shrink-0 text-sm text-muted-foreground">
+      {/* Hidden below md — on a narrow screen this greeting was eating
+          into the title/description's own width (both need to share one
+          row with it), forcing the description into a tighter truncation
+          than it needed. The brand mark + title already orient the user;
+          the greeting is a nice-to-have that desktop has room for. */}
+      <p className="hidden shrink-0 text-sm text-muted-foreground md:block">
         Welcome back,{" "}
         <span className="font-medium text-foreground">{firstName}</span>
       </p>

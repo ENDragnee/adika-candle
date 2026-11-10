@@ -74,11 +74,6 @@ export function CreateProductForm({ onSuccess }: { onSuccess: () => void }) {
           </p>
         )}
       </div>
-      {createProduct.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t create product.
-        </p>
-      )}
       <Button
         type="submit"
         disabled={createProduct.isPending || activeCategories.length === 0}

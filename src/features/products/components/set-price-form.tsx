@@ -38,9 +38,6 @@ export function SetPriceForm({
           required
         />
       </div>
-      {setPrice.isError && (
-        <p className="text-sm text-destructive">Couldn&apos;t set price.</p>
-      )}
       <Button type="submit" disabled={setPrice.isPending}>
         {setPrice.isPending ? "Saving…" : "Set new price"}
       </Button>

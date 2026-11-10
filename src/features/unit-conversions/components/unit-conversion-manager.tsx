@@ -86,7 +86,7 @@ function CreateUnitConversionForm({ onSuccess }: { onSuccess: () => void }) {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="new-unit-ratio" className="text-sm font-medium">
-          Ratio to KG
+          Weight per unit (kg)
         </label>
         <Input
           id="new-unit-ratio"
@@ -95,14 +95,14 @@ function CreateUnitConversionForm({ onSuccess }: { onSuccess: () => void }) {
           min="0"
           value={ratioToKg}
           onChange={(event) => setRatioToKg(event.target.value)}
+          placeholder="e.g. 12.5"
           required
         />
-      </div>
-      {createUnitConversion.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t create unit — check the name isn&apos;t already in use.
+        <p className="text-sm text-muted-foreground">
+          How many kilograms is one {unitName || "unit"}? If 1{" "}
+          {unitName || "unit"} weighs 12.5 kg, enter 12.5.
         </p>
-      )}
+      </div>
       <Button type="submit" disabled={createUnitConversion.isPending}>
         {createUnitConversion.isPending ? "Adding…" : "Add unit"}
       </Button>
@@ -140,7 +140,7 @@ function EditUnitConversionForm({
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="edit-unit-ratio" className="text-sm font-medium">
-          Ratio to KG
+          Weight per unit (kg)
         </label>
         <Input
           id="edit-unit-ratio"
@@ -151,12 +151,10 @@ function EditUnitConversionForm({
           onChange={(event) => setRatioToKg(event.target.value)}
           required
         />
-      </div>
-      {updateUnitConversion.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t save this unit.
+        <p className="text-sm text-muted-foreground">
+          How many kilograms is one {unit.unitName}?
         </p>
-      )}
+      </div>
       <Button type="submit" disabled={updateUnitConversion.isPending}>
         {updateUnitConversion.isPending ? "Saving…" : "Save"}
       </Button>
@@ -185,7 +183,9 @@ function UnitConversionRow({ unit }: { unit: UnitConversionDTO }) {
   return (
     <TableRow>
       <TableCell>{unit.unitName}</TableCell>
-      <TableCell className="text-muted-foreground">{unit.ratioToKg}</TableCell>
+      <TableCell className="text-muted-foreground">
+        {unit.ratioToKg} kg
+      </TableCell>
       <TableCell>{unit.isActive ? "Active" : "Inactive"}</TableCell>
       <TableCell>
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -252,7 +252,7 @@ export function UnitConversionManager() {
   usePageHeader({
     title: "Unit conversions",
     description:
-      "Carton/Packet/Wax/Kir → KG ratios. Deactivating a unit hides it from new stock and sales entries without deleting its history.",
+      "How many kilograms are in each unit you sell by — Carton, Packet, Wax, Kir. Deactivating a unit hides it from new stock and sales entries without deleting its history.",
   });
   const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -288,7 +288,7 @@ export function UnitConversionManager() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="bg-muted/50">Unit</TableHead>
-                  <TableHead className="bg-muted/50">Ratio to KG</TableHead>
+                  <TableHead className="bg-muted/50">Weight (kg)</TableHead>
                   <TableHead className="bg-muted/50">Status</TableHead>
                   <TableHead className="bg-muted/50">Actions</TableHead>
                 </TableRow>

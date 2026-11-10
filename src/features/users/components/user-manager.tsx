@@ -172,12 +172,6 @@ function CreateUserForm({
           </SelectContent>
         </Select>
       </div>
-      {createUser.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t create user — check the email/username aren&apos;t
-          already in use and the password is at least 8 characters.
-        </p>
-      )}
       <Button type="submit" disabled={createUser.isPending}>
         {createUser.isPending ? "Creating…" : "Create user"}
       </Button>
@@ -222,9 +216,6 @@ function SetPasswordForm({
           At least 8 characters. Takes effect immediately.
         </p>
       </div>
-      {setUserPassword.isError && (
-        <p className="text-sm text-destructive">Couldn&apos;t set password.</p>
-      )}
       <Button type="submit" disabled={setUserPassword.isPending}>
         {setUserPassword.isPending ? "Saving…" : "Set password"}
       </Button>
@@ -276,11 +267,6 @@ function EditUserForm({
           </SelectContent>
         </Select>
       </div>
-      {updateUser.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t save this user.
-        </p>
-      )}
       <Button type="submit" disabled={updateUser.isPending}>
         {updateUser.isPending ? "Saving…" : "Save"}
       </Button>

@@ -79,12 +79,6 @@ function CreateMaterialForm({ onSuccess }: { onSuccess: () => void }) {
           required
         />
       </div>
-      {createMaterial.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t create material — check the name isn&apos;t already in
-          use.
-        </p>
-      )}
       <Button type="submit" disabled={createMaterial.isPending}>
         {createMaterial.isPending ? "Adding…" : "Add material"}
       </Button>
@@ -125,11 +119,6 @@ function EditMaterialForm({
           required
         />
       </div>
-      {updateMaterial.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t save this material.
-        </p>
-      )}
       <Button type="submit" disabled={updateMaterial.isPending}>
         {updateMaterial.isPending ? "Saving…" : "Save"}
       </Button>

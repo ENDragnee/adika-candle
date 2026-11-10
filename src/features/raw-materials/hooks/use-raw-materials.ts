@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateRawMaterial,
@@ -62,6 +64,10 @@ export function useCreateRawMaterial() {
       queryClient.invalidateQueries({
         queryKey: RAW_MATERIAL_BALANCES_QUERY_KEY,
       });
+      toast.success("Material added");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't add material"));
     },
   });
 }
@@ -82,6 +88,10 @@ export function useUpdateRawMaterial() {
       queryClient.invalidateQueries({
         queryKey: RAW_MATERIAL_BALANCES_QUERY_KEY,
       });
+      toast.success("Material updated");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't save material"));
     },
   });
 }
@@ -96,6 +106,10 @@ export function useDeactivateRawMaterial() {
       queryClient.invalidateQueries({
         queryKey: RAW_MATERIAL_BALANCES_QUERY_KEY,
       });
+      toast.success("Material deactivated");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't deactivate material"));
     },
   });
 }

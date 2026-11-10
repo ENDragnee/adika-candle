@@ -95,12 +95,6 @@ function CreateCategoryForm({ onSuccess }: { onSuccess: () => void }) {
           onChange={(event) => setDescription(event.target.value)}
         />
       </div>
-      {createCategory.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t create category — check the name isn&apos;t already in
-          use.
-        </p>
-      )}
       <Button type="submit" disabled={createCategory.isPending}>
         {createCategory.isPending ? "Adding…" : "Add category"}
       </Button>
@@ -155,11 +149,6 @@ function EditCategoryForm({
           onChange={(event) => setDescription(event.target.value)}
         />
       </div>
-      {updateCategory.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t save this category.
-        </p>
-      )}
       <Button type="submit" disabled={updateCategory.isPending}>
         {updateCategory.isPending ? "Saving…" : "Save"}
       </Button>

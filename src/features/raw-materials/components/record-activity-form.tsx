@@ -122,11 +122,6 @@ export function RecordActivityForm({ onSuccess }: { onSuccess: () => void }) {
           No active raw materials yet — ask a Manager to add one under Settings.
         </p>
       )}
-      {recordActivity.isError && (
-        <p className="text-sm text-destructive">
-          Couldn&apos;t record activity — check the material and quantity.
-        </p>
-      )}
       <Button
         type="submit"
         disabled={

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { GetErrorMessage } from "@/lib/get-error-message";
 import {
   CreateMaterialRequirement,
   FetchMaterialRequirements,
@@ -28,10 +30,15 @@ export function useCreateMaterialRequirement(productId: string) {
   return useMutation({
     mutationFn: (input: CreateMaterialRequirementInput) =>
       CreateMaterialRequirement(productId, input),
-    onSuccess: () =>
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: materialRequirementsQueryKey(productId),
-      }),
+      });
+      toast.success("Recipe ingredient added");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't add ingredient"));
+    },
   });
 }
 
@@ -41,9 +48,14 @@ export function useUpdateMaterialRequirement(productId: string) {
   return useMutation({
     mutationFn: (input: UpdateMaterialRequirementInput) =>
       UpdateMaterialRequirement(productId, input),
-    onSuccess: () =>
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: materialRequirementsQueryKey(productId),
-      }),
+      });
+      toast.success("Recipe updated");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't update recipe"));
+    },
   });
 }

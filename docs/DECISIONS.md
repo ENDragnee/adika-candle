@@ -12,6 +12,266 @@ undo.
 
 ---
 
+## 2026-11-10 — Plain-language Roles/Settings + app-wide toasts and error boundaries (outside the epic sequence)
+
+**Built directly on request**: "The roles and setting pages are junky and
+very technical change them to a proper pages for non-technical person.
+Also let's integrate a roubust error handling modal and sonners." Two
+related but separable pieces of work, both touching most of the app.
+
+**Roles page: raw permission strings replaced with a plain-language
+translation layer, not reworded in place.** New `src/features/roles/
+permission-labels.ts` maps every `module.name`/`permission.name` this
+app's RBAC actually uses (`"raw-material:record"`, `"stock:accept"`, …)
+to a `{label, description}` a non-technical Manager can read, plus a
+`DescribeModule`/`icon` pairing per module and a `HumanizeRoleName`
+helper (`"INVENTORY_MANAGER"` → `"Inventory Manager"`). Both lookups
+fall back to the raw name rather than throwing on a miss, so a newly
+seeded permission/module shows unprettified instead of breaking the
+page — a deliberate "degrade, don't crash" choice given this table is
+hand-maintained and will drift from the seed over time. `role-manager.tsx`
+was rewritten around this: permissions now render as toggle rows (label +
+one-line description + a new `Switch` primitive) grouped under icon-
+labeled module sections, replacing the old flat grid of raw `<input
+type="checkbox">` elements with permission strings as labels — the
+raw-checkbox markup was also the one place in this app not using any
+`src/components/ui/*` primitive, so this incidentally fixed a visual
+inconsistency too. Save/Reset-dirty-state logic is unchanged, just the
+rendering around it.
+
+**New `src/components/ui/switch.tsx`** — this app had no toggle-switch
+primitive; built against Radix's `Switch` (already available through the
+consolidated `radix-ui` package every other primitive here uses, so no
+new dependency) matching the existing shadcn-style conventions.
+
+**Settings: index page rebuilt as icon-fronted `Card` links** (new
+`src/features/settings/` feature folder, `SettingsLinks` — split into
+its own Client Component for the same reason `CreateProductTrigger`
+exists: a Server Component page can't import `@phosphor-icons/react`
+directly) replacing the old plain bordered `<div>` list. **Unit
+conversions' core technical concept — a bare "ratio to KG" number — was
+reframed, not just relabeled**: the field is now "Weight per unit (kg)"
+with a live example that reads back the unit name as you type it ("How
+many kilograms is one CARTON? If 1 CARTON weighs 12.5 kg, enter 12.5."),
+and the table's own "Ratio to KG" column (previously a bare, unitless
+number) now reads "13 kg" — a non-technical reader was never going to
+intuit that a lone "13" in a column meant kilograms. Raw materials'
+settings page was left alone — it has no equivalent "technical number"
+concept, just a name + status, so there was nothing to translate.
+
+**Sonner, wired at the mutation-hook level, not per-component.** New
+`src/components/shell/toaster.tsx` (`<Toaster theme={resolvedTheme}
+position="top-center" richColors closeButton />`, mounted once in the
+root layout) plus `src/lib/get-error-message.ts` — a single
+`GetErrorMessage(error, fallback)` that unwraps `CreateApiRoute`'s
+`{error: string}` response shape (every API route in this app returns
+this exact shape on every non-2xx response, see `rest.handler.ts`) via
+`axios.isAxiosError`. Every `useMutation` across all 14 feature `hooks/
+use-*.ts` files (~30 mutations) gained an `onSuccess` toast (a short
+past-tense confirmation — "Category added", "Stock accepted", "New
+price set") alongside its existing `queryClient.invalidateQueries` calls,
+and an `onError` toast via `GetErrorMessage`. Centralizing this in the
+hooks rather than each component's JSX means every call site of a given
+mutation gets consistent feedback for free, and it's the only way to
+reach a form that calls `mutateAsync` from inside a submit handler with
+no local error-rendering of its own.
+
+**Discovered mid-implementation: several forms were already throwing
+away a more specific server error in favor of a hand-typed guess.**
+`CreateUnitConversionForm`'s inline error text read "Couldn't create
+unit — check the name isn't already in use" unconditionally, while the
+server (`POST /api/v1/unit-conversions`) already returns the exact
+reason, `"A unit with that name already exists"`, on a 409 — the
+component was never reading `error.response.data.error`, just rendering
+static text whenever `isError` was true. Same pattern in `category-
+manager.tsx`, `material-manager.tsx`, `user-manager.tsx`, and others.
+Fixed as a side effect of the toast rollout (the toast now shows the
+real message), and the **20 now-redundant inline `{mutation.isError &&
+<p className="text-destructive">…</p>}` blocks across 16 components were
+deleted outright** rather than left to show a duplicate, less-accurate
+message alongside the new toast — confirmed via `grep -rln
+"\.isError &&" src/features/` that only `role-manager.tsx` still had one
+afterward (removed separately, as part of that file's full rewrite).
+
+**Error boundaries: two new `error.tsx` files, plus a latent bug fixed
+in the pre-existing `global-error.tsx`.** `src/app/(dashboard)/error.tsx`
+sits between `(dashboard)/layout.tsx` and whatever page crashes —
+confirmed in a real browser (a deliberate throwaway `throw new Error()`
+test page, created and deleted within the same session) that `AppShell`
+(sidebar/TopBar/BottomNav) stays fully mounted and navigable while only
+the main content area shows the fallback card, letting a crash on one
+page be routed away from instead of stranding the user. `src/app/
+error.tsx` covers everything outside `(dashboard)/` (landing, sign-in)
+with the same styled card. Both use Next 16.3's `retry()` prop (confirmed
+current for this app's Next 16.4.5 via `node_modules/next/dist/docs/
+.../error.md`'s version table — `reset()` still exists but the docs
+call `retry()` the preferred one as of this version) rather than the
+older `reset()` convention a stale mental model would reach for.
+**`global-error.tsx` (pre-existing, only reached if the root layout
+itself throws) was silently unstyled** — per Next's own docs, this file
+replaces `<html>/<body>` entirely and does not inherit `globals.css`,
+fonts, or the theme class `ThemeProvider` sets, something the original
+file never accounted for despite using Tailwind utility classes
+throughout. Fixed by importing `globals.css` directly; it necessarily
+stays permanently in light-mode token values since there's no
+`ThemeProvider` at that layer to resolve a theme from.
+
+**Verified with `pnpm lint`, `pnpm test`, `npx tsc --noEmit` (all clean)
+and a Playwright pass signed in as `manager`**: both role cards render
+with human-readable labels/descriptions/icons and correct per-role
+toggle state (cross-checked against `prisma/seed.ts`'s actual
+`INVENTORY_MANAGER_PERMISSIONS`), toggling and saving a permission fires
+a real `"Permissions updated"` success toast and persists (confirmed via
+a full page reload reading the saved state back from the server, not
+just client cache) — **the test toggle was reverted and re-saved to
+restore the original seeded permission set** before finishing, so dev
+data wasn't left mutated; the settings index and unit-conversion pages
+render the new copy/icons correctly; a real 409 conflict (adding a
+duplicate unit name) produces an error toast showing the server's exact
+message, not a hand-typed guess; the dashboard error boundary was
+exercised with a real thrown error and confirmed the shell stays
+interactive; light and dark mode both checked. One incidental
+environment note: a background `pnpm dev` process from earlier in this
+session referenced a stale, differently-pathed directory and logged a
+spurious "directory deleted" warning on restart — investigated
+immediately via `git status`/`git log`/file-content checks against the
+actual project root and confirmed no project data was ever at risk; a
+single throwaway verification file briefly written to a mistyped sibling
+path was found and deleted, never part of the repo.
+
+**Files touched:** new `src/features/roles/permission-labels.ts`;
+`src/features/roles/components/role-manager.tsx` (rewritten); new
+`src/components/ui/switch.tsx`; new `src/features/settings/components/
+settings-links.tsx`; `src/app/(dashboard)/manager/settings/page.tsx`;
+`src/features/unit-conversions/components/unit-conversion-manager.tsx`;
+new `src/components/shell/toaster.tsx`, `src/lib/get-error-message.ts`;
+`src/app/layout.tsx` (+`<Toaster />`); all 14 `src/features/*/hooks/
+use-*.ts` files (+toast feedback); 16 components across categories,
+customers, loans, products, raw-materials, sales, stock, unit-
+conversions, and users (removed redundant inline error text); new
+`src/app/(dashboard)/error.tsx`, `src/app/error.tsx`; `src/app/
+global-error.tsx` (fixed missing `globals.css` import). `package.json`/
+`pnpm-lock.yaml` (+`sonner@2.0.8`).
+
+---
+
+## 2026-11-09 — Mobile navbar/tabs resize fixes (outside the epic sequence)
+
+**Built directly on request**: "the Navbar texts have bad UI and the
+tabs(any horizontal overflowing component) should resize to screen size
+or implement a horizontal scroll(I think the former is a better UX)."
+Audited every horizontally-constrained mobile component rather than
+guessing which ones qualified — `BottomNav` (the real offender: a
+horizontally-*scrolling* 13-item row with no scroll affordance, so most
+of Manager's nav was invisible and undiscoverable without knowing to
+swipe), the shared `Tabs` primitive (`src/components/ui/tabs.tsx`, used
+by `AnalyticsHub`'s 4 tabs), `product-detail.tsx`'s hand-rolled 4-tab
+switcher (predates `Tabs`, explicitly left out of scope by Epic 17), and
+`TopBar`'s title row. Confirmed with real 375px Playwright screenshots
+before and after each fix, not just a code read — the two `Tabs`-based
+switchers, it turned out, never actually overflowed the viewport (their
+un-wrapped text just wrapped to 2 lines automatically), but did it
+unevenly: single-line and wrapped two-line triggers sat at different
+baselines with the active underline landing at a different height per
+tab, which is the "bad UI" the user was pointing at even though it
+wasn't literally `overflow`.
+
+**`BottomNav` replaced its scrolling row with a fixed "N primary items +
+More + Account" layout, all equal-width (`flex-1`), zero `overflow-x`.**
+`PRIMARY_NAV_COUNT = 3`: a role with 4 or fewer nav items shows them all
+directly (no "More" clutter for a case that doesn't need it); more than
+that shows the first 3 plus a "More" trigger for the rest. Chosen over
+shrinking every item to fit (truly fitting Manager's 13 items at 375px
+would mean sub-20px icon-only targets, well under any reasonable
+touch-target minimum) and over keeping the scroll with just an added
+affordance (a fade/arrow hint still requires the user to notice and act
+on it; a labeled, always-visible "More" needs no discovery at all — the
+same reasoning any mobile app's bottom-tab-bar-plus-overflow pattern
+already encodes). This is exactly the "fixed-4-items + 'More' sheet"
+design the original `BottomNav` comment flagged as the better pattern
+but deferred "since no Sheet/Drawer primitive exists yet" (see the
+"mobile-responsive shell" decisions) — resolved here with the existing
+`DropdownMenu` primitive instead of a new Sheet component: anchored
+`side="top"` off the trigger exactly like `AccountMenu` already does
+from the same bar, so no new primitive was actually needed. The "More"
+trigger (`DotsThreeIcon`) picks up the active color when the current
+route matches any overflowed item, so landing on an overflowed page
+doesn't look like nothing in the bar is selected.
+
+**Known, accepted tradeoff: a Epic 20 tour step targeting a nav item now
+living under "More" on mobile loses its real anchor.** `data-tour`
+anchors on the overflowed items only exist in the DOM while the Radix
+`DropdownMenuContent` is actually open (same as every other
+`DropdownMenu` in this app — closed content unmounts), so
+`FindTourElement` can't find them and driver.js falls back to its own
+built-in dummy-centered-popover behavior after `waitForElement` elapses.
+Verified this is a *degradation*, not a break: stepped an actual tour
+through to an overflowed nav step at 375px — the popover showed centered
+with the right title/description, `Previous`/`Next` still worked, no
+console error, no hang. Not worth solving by forcing the overflow menu's
+content to stay mounted (Radix's `forceMount` would need hand-written
+show/hide CSS to avoid an invisible-but-interactive menu sitting over
+the page) for a cosmetic loss affecting only 3 (Inventory) or 10
+(Manager) of a tour's steps, on mobile only, when every step still
+narrates correctly.
+
+**`TabsList`/`TabsTrigger` (`src/components/ui/tabs.tsx`) now resize
+to fill the row below `md` (`flex w-full` + each trigger `flex-1`,
+`md:inline-flex md:w-fit` / `md:flex-none` restores the original
+hug-content desktop look exactly, unchanged) with every trigger given a
+shared `min-h-10` and centered text** — this is what actually fixes the
+uneven-baseline problem: 1-line and 2-line labels now report the same
+height to the flex row regardless of which one wraps, so the whole
+`TabsList` (and its active-tab underline) sits level. No font-size
+change — 2-line wrapping for "Stock Health"/"Best Sellers" stays, just
+evenly laid out now, which reads as an intentional compact mobile tab
+bar rather than an overflow accident.
+
+**`product-detail.tsx`'s hand-rolled 4-button tab switcher was migrated
+onto the shared `Tabs` primitive** rather than hand-patched with the same
+mobile fix a second time — it's a `useState<Tab>`-controlled set of
+buttons with manual active-state classNames, functionally identical to
+what `Tabs`' `value`/`onValueChange` controlled mode already does, and
+fixing the alignment problem twice in two different implementations
+(one now via the shared primitive, one by hand) would just reintroduce
+the exact "two inconsistent Tabs implementations" gap Epic 17 explicitly
+left open. Confirmed the migration preserves behavior: controlled `tab`
+state unchanged, all four panels (`ProductOverview`/`PriceHistoryTab`/
+`CostHistoryTab`/`RecipeEditor`) still render on selection, clicking
+through tabs in a real browser session still worked end to end.
+
+**`TopBar`'s "Welcome back, X" greeting is now `hidden` below `md`.**
+It's `shrink-0` (by design, so it's never the one that truncates) sharing
+one flex row with the page title/description (which *is* allowed to
+truncate, `min-w-0`) — on a 375px screen the greeting was claiming a
+fixed ~110px of a ~340px row before the title block even got to lay out,
+so a merely-long description (e.g. Dashboard's "Sales trend, stock
+levels, loan exposure, and low-stock alerts.") truncated far more
+aggressively than its actual content required. The greeting is
+decorative, not orientation-critical (the title already says where you
+are); desktop keeps it since there's no width pressure there to justify
+removing it.
+
+**Files touched:** `src/components/shell/bottom-nav.tsx` (rewritten:
+primary/overflow split, `DropdownMenu`-based "More"); `src/components/
+shell/top-bar.tsx` (`hidden md:block` on the greeting); `src/components/
+ui/tabs.tsx` (`TabsList`/`TabsTrigger` mobile-fill + consistent height);
+`src/features/products/components/product-detail.tsx` (hand-rolled
+switcher → shared `Tabs`). No schema/API/dependency changes. Verified
+with `pnpm lint`, `pnpm test`, `npx tsc --noEmit` (all clean) and a
+Playwright pass at 375px as both `manager` and `inventory`: `BottomNav`
+shows 5 equal-width slots (no `overflow-x`) for both roles, "More" opens
+upward and lists every remaining item with a working icon + label, its
+own active-state highlighting confirmed by navigating to an overflowed
+page (Legend) and back, `AnalyticsHub`'s 4 tabs and `product-detail`'s 4
+tabs both render evenly aligned with no ragged baseline, 1280px desktop
+re-checked afterward to confirm zero regression (hug-content tabs,
+visible greeting, full sidebar, all pixel-identical to before), and the
+Epic 20 tour's known mobile degradation (above) confirmed non-breaking
+by actually stepping through it.
+
+---
+
 ## 2026-11-09 — CSV/PDF report export (outside the epic sequence)
 
 **Built directly on request, after Epic 20**: "add export report such as
