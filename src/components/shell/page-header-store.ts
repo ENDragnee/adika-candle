@@ -1,23 +1,30 @@
 import { create } from "zustand";
 
-// Lets a page override TopBar's default (nav-derived) title, and/or give it
-// a description subtitle it has no nav-derived equivalent for at all. Plain
-// Zustand (first use of it in this app) rather than React context: the
-// value is read by one consumer (TopBar, mounted once in AppShell) but set
-// by many independent page components, which a context provider can't
-// do without wrapping every route in its own client boundary.
+export interface PageHeaderParent {
+  label: string;
+  href: string;
+}
+
+// Lets a page override TopBar's default (nav-derived) title, give it a
+// description subtitle, and (Epic 21) name a parent page shown as a
+// breadcrumb link above the title — every detail page uses it, so there's
+// always a way back to the list. Plain Zustand rather than React context:
+// one consumer (TopBar) but many independent page components setting it.
 interface PageHeaderState {
   title: string | null;
   description: string | null;
+  parent: PageHeaderParent | null;
   setHeader: (header: {
     title?: string | null;
     description?: string | null;
+    parent?: PageHeaderParent | null;
   }) => void;
 }
 
 export const usePageHeaderStore = create<PageHeaderState>((set) => ({
   title: null,
   description: null,
-  setHeader: ({ title = null, description = null }) =>
-    set({ title, description }),
+  parent: null,
+  setHeader: ({ title = null, description = null, parent = null }) =>
+    set({ title, description, parent }),
 }));

@@ -1,3 +1,8 @@
+import {
+  CaretDownIcon,
+  CaretUpDownIcon,
+  CaretUpIcon,
+} from "@phosphor-icons/react";
 import type * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
@@ -33,6 +38,53 @@ export interface DataTableColumn<T> {
   header: string;
   cell: (row: T) => React.ReactNode;
   className?: string;
+  // Makes the header a sort toggle (Epic 21) when the table has `sort`.
+  // The key is sent to the server — lists are paginated server-side, so
+  // sorting one page client-side would only reorder 20 rows.
+  sortKey?: string;
+}
+
+export type SortDirection = "asc" | "desc";
+
+export interface DataTableSort {
+  key: string;
+  dir: SortDirection;
+  onChange: (key: string, dir: SortDirection) => void;
+}
+
+// Exported for the composed (non-DataTable) tables that still want a
+// sortable header cell.
+export function SortableHeaderButton({
+  label,
+  sortKey,
+  sort,
+}: {
+  label: string;
+  sortKey: string;
+  sort: DataTableSort;
+}) {
+  const isActive = sort.key === sortKey;
+  const Icon = !isActive
+    ? CaretUpDownIcon
+    : sort.dir === "asc"
+      ? CaretUpIcon
+      : CaretDownIcon;
+  return (
+    <button
+      type="button"
+      className={cn(
+        "-mx-1 inline-flex items-center gap-1 rounded px-1 hover:text-foreground",
+        isActive ? "text-foreground" : "text-muted-foreground",
+      )}
+      onClick={() =>
+        sort.onChange(sortKey, isActive && sort.dir === "asc" ? "desc" : "asc")
+      }
+      aria-label={`Sort by ${label}`}
+    >
+      {label}
+      <Icon className="size-3" weight="bold" />
+    </button>
+  );
 }
 
 interface DataTablePagination {
@@ -47,6 +99,7 @@ interface DataTableProps<T> {
   getRowKey: (row: T) => string;
   emptyMessage: string;
   pagination?: DataTablePagination;
+  sort?: DataTableSort;
 }
 
 // Shared table shell every list component in src/features uses — gives a
@@ -67,6 +120,7 @@ export function DataTable<T>({
   getRowKey,
   emptyMessage,
   pagination,
+  sort,
 }: DataTableProps<T>) {
   const [titleColumn, ...restColumns] = columns;
 
@@ -81,8 +135,23 @@ export function DataTable<T>({
                   <TableHead
                     key={column.key}
                     className={cn("bg-muted/50", column.className)}
+                    aria-sort={
+                      sort && column.sortKey && sort.key === column.sortKey
+                        ? sort.dir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : undefined
+                    }
                   >
-                    {column.header}
+                    {sort && column.sortKey ? (
+                      <SortableHeaderButton
+                        label={column.header}
+                        sortKey={column.sortKey}
+                        sort={sort}
+                      />
+                    ) : (
+                      column.header
+                    )}
                   </TableHead>
                 ))}
               </TableRow>

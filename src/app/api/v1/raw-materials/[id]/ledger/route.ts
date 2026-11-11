@@ -39,7 +39,10 @@ export const GET = CreateApiRoute<PaginationQuery, Params>({
     );
     return {
       data: entries.map((entry) =>
-        ToRawMaterialLedgerEntryDTO(entry, userNames.get(entry.createdById) ?? null),
+        ToRawMaterialLedgerEntryDTO(
+          entry,
+          userNames.get(entry.createdById) ?? null,
+        ),
       ),
       pagination: BuildPaginationMeta(query, total),
     };

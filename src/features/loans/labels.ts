@@ -40,6 +40,7 @@ export const LOAN_TRANSACTION_META: Record<
   SALE_VOID: {
     label: "Sale voided",
     tone: "neutral",
-    description: "A sale on account was cancelled, so its amount was taken back off.",
+    description:
+      "A sale on account was cancelled, so its amount was taken back off.",
   },
 };

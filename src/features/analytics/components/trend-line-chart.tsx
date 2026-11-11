@@ -13,6 +13,9 @@ export interface TrendSeries {
 export interface TrendPoint {
   key: string;
   label: string;
+  // Longer label for the tooltip (e.g. a full date-time when the axis
+  // only shows "8 Nov"). Defaults to `label`.
+  tooltipLabel?: string;
   // null = no data for that point (e.g. no costed sales that day). Drawn
   // as a gap, never as 0 — before Epic 21 a day with no sales plotted as
   // "0% margin".
@@ -55,12 +58,15 @@ export function TrendLineChart({
   valueFormatter = (value: number) => value.toFixed(1),
   axisFormatter = valueFormatter,
   emptyMessage = "No data in this period.",
+  referenceLine,
 }: {
   points: TrendPoint[];
   series: TrendSeries[];
   valueFormatter?: (value: number) => string;
   axisFormatter?: (value: number) => string;
   emptyMessage?: string;
+  // A dashed horizontal guide, e.g. a product's low-stock alert level.
+  referenceLine?: { value: number; label: string } | null;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const hasEntered = useChartEntrance(points.length > 0);
@@ -73,7 +79,9 @@ export function TrendLineChart({
       ),
   );
   const isEmpty = allValues.length === 0;
-  const scale = BuildLinearScale(allValues);
+  const scale = BuildLinearScale(
+    referenceLine ? [...allValues, referenceLine.value] : allValues,
+  );
   const xStep = points.length > 1 ? CHART_WIDTH / (points.length - 1) : 0;
   const xAt = (index: number) =>
     points.length > 1 ? index * xStep : CHART_WIDTH / 2;
@@ -82,7 +90,7 @@ export function TrendLineChart({
   const xPercent = (index: number) => (xAt(index) / CHART_WIDTH) * 100;
 
   const hovered = hoveredIndex !== null ? points[hoveredIndex] : null;
-  const labelIndices = new Set(XLabelIndices(points.length));
+  const labelIndices = new Set(XLabelIndices(points.length, 4));
 
   const isolatedMarkers = series.flatMap((item) =>
     points.flatMap((point, index) => {
@@ -138,7 +146,7 @@ export function TrendLineChart({
               }}
             >
               <div className="mb-1 font-medium text-foreground">
-                {hovered.label}
+                {hovered.tooltipLabel ?? hovered.label}
               </div>
               {series.map((item) => {
                 const value = hovered.values[item.key];
@@ -188,6 +196,18 @@ export function TrendLineChart({
                 vectorEffect="non-scaling-stroke"
               />
             ))}
+            {referenceLine && (
+              <line
+                x1={0}
+                x2={CHART_WIDTH}
+                y1={yAt(referenceLine.value)}
+                y2={yAt(referenceLine.value)}
+                stroke="var(--color-status-warning)"
+                strokeWidth={1.5}
+                strokeDasharray="5,4"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             {series.map((item) => (
               <path
                 key={item.key}
@@ -232,6 +252,14 @@ export function TrendLineChart({
               />
             )}
           </svg>
+          {referenceLine && !isEmpty && (
+            <span
+              className="pointer-events-none absolute right-1 -translate-y-full rounded bg-background/80 px-1 text-[11px] text-muted-foreground"
+              style={{ top: yAt(referenceLine.value) - 2 }}
+            >
+              {referenceLine.label}
+            </span>
+          )}
           {/* Markers as HTML, so they stay round under the SVG's
               non-uniform (preserveAspectRatio="none") scaling. */}
           {isolatedMarkers.map(({ item, index, value }) => (

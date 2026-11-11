@@ -15,7 +15,7 @@ export default async function ManagerStockPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="Current balances across all products. Select a product for its full ledger." />
+      <PageHeader description="What is on hand for every product, and whether it is running low. Open a product for its history or to record a stock count." />
       <StockBalanceList detailHrefBase="/manager/stock" />
     </div>
   );

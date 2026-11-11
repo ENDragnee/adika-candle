@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateLoanTransaction } from "../hooks/use-loans";
+import { BalancePreview } from "./balance-preview";
 
 // Manager-only correction — permission-gated server-side to loan:manage
 // even though this form is only ever rendered for a Manager session; see
@@ -18,10 +19,12 @@ import { useCreateLoanTransaction } from "../hooks/use-loans";
 export function ManualAdjustmentForm({
   accountId,
   customerId,
+  currentBalance,
   onSuccess,
 }: {
   accountId: string;
   customerId: string;
+  currentBalance?: string;
   onSuccess: () => void;
 }) {
   const [direction, setDirection] = useState<"INCREASE" | "DECREASE">(
@@ -63,10 +66,10 @@ export function ManualAdjustmentForm({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="INCREASE">
-              Increase balance (customer owes more)
+              Customer owes more (or has less credit)
             </SelectItem>
             <SelectItem value="DECREASE">
-              Decrease balance (customer owes less)
+              Customer owes less (or has more credit)
             </SelectItem>
           </SelectContent>
         </Select>
@@ -87,14 +90,26 @@ export function ManualAdjustmentForm({
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="adjustment-note" className="text-sm font-medium">
-          Note
+          Reason
         </label>
         <Input
           id="adjustment-note"
+          placeholder="e.g. Opening balance carried over"
           value={note}
           onChange={(event) => setNote(event.target.value)}
+          required
         />
       </div>
+      {currentBalance !== undefined && (
+        <BalancePreview
+          current={Number(currentBalance)}
+          delta={
+            Number(amount) > 0
+              ? Number(amount) * (direction === "INCREASE" ? 1 : -1)
+              : null
+          }
+        />
+      )}
       <Button
         type="submit"
         variant="secondary"

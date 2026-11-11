@@ -37,6 +37,8 @@ export function useSetNewProductCost(productId: string) {
         queryKey: productQueryKey(productId),
       });
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      // Margin and "no price/cost" attention items depend on this.
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
       toast.success("New cost set");
     },
     onError: (error) => {

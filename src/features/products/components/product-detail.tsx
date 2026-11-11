@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { usePageHeader } from "@/components/shell/use-page-header";
 import {
@@ -13,9 +15,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -27,18 +31,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DetailSkeleton } from "@/components/ui/skeleton";
+import { CardSkeleton, DetailSkeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { RecipeEditor } from "@/features/raw-materials/components/recipe-editor";
+import { SaleList } from "@/features/sales/components/sale-list";
+import { useSales } from "@/features/sales/hooks/use-sales";
+import { StockStatusBadge } from "@/features/stock/components/stock-status-badge";
+import { useStockBalances } from "@/features/stock/hooks/use-stock";
+import { ClassifyStock } from "@/features/stock/stock-status";
+import {
+  AddBusinessDays,
+  BusinessDateKey,
+  StartOfBusinessDay,
+} from "@/lib/business-time";
+import { FormatKg, FormatMoney, FormatPercent } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useProduct, useUpdateProduct } from "../hooks/use-products";
 import { CostHistory } from "./cost-history";
 import { PriceHistory } from "./price-history";
 import { SetCostForm } from "./set-cost-form";
 import { SetPriceForm } from "./set-price-form";
-
-type Tab = "overview" | "price-history" | "cost-history" | "recipe";
 
 function EditProductForm({
   productId,
@@ -179,7 +192,9 @@ function ProductOverview({
       </div>
       <div className="flex justify-between border-b border-border pb-2">
         <dt className="text-sm text-muted-foreground">Current price / kg</dt>
-        <dd className="text-sm font-medium">{product.currentPrice ?? "—"}</dd>
+        <dd className="text-sm font-medium">
+          {FormatMoney(product.currentPrice)}
+        </dd>
       </div>
       <div className="flex justify-between border-b border-border pb-2">
         <dt className="text-sm text-muted-foreground">
@@ -187,8 +202,8 @@ function ProductOverview({
         </dt>
         <dd className="text-sm font-medium">
           {product.lowStockThresholdKg
-            ? `${product.lowStockThresholdKg} kg`
-            : "Disabled"}
+            ? FormatKg(product.lowStockThresholdKg)
+            : "Not set"}
         </dd>
       </div>
       <div className="flex justify-between pb-2">
@@ -270,6 +285,7 @@ function PriceHistoryTab({
   canManage: boolean;
 }) {
   const [isSetPriceOpen, setIsSetPriceOpen] = useState(false);
+  const { data: product } = useProduct(productId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -283,9 +299,12 @@ function PriceHistoryTab({
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Set new price</DialogTitle>
+                <DialogDescription>{product?.name}</DialogDescription>
               </DialogHeader>
               <SetPriceForm
                 productId={productId}
+                currentPrice={product?.currentPrice ?? null}
+                currentCost={product?.currentCost ?? null}
                 onSuccess={() => setIsSetPriceOpen(false)}
               />
             </DialogContent>
@@ -305,6 +324,7 @@ function CostHistoryTab({
   canManage: boolean;
 }) {
   const [isSetCostOpen, setIsSetCostOpen] = useState(false);
+  const { data: product } = useProduct(productId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -318,9 +338,15 @@ function CostHistoryTab({
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Set new cost</DialogTitle>
+                <DialogDescription>
+                  What 1 kg of {product?.name} costs to make. Used for profit
+                  and margin.
+                </DialogDescription>
               </DialogHeader>
               <SetCostForm
                 productId={productId}
+                currentPrice={product?.currentPrice ?? null}
+                currentCost={product?.currentCost ?? null}
                 onSuccess={() => setIsSetCostOpen(false)}
               />
             </DialogContent>
@@ -332,6 +358,108 @@ function CostHistoryTab({
   );
 }
 
+const TABS = ["overview", "sales", "prices", "costs", "recipe"] as const;
+type Tab = (typeof TABS)[number];
+
+function SummaryFact({
+  label,
+  children,
+  hint,
+}: {
+  label: string;
+  children: React.ReactNode;
+  hint?: React.ReactNode;
+}) {
+  return (
+    <Card size="sm">
+      <CardContent className="flex flex-col gap-1">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className="text-lg font-semibold tabular-nums">{children}</span>
+        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+      </CardContent>
+    </Card>
+  );
+}
+
+// "How is this product doing?" in one strip (Epic 21): stock on hand with
+// its status, price, cost, margin, and the last 30 days' sales — before,
+// answering that meant visiting Stock, Analytics and Sales separately.
+function ProductSummary({ productId }: { productId: string }) {
+  const { data: product } = useProduct(productId);
+  const { data: stock } = useStockBalances({ productId });
+  const { data: sales } = useSales({
+    productId,
+    from: BusinessDateKey(AddBusinessDays(StartOfBusinessDay(new Date()), -29)),
+    pageSize: 1,
+  });
+  const balance = stock?.data[0];
+
+  if (!product || !balance) {
+    return (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    );
+  }
+
+  const status = ClassifyStock(
+    Number(balance.quantityKg),
+    balance.thresholdKg === null ? null : Number(balance.thresholdKg),
+  );
+  const price =
+    product.currentPrice === null ? null : Number(product.currentPrice);
+  const cost =
+    product.currentCost === null ? null : Number(product.currentCost);
+  const margin =
+    price !== null && cost !== null && price > 0
+      ? ((price - cost) / price) * 100
+      : null;
+
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <Link
+        href={`/manager/stock/${productId}`}
+        className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <SummaryFact
+          label="On hand"
+          hint={<StockStatusBadge status={status} />}
+        >
+          {FormatKg(balance.quantityKg)}
+        </SummaryFact>
+      </Link>
+      <SummaryFact
+        label="Price / kg"
+        hint={price === null ? "Not set — can't be sold" : undefined}
+      >
+        {FormatMoney(product.currentPrice)}
+      </SummaryFact>
+      <SummaryFact
+        label="Cost / kg"
+        hint={cost === null ? "Not set" : undefined}
+      >
+        {FormatMoney(product.currentCost)}
+      </SummaryFact>
+      <SummaryFact
+        label="Margin"
+        hint={margin !== null && margin < 0 ? "Selling below cost" : undefined}
+      >
+        {FormatPercent(margin)}
+      </SummaryFact>
+      <SummaryFact
+        label="Sold, last 30 days"
+        hint={sales ? FormatMoney(sales.summary.totalAmount) : undefined}
+      >
+        {sales ? FormatKg(sales.summary.totalKg) : "…"}
+      </SummaryFact>
+    </div>
+  );
+}
+
 export function ProductDetail({
   productId,
   canManage,
@@ -339,34 +467,57 @@ export function ProductDetail({
   productId: string;
   canManage: boolean;
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const requested = searchParams.get("tab");
+  // The tab lives in ?tab= so the Dashboard can link straight to e.g.
+  // "Set price" for a product that has none.
+  const tab: Tab = TABS.includes(requested as Tab)
+    ? (requested as Tab)
+    : "overview";
   const { data: product } = useProduct(productId);
-  usePageHeader({ title: product?.name });
+  usePageHeader({
+    title: product?.name ?? null,
+    description: product
+      ? `${product.category.name} · SKU ${product.sku}${product.isActive ? "" : " · inactive"}`
+      : null,
+    parent: { label: "Products", href: "/manager/products" },
+  });
 
   return (
-    <Tabs
-      value={tab}
-      onValueChange={(value) => setTab(value as Tab)}
-      className="gap-4"
-    >
-      <TabsList>
-        <TabsTrigger value="overview">Details</TabsTrigger>
-        <TabsTrigger value="price-history">Price history</TabsTrigger>
-        <TabsTrigger value="cost-history">Cost history</TabsTrigger>
-        <TabsTrigger value="recipe">Recipe</TabsTrigger>
-      </TabsList>
-      <TabsContent value="overview">
-        <ProductOverview productId={productId} canManage={canManage} />
-      </TabsContent>
-      <TabsContent value="price-history">
-        <PriceHistoryTab productId={productId} canManage={canManage} />
-      </TabsContent>
-      <TabsContent value="cost-history">
-        <CostHistoryTab productId={productId} canManage={canManage} />
-      </TabsContent>
-      <TabsContent value="recipe">
-        <RecipeEditor productId={productId} canManage={canManage} />
-      </TabsContent>
-    </Tabs>
+    <div className="flex flex-col gap-6">
+      <ProductSummary productId={productId} />
+      <Tabs
+        value={tab}
+        onValueChange={(value) =>
+          router.replace(`${pathname}?tab=${value}`, { scroll: false })
+        }
+        className="gap-4"
+      >
+        <TabsList>
+          <TabsTrigger value="overview">Details</TabsTrigger>
+          <TabsTrigger value="sales">Sales</TabsTrigger>
+          <TabsTrigger value="prices">Price history</TabsTrigger>
+          <TabsTrigger value="costs">Cost history</TabsTrigger>
+          <TabsTrigger value="recipe">Recipe</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview">
+          <ProductOverview productId={productId} canManage={canManage} />
+        </TabsContent>
+        <TabsContent value="sales">
+          <SaleList productId={productId} initialRange="30d" />
+        </TabsContent>
+        <TabsContent value="prices">
+          <PriceHistoryTab productId={productId} canManage={canManage} />
+        </TabsContent>
+        <TabsContent value="costs">
+          <CostHistoryTab productId={productId} canManage={canManage} />
+        </TabsContent>
+        <TabsContent value="recipe">
+          <RecipeEditor productId={productId} canManage={canManage} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

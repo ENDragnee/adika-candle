@@ -17,5 +17,5 @@ export default async function ManagerCustomerDetailPage(
 
   const { id } = await props.params;
 
-  return <CustomerProfile customerId={id} />;
+  return <CustomerProfile customerId={id} canAdjust linkBase="/manager" />;
 }

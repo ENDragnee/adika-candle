@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/data-table";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { Input } from "@/components/ui/input";
+import { LoanBalance } from "@/features/loans/components/loan-balance-badge";
 import type { ExportColumn } from "@/lib/export/export-column";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useDebounce } from "@/lib/use-debounce";
@@ -69,8 +70,9 @@ export function CustomerList({
     },
     {
       key: "balance",
-      header: "Loan balance",
-      cell: (customer) => customer.loanBalance,
+      header: "Balance",
+      cell: (customer) => <LoanBalance balance={customer.loanBalance} />,
+      className: "text-right",
     },
     {
       key: "status",
@@ -83,7 +85,10 @@ export function CustomerList({
     { header: "Name", value: (customer) => customer.name },
     { header: "Phone", value: (customer) => customer.phone ?? "—" },
     { header: "Location", value: (customer) => customer.location ?? "—" },
-    { header: "Loan balance", value: (customer) => customer.loanBalance },
+    {
+      header: "Balance (+ owes you, − credit)",
+      value: (customer) => customer.loanBalance,
+    },
     {
       header: "Status",
       value: (customer) => (customer.isActive ? "Active" : "Inactive"),

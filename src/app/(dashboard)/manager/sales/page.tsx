@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
 import {
-  type SaleRange,
   SaleList,
+  type SaleRange,
 } from "@/features/sales/components/sale-list";
 import { GetSession } from "@/lib/session";
 

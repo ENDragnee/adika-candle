@@ -93,8 +93,7 @@ function RolePermissionMatrix({
       // single-line, so Enabled would otherwise land past the fold on
       // anything narrower than a wide desktop viewport.
       cell: ({ permission }) => {
-        const locked =
-          isOwnRole && permission.name === SELF_LOCKED_PERMISSION;
+        const locked = isOwnRole && permission.name === SELF_LOCKED_PERMISSION;
         return (
           <span className="inline-flex items-center gap-2">
             <Switch
@@ -104,9 +103,7 @@ function RolePermissionMatrix({
               aria-label={DescribePermission(permission.name).label}
             />
             {locked && (
-              <span className="text-xs text-muted-foreground">
-                Your role
-              </span>
+              <span className="text-xs text-muted-foreground">Your role</span>
             )}
           </span>
         );

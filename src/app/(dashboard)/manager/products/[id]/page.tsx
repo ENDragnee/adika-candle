@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { ProductDetail } from "@/features/products/components/product-detail";
 import { CheckPermission } from "@/lib/session";
 
@@ -17,5 +18,10 @@ export default async function ProductDetailPage(
   const canManage = await CheckPermission("product:manage");
   const { id } = await props.params;
 
-  return <ProductDetail productId={id} canManage={canManage} />;
+  // ProductDetail reads ?tab= via useSearchParams.
+  return (
+    <Suspense>
+      <ProductDetail productId={id} canManage={canManage} />
+    </Suspense>
+  );
 }

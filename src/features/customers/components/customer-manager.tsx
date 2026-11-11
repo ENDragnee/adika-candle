@@ -20,7 +20,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { TableContainer, TableSkeleton } from "@/components/ui/data-table";
+import {
+  SortableHeaderButton,
+  TableContainer,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { ListSearch } from "@/components/ui/list-search";
 import { Pagination } from "@/components/ui/pagination";
 import {
   Table,
@@ -44,6 +49,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ToneBadge } from "@/components/ui/tone-badge";
+import { LoanBalance } from "@/features/loans/components/loan-balance-badge";
+import { useListParams } from "@/lib/use-list-params";
 import {
   useCreateCustomer,
   useCustomers,
@@ -205,8 +213,14 @@ function CustomerRow({ customer }: { customer: CustomerDTO }) {
       <TableCell className="text-muted-foreground">
         {customer.location ?? "—"}
       </TableCell>
-      <TableCell>{customer.loanBalance}</TableCell>
-      <TableCell>{customer.isActive ? "Active" : "Inactive"}</TableCell>
+      <TableCell className="text-right">
+        <LoanBalance balance={customer.loanBalance} />
+      </TableCell>
+      <TableCell>
+        <ToneBadge tone={customer.isActive ? "good" : "neutral"}>
+          {customer.isActive ? "Active" : "Inactive"}
+        </ToneBadge>
+      </TableCell>
       <TableCell>
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
@@ -269,14 +283,20 @@ function CustomerRow({ customer }: { customer: CustomerDTO }) {
 }
 
 export function CustomerManager() {
-  const [page, setPage] = useState(1);
+  const list = useListParams<"name" | "balance">("name");
+  const { page, setPage } = list;
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data: result, isLoading } = useCustomers({ page });
+  const { data: result, isLoading } = useCustomers(list.params);
   const customers = result?.data;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ListSearch
+          placeholder="Search customers…"
+          onSearch={list.setSearch}
+          className="w-full sm:w-64"
+        />
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -300,10 +320,22 @@ export function CustomerManager() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="bg-muted/50">Name</TableHead>
+                  <TableHead className="bg-muted/50">
+                    <SortableHeaderButton
+                      label="Name"
+                      sortKey="name"
+                      sort={list.sort}
+                    />
+                  </TableHead>
                   <TableHead className="bg-muted/50">Phone</TableHead>
                   <TableHead className="bg-muted/50">Location</TableHead>
-                  <TableHead className="bg-muted/50">Loan balance</TableHead>
+                  <TableHead className="bg-muted/50 text-right">
+                    <SortableHeaderButton
+                      label="Balance"
+                      sortKey="balance"
+                      sort={list.sort}
+                    />
+                  </TableHead>
                   <TableHead className="bg-muted/50">Status</TableHead>
                   <TableHead className="bg-muted/50">Actions</TableHead>
                 </TableRow>

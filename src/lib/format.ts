@@ -131,6 +131,12 @@ export function FormatDate(value: string | Date | null | undefined) {
   return dateFormatter.format(new Date(value));
 }
 
+// "8 Nov" — for chart axes where the year is obvious from context.
+export function FormatShortDate(value: string | Date | null | undefined) {
+  if (!value) return EMPTY_VALUE;
+  return shortDateFormatter.format(new Date(value));
+}
+
 // For "YYYY-MM-DD" business-date keys from the analytics API (midday UTC
 // keeps the key on its own calendar day in any zone within ±12h).
 export function FormatDateKey(dateKey: string, { short = true } = {}) {

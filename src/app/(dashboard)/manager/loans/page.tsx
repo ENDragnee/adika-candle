@@ -15,7 +15,7 @@ export default async function LoansPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="Cross-customer oversight — outstanding balances across every loan account, highest first." />
+      <PageHeader description="Who owes you, who has paid in advance, and when each customer last paid." />
       <LoanOversightList />
     </div>
   );
