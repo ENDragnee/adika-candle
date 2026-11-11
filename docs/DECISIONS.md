@@ -12,6 +12,140 @@ undo.
 
 ---
 
+## 2026-11-10 — Roles permission matrix + collapsible sidebar (outside the epic sequence)
+
+**Two separate requests, landed back to back on the same day as the
+plain-language Roles/Settings round above**: "Update the role UI to use
+a internal side bar to select the role and on the right to have a
+permission matrix," then mid-session, "The sidebar looks generic upgrade
+it's look better and Make it look premium, add a sidebar collapser too.
+Also some padding to the shell."
+
+**Roles page restructured again — card-per-role replaced with a
+role-picker + single-role data table.** Asked the user to pick between
+two genuinely different "matrix" readings before building (single role
+selected via sidebar vs. all roles as comparison columns) rather than
+guessing — picked single-role, table rows = permissions. `RoleManager`
+now holds `selectedRoleId` state; `RoleSidebar` is a row of `Button`s
+(`md:flex-col` for a real left sidebar, a horizontal row below `md` —
+two roles fit with no scrolling) swapped for whichever role's data
+should render. **The matrix reuses `DataTable<T>`, not a hand-rolled
+table**, specifically so it inherits the mobile card-view fallback every
+other list in this app already gets for free — confirmed in a real
+375px pass that it correctly becomes one card per permission with no
+extra code. Columns are `Permission | Enabled | Module | Description`,
+**in that order deliberately, not the order first built**: a first pass
+put `Enabled` last, and a real-browser check caught the table
+overflowing its container (`scrollWidth` 936 vs `clientWidth` 758) —
+`TableCell`'s default `whitespace-nowrap` (same root cause Epic 19's
+Legend page hit) was letting every row's full prose description force
+the table wider than the viewport, scrolling the actual toggle control
+out of reach. Fixed by moving `Enabled` next to `Permission` (so the
+control is reachable even if something else overflows) and giving only
+the `Description` column `whitespace-normal` + a `min-w-56 max-w-sm`
+clamp, so it wraps instead of stretching the table. `RolePermissionMatrix`
+is `key`ed by `role.id` in the parent — its `selectedIds` state only
+ever initializes from `role.permissionIds` on mount, so without the
+remount-on-switch, picking a different role in the sidebar would keep
+showing the previous role's in-progress (possibly dirty, unsaved) toggle
+state against the new role's data.
+
+**Sidebar: visual refresh + a collapse-to-icon-rail mode, not a
+rewrite of its underlying nav-item data or active-route logic.** Added
+a single accent element (a `FlameIcon` mark in a rounded `bg-primary`
+badge next to the wordmark) as the one deliberate "premium" flourish,
+and left the existing amber active-state treatment alone — already a
+clean, standard pattern, not worth re-litigating alongside everything
+else changing at once. New `src/components/shell/use-sidebar-collapsed.ts`
+persists the collapsed/expanded choice in `localStorage` (same
+hydration-safe `mounted`-after-effect pattern `ThemeSwitcher` already
+uses, since the stored value isn't known during SSR) — confirmed via a
+real reload that the choice survives. Collapsed width is `w-16` (a
+standard icon-rail size); the toggle is a small circular button
+half-overlapping the sidebar's own border (`absolute -right-3`,
+needs `relative` on the `<aside>` — a `position: sticky` ancestor is a
+valid containing block for an absolutely-positioned descendant, so this
+works despite the sidebar itself being sticky), chosen over a
+hover-to-reveal control for discoverability in a business app where
+finding the toggle matters more than minimizing chrome.
+
+**Nav labels are collapsed via width/opacity transition, not
+conditional rendering — and a new `Tooltip` primitive stands in for
+the hidden label.** The label text stays in the DOM and animates its
+own box to `w-0 opacity-0` in step with the sidebar's width transition,
+rather than disappearing abruptly; new `src/components/ui/tooltip.tsx`
+(Radix `Tooltip`, matching this app's shadcn-style conventions, the
+same way `switch.tsx` was added for the Roles round) only wraps a nav
+item when `collapsed` is true — an expanded item already shows its
+label inline, so a tooltip there would just be redundant chrome.
+Confirmed working in a real hover test (collapsed, hovering the
+Analytics icon shows an "Analytics" tooltip). The sidebar's own
+width transition uses the `animate` skill's strong ease-in-out curve at
+200ms (a resize reads as "morphing on screen," not entering/exiting)
+with `motion-reduce:transition-none` on every animated piece — the
+collapse, the toggle icon's rotation, and each label's own width/opacity
+tween.
+
+**Shell padding bumped in step, not in isolation** — the sidebar nav
+items `px-2`→`px-3`/`py-1.5`→`py-2`, the brand row and account trigger
+rows each gained a bit more vertical padding, `TopBar` went
+`md:px-6 md:py-3` → `md:px-8 md:py-4`, and `main` went `md:p-6` →
+`md:p-8` — chosen so `TopBar`'s title and the page content below it
+keep sharing the same left gutter (`md:px-8` on both) rather than only
+bumping one side and leaving them visually misaligned. Mobile
+(`BottomNav`, the below-`md` shell) was left untouched — nothing in the
+request named it, and the prior mobile-UX round already gave it its own
+dedicated pass.
+
+**A third, smaller follow-up the same day: "The theme switcher on the
+avatar section should be a selector like in the public navbar."**
+`AccountMenu`'s theme control used to be three full-width stacked
+`DropdownMenuItem` rows (Light/Dark/System, each with icon + label +
+a checkmark) under a "Theme" label — three rows of vertical space for
+one setting. Replaced with a new `ThemeSelector`: a single row holding
+a compact three-icon segmented control (the same Light/Dark/System set,
+same icons), matching the public (pre-auth) pages' standalone
+`ThemeSwitcher` in spirit — compact and icon-driven — without literally
+nesting that component's own dropdown-trigger inside this already-open
+one (a dropdown-inside-a-dropdown would fight the outer menu's own
+focus/outside-click handling for no real benefit here). **Built from
+plain `<button>`s, not `DropdownMenuItem`s, specifically so clicking a
+theme option does not close the account menu** — every other row in
+this menu closes it on select (standard Radix behavior), but closing on
+a theme click would mean reopening the menu just to compare Light vs.
+Dark, which this now avoids: confirmed in a real browser that clicking
+"Dark" repaints the whole app immediately while the dropdown — and its
+other rows (Take a tour, Sign out) — stay right where they were. Carries
+the same hydration-safe `mounted` guard `ThemeSwitcher` already uses, so
+the active segment doesn't highlight the wrong option for one frame
+before the client's real saved theme is known.
+
+**Verified with `pnpm lint`, `pnpm test`, `npx tsc --noEmit` (all clean)
+and a Playwright pass signed in as `manager`**: both roles' matrices
+render with the correct toggle state cross-checked against
+`prisma/seed.ts`, the table no longer overflows its container at a
+1280px viewport, collapsing/expanding the sidebar works and persists
+across a reload, the collapsed-icon tooltip appears on hover, the
+account menu's dropdown alignment switches to `center` when collapsed
+so it doesn't open oddly off a narrow trigger, a 375px mobile pass
+confirmed the dashboard and the Roles page (sidebar-as-horizontal-row +
+DataTable's card view) are both unaffected by the desktop-only shell
+changes, the new theme selector was exercised from both the desktop
+sidebar trigger and the mobile `BottomNav` avatar trigger (switching
+themes, confirming the menu stays open), and light/dark mode were both
+checked throughout.
+
+**Files touched:** `src/features/roles/components/role-manager.tsx`
+(rewritten again); `src/components/shell/app-shell.tsx` (rewritten);
+`src/components/shell/top-bar.tsx` (padding only);
+`src/components/shell/account-menu.tsx` (theme section replaced); new
+`src/components/shell/use-sidebar-collapsed.ts`,
+`src/components/ui/tooltip.tsx`. No schema/API/dependency changes —
+`Tooltip` came from the same already-installed `radix-ui` package
+`Switch` did.
+
+---
+
 ## 2026-11-10 — Plain-language Roles/Settings + app-wide toasts and error boundaries (outside the epic sequence)
 
 **Built directly on request**: "The roles and setting pages are junky and

@@ -40,7 +40,7 @@ export function TopBar({
   return (
     <header
       data-tour="topbar"
-      className="flex items-center justify-between gap-4 border-b border-border bg-background px-4 py-3 md:px-6"
+      className="flex items-center justify-between gap-4 border-b border-border bg-background px-4 py-3 md:px-8 md:py-4"
     >
       <div className="flex min-w-0 flex-col">
         {/* The sidebar already carries the brand on desktop (md+); on

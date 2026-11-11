@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CheckIcon,
   CompassIcon,
   DesktopIcon,
   MoonIcon,
@@ -11,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import type * as React from "react";
+import { useEffect, useState } from "react";
 import { useProductTour } from "@/components/tour/use-product-tour";
 import {
   DropdownMenu,
@@ -29,6 +29,55 @@ const THEME_OPTIONS = [
   { value: "dark", label: "Dark", icon: MoonIcon },
   { value: "system", label: "System", icon: DesktopIcon },
 ] as const;
+
+// Same compact segmented control the public (pre-auth) pages' standalone
+// ThemeSwitcher presents, just inlined as one row inside the account
+// dropdown instead of behind its own icon-trigger — three plain buttons
+// (not DropdownMenuItem) so clicking one doesn't close the whole account
+// menu the way every other row here does, letting someone flip between
+// Light/Dark/System and actually see the result before moving on.
+function ThemeSelector() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoids a hydration mismatch: the server has no access to the
+  // client's saved theme, so the active segment only lights up after
+  // mount — same guard the standalone ThemeSwitcher uses for its own
+  // trigger icon.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return (
+    <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+      <span className="text-sm text-muted-foreground">Theme</span>
+      <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/50 p-0.5">
+        {THEME_OPTIONS.map((option) => {
+          const Icon = option.icon;
+          const isActive = mounted && theme === option.value;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-label={option.label}
+              aria-pressed={isActive}
+              onClick={() => setTheme(option.value)}
+              className={cn(
+                "flex size-7 items-center justify-center rounded-md transition-colors",
+                isActive
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-4" weight={isActive ? "fill" : "regular"} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function GetInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -56,7 +105,6 @@ export function AccountMenu({
   align = "start",
   side = "top",
 }: AccountMenuProps) {
-  const { theme, setTheme } = useTheme();
   const router = useRouter();
   const startTour = useProductTour(user.role);
 
@@ -76,29 +124,7 @@ export function AccountMenu({
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-muted-foreground">
-          Theme
-        </DropdownMenuLabel>
-        {THEME_OPTIONS.map((option) => {
-          const Icon = option.icon;
-          const isActive = theme === option.value;
-
-          return (
-            <DropdownMenuItem
-              key={option.value}
-              onSelect={() => setTheme(option.value)}
-            >
-              <Icon />
-              {option.label}
-              <CheckIcon
-                className={cn(
-                  "ml-auto",
-                  isActive ? "opacity-100" : "opacity-0",
-                )}
-              />
-            </DropdownMenuItem>
-          );
-        })}
+        <ThemeSelector />
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={startTour}>
           <CompassIcon />

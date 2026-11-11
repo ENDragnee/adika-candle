@@ -3,13 +3,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+  DataTable,
+  type DataTableColumn,
+  TableSkeleton,
+} from "@/components/ui/data-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { useRoles, useUpdateRolePermissions } from "../hooks/use-roles";
@@ -18,64 +15,24 @@ import {
   DescribePermission,
   HumanizeRoleName,
 } from "../permission-labels";
-import type { ModuleDTO, RoleDTO } from "../validators/role.schema";
+import type {
+  ModuleDTO,
+  PermissionDTO,
+  RoleDTO,
+} from "../validators/role.schema";
 
-function PermissionModuleSection({
-  module,
-  selectedIds,
-  onToggle,
-}: {
+interface PermissionRow {
+  permission: PermissionDTO;
   module: ModuleDTO;
-  selectedIds: Set<string>;
-  onToggle: (permissionId: string) => void;
-}) {
-  const { label, icon: Icon } = DescribeModule(module.name);
-
-  return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <Icon className="size-4 text-muted-foreground" />
-        {label}
-      </div>
-      <div className="flex flex-col divide-y divide-border">
-        {module.permissions.map((permission) => {
-          const { label: permissionLabel, description } = DescribePermission(
-            permission.name,
-          );
-          const switchId = `permission-${permission.id}`;
-
-          return (
-            <div
-              key={permission.id}
-              className="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0"
-            >
-              <Label
-                htmlFor={switchId}
-                className="flex flex-col items-start gap-0.5"
-              >
-                <span className="text-sm font-medium text-foreground">
-                  {permissionLabel}
-                </span>
-                {description && (
-                  <span className="text-sm text-muted-foreground">
-                    {description}
-                  </span>
-                )}
-              </Label>
-              <Switch
-                id={switchId}
-                checked={selectedIds.has(permission.id)}
-                onCheckedChange={() => onToggle(permission.id)}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
-function RoleCard({ role, modules }: { role: RoleDTO; modules: ModuleDTO[] }) {
+function RolePermissionMatrix({
+  role,
+  modules,
+}: {
+  role: RoleDTO;
+  modules: ModuleDTO[];
+}) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(role.permissionIds),
   );
@@ -105,93 +62,175 @@ function RoleCard({ role, modules }: { role: RoleDTO; modules: ModuleDTO[] }) {
     setSelectedIds(new Set(role.permissionIds));
   }
 
+  // Flattened module.permissions, one row per permission — the actual
+  // "matrix": Permission | Module | Description | Enabled, via the same
+  // DataTable<T> every other list in this app uses, so it gets the same
+  // mobile card-view treatment for free instead of a bespoke table.
+  const rows: PermissionRow[] = modules.flatMap((module) =>
+    module.permissions.map((permission) => ({ permission, module })),
+  );
+
+  const columns: DataTableColumn<PermissionRow>[] = [
+    {
+      key: "permission",
+      header: "Permission",
+      cell: ({ permission }) => DescribePermission(permission.name).label,
+    },
+    {
+      key: "enabled",
+      header: "Enabled",
+      // Placed right after the permission name (not last) so the actual
+      // control is always reachable without scrolling the table
+      // horizontally — Description's prose is the one cell allowed to
+      // wrap (see its own className below), everything else here stays
+      // single-line, so Enabled would otherwise land past the fold on
+      // anything narrower than a wide desktop viewport.
+      cell: ({ permission }) => (
+        <Switch
+          checked={selectedIds.has(permission.id)}
+          onCheckedChange={() => toggle(permission.id)}
+          aria-label={DescribePermission(permission.name).label}
+        />
+      ),
+    },
+    {
+      key: "module",
+      header: "Module",
+      cell: ({ module }) => {
+        const { label, icon: Icon } = DescribeModule(module.name);
+        return (
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <Icon className="size-4 shrink-0" />
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      key: "description",
+      header: "Description",
+      cell: ({ permission }) => DescribePermission(permission.name).description,
+      // Overrides TableCell's default `whitespace-nowrap` — without this,
+      // every row's full description forces the table wider than the
+      // viewport (discovered the same way Epic 19's Legend page did: a
+      // long prose cell inside Table's auto-layout, not caught until an
+      // actual screenshot). min-w-56 keeps it legible once it wraps.
+      className: "min-w-56 max-w-sm text-muted-foreground whitespace-normal",
+    },
+  ];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{HumanizeRoleName(role.name)}</CardTitle>
+    <div className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-base font-medium text-foreground">
+          {HumanizeRoleName(role.name)}
+        </h2>
         {role.description && (
-          <CardDescription>{role.description}</CardDescription>
+          <p className="text-sm text-muted-foreground">{role.description}</p>
         )}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3">
-          {modules.map((module) => (
-            <PermissionModuleSection
-              key={module.id}
-              module={module}
-              selectedIds={selectedIds}
-              onToggle={toggle}
-            />
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={!isDirty || updatePermissions.isPending}
-          >
-            {updatePermissions.isPending ? "Saving…" : "Save changes"}
+      </div>
+      <DataTable
+        columns={columns}
+        data={rows}
+        getRowKey={(row) => row.permission.id}
+        emptyMessage="No permissions defined."
+      />
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={!isDirty || updatePermissions.isPending}
+        >
+          {updatePermissions.isPending ? "Saving…" : "Save changes"}
+        </Button>
+        {isDirty && (
+          <Button size="sm" variant="ghost" onClick={handleReset}>
+            Discard changes
           </Button>
-          {isDirty && (
-            <Button size="sm" variant="ghost" onClick={handleReset}>
-              Discard changes
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </div>
   );
 }
 
-// Matches RoleCard's title + module-section + save-button shape. Two
-// cards — the app only ever seeds two roles (Manager, Inventory Manager),
-// see docs/DECISIONS.md "RBAC modeled as data".
-function RoleCardSkeleton() {
+// Below `md`, a horizontal row above the table (two roles today fit with
+// no scrolling); `md+` becomes a real left sidebar — "use an internal
+// side bar to select the role" per the user's own request.
+function RoleSidebar({
+  roles,
+  selectedRoleId,
+  onSelect,
+}: {
+  roles: RoleDTO[];
+  selectedRoleId: string;
+  onSelect: (roleId: string) => void;
+}) {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-3 w-48" />
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {Array.from({ length: 3 }, (_, index) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: static group count, never reordered
-            key={index}
-            className="flex flex-col gap-2 rounded-lg border border-border p-3"
-          >
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
-        ))}
-        <Skeleton className="h-8 w-28" />
-      </CardContent>
-    </Card>
+    <nav className="flex gap-2 overflow-x-auto md:w-48 md:shrink-0 md:flex-col md:gap-1 md:overflow-visible">
+      {roles.map((role) => (
+        <Button
+          key={role.id}
+          type="button"
+          variant={role.id === selectedRoleId ? "default" : "ghost"}
+          className="shrink-0 justify-start md:w-full"
+          onClick={() => onSelect(role.id)}
+        >
+          {HumanizeRoleName(role.name)}
+        </Button>
+      ))}
+    </nav>
+  );
+}
+
+function RoleManagerSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 md:flex-row">
+      <div className="flex gap-2 md:w-48 md:shrink-0 md:flex-col md:gap-1">
+        <Skeleton className="h-9 w-24 md:w-full" />
+        <Skeleton className="h-9 w-32 md:w-full" />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <Skeleton className="h-4 w-40" />
+        <TableSkeleton columns={4} />
+      </div>
+    </div>
   );
 }
 
 export function RoleManager() {
   const { data, isLoading } = useRoles();
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col gap-4">
-        <RoleCardSkeleton />
-        <RoleCardSkeleton />
-      </div>
-    );
+    return <RoleManagerSkeleton />;
   }
 
   if (!data?.roles.length) {
     return <p className="text-sm text-muted-foreground">No roles found.</p>;
   }
 
+  const activeRole =
+    data.roles.find((role) => role.id === selectedRoleId) ?? data.roles[0];
+
   return (
-    <div className="flex flex-col gap-4">
-      {data.roles.map((role) => (
-        <RoleCard key={role.id} role={role} modules={data.modules} />
-      ))}
+    <div className="flex flex-col gap-6 md:flex-row">
+      <RoleSidebar
+        roles={data.roles}
+        selectedRoleId={activeRole.id}
+        onSelect={setSelectedRoleId}
+      />
+      <div className="min-w-0 flex-1">
+        {/* `key` forces a remount on role switch — RolePermissionMatrix's
+            selectedIds state is only ever initialized from `role.
+            permissionIds` on mount, so without this, switching roles
+            would leave the previous role's in-progress toggle state
+            showing against the newly selected role. */}
+        <RolePermissionMatrix
+          key={activeRole.id}
+          role={activeRole}
+          modules={data.modules}
+        />
+      </div>
     </div>
   );
 }
