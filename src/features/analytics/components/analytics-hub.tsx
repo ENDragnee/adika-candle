@@ -1,24 +1,46 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BestSellersTab } from "./best-sellers-tab";
 import { ProductionTab } from "./production-tab";
 import { ProfitabilityTab } from "./profitability-tab";
 import { StockHealthTab } from "./stock-health-tab";
 
+const TABS = [
+  "production",
+  "profitability",
+  "stock-health",
+  "best-sellers",
+] as const;
+type AnalyticsTab = (typeof TABS)[number];
+
 // Each TabsContent only mounts (and its tab's query only fires) once that
-// tab is actually selected — Radix Tabs doesn't render inactive panels into
-// the DOM by default, which is what gives every tab's GraphQL query its
-// "fetched lazily when first opened" behavior for free, no manual
-// `enabled` wiring needed at this layer. See docs/epics/17-analytics-hub.md.
+// tab is actually selected — Radix Tabs doesn't render inactive panels
+// into the DOM. The active tab lives in `?tab=` (Epic 21) so the Dashboard
+// can link straight to e.g. Stock Health filtered to low stock, and a
+// refresh or shared link keeps the tab.
 export function AnalyticsHub() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const requested = searchParams.get("tab");
+  const tab: AnalyticsTab = TABS.includes(requested as AnalyticsTab)
+    ? (requested as AnalyticsTab)
+    : "production";
+
+  function HandleChange(value: string) {
+    // Tab-specific params (e.g. ?status=) don't carry across tabs.
+    router.replace(`${pathname}?tab=${value}`, { scroll: false });
+  }
+
   return (
-    <Tabs defaultValue="production">
+    <Tabs value={tab} onValueChange={HandleChange}>
       <TabsList>
         <TabsTrigger value="production">Production</TabsTrigger>
         <TabsTrigger value="profitability">Profitability</TabsTrigger>
-        <TabsTrigger value="stock-health">Stock Health</TabsTrigger>
-        <TabsTrigger value="best-sellers">Best Sellers</TabsTrigger>
+        <TabsTrigger value="stock-health">Stock health</TabsTrigger>
+        <TabsTrigger value="best-sellers">Best sellers</TabsTrigger>
       </TabsList>
       <TabsContent value="production">
         <ProductionTab />

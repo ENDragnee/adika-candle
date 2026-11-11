@@ -3,11 +3,14 @@ import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CreateProductInput,
   ProductDTO,
+  ProductQuery,
   UpdateProductInput,
 } from "../validators/product.schema";
 
+export type ProductsQueryParams = PaginationParams & ProductQuery;
+
 export async function FetchProducts(
-  params: PaginationParams = {},
+  params: ProductsQueryParams = {},
 ): Promise<Paginated<ProductDTO>> {
   const { data } = await axiosInstance.get<Paginated<ProductDTO>>(
     "/api/v1/products",

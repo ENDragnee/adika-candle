@@ -59,6 +59,7 @@ export const StockLedgerEntrySchema = z.object({
   note: z.string().nullable(),
   saleId: z.string().nullable(),
   createdById: z.string(),
+  createdByName: z.string().nullable(),
   createdAt: z.iso.datetime(),
 });
 
@@ -70,6 +71,7 @@ export const StockLedgerEntryListResponseSchema = z.array(
 
 export function ToStockLedgerEntryDTO(
   entry: StockLedgerEntry,
+  createdByName: string | null = null,
 ): StockLedgerEntryDTO {
   return {
     id: entry.id,
@@ -83,6 +85,7 @@ export function ToStockLedgerEntryDTO(
     note: entry.note,
     saleId: entry.saleId,
     createdById: entry.createdById,
+    createdByName,
     createdAt: entry.createdAt.toISOString(),
   };
 }

@@ -1,18 +1,9 @@
 "use client";
 
-import {
-  CheckCircleIcon,
-  MagnifyingGlassIcon,
-  SortAscendingIcon,
-  SortDescendingIcon,
-  StackIcon,
-  WarningIcon,
-  WarningOctagonIcon,
-  XCircleIcon,
-} from "@phosphor-icons/react";
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   DataTable,
   type DataTableColumn,
@@ -20,6 +11,7 @@ import {
 } from "@/components/ui/data-table";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { Input } from "@/components/ui/input";
+import { Section } from "@/components/ui/section";
 import {
   Select,
   SelectContent,
@@ -28,85 +20,50 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import {
+  STOCK_STATUS_META,
+  StockStatusBadge,
+} from "@/features/stock/components/stock-status-badge";
+import { StockStatusStrip } from "@/features/stock/components/stock-status-strip";
+import {
+  ATTENTION_STOCK_STATUSES,
+  STOCK_STATUSES,
+  type StockStatus,
+} from "@/features/stock/stock-status";
 import type { ExportColumn } from "@/lib/export/export-column";
+import { FormatKg, FormatNumber } from "@/lib/format";
 import { useStockHealth } from "../hooks/use-analytics";
-import type {
-  StockHealthRowDTO,
-  StockHealthStatus,
-} from "../validators/analytics.schema";
-import { RankedBarChart, type RankedBarDatum } from "./ranked-bar-chart";
+import type { StockHealthRowDTO } from "../validators/analytics.schema";
 
-// Icon + label + color per status — never color alone, per the dataviz
-// skill's status-palette mitigation. Colors map to the --status-* tokens
-// in globals.css (Epic 17 decisions in docs/DECISIONS.md); naming note:
-// the StockHealthStatus "CRITICAL" bucket intentionally maps to the
-// --status-serious token, since Out of stock (not Critical) is this
-// report's most severe state and claims --status-critical.
-const STATUS_META: Record<
-  StockHealthStatus,
-  { label: string; icon: typeof CheckCircleIcon; colorVar: string }
-> = {
-  OUT_OF_STOCK: {
-    label: "Out of stock",
-    icon: XCircleIcon,
-    colorVar: "var(--color-status-critical)",
-  },
-  CRITICAL: {
-    label: "Critical",
-    icon: WarningOctagonIcon,
-    colorVar: "var(--color-status-serious)",
-  },
-  LOW: {
-    label: "Low",
-    icon: WarningIcon,
-    colorVar: "var(--color-status-warning)",
-  },
-  HEALTHY: {
-    label: "Healthy",
-    icon: CheckCircleIcon,
-    colorVar: "var(--color-status-good)",
-  },
-  OVERSTOCKED: {
-    label: "Overstocked",
-    icon: StackIcon,
-    colorVar: "var(--color-status-info)",
-  },
-};
-
-const STATUS_FILTER_OPTIONS: {
-  value: StockHealthStatus | "ALL";
-  label: string;
-}[] = [
-  { value: "ALL", label: "All statuses" },
-  { value: "OUT_OF_STOCK", label: "Out of stock" },
-  { value: "CRITICAL", label: "Critical" },
-  { value: "LOW", label: "Low" },
-  { value: "HEALTHY", label: "Healthy" },
-  { value: "OVERSTOCKED", label: "Overstocked" },
-];
-
-type SortKey = "quantityKg" | "daysOfCover" | "productName";
+type SortKey = "urgency" | "daysOfCover" | "quantityKg" | "productName";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "urgency", label: "Most urgent first" },
+  { value: "daysOfCover", label: "Fewest days left" },
+  { value: "quantityKg", label: "Least on hand" },
   { value: "productName", label: "Name" },
-  { value: "quantityKg", label: "Quantity" },
-  { value: "daysOfCover", label: "Days of cover" },
 ];
 
-function StatusBadge({ status }: { status: StockHealthStatus }) {
-  const meta = STATUS_META[status];
-  const Icon = meta.icon;
+// Fewer than this many days of stock left at the current sales pace is
+// worth flagging even when the product is above its alert level.
+const LOW_COVER_DAYS = 7;
 
+const URGENCY = new Map(STOCK_STATUSES.map((status, index) => [status, index]));
+
+function DaysOfCover({ value }: { value: string | null }) {
+  if (value === null) return <span className="text-muted-foreground">—</span>;
+  const days = Number(value);
   return (
-    <Badge
-      style={{
-        backgroundColor: `color-mix(in oklab, ${meta.colorVar} 15%, transparent)`,
-        color: meta.colorVar,
-      }}
+    <span
+      className="tabular-nums"
+      style={
+        days < LOW_COVER_DAYS
+          ? { color: "var(--color-status-critical)", fontWeight: 600 }
+          : undefined
+      }
     >
-      <Icon data-icon="inline-start" />
-      {meta.label}
-    </Badge>
+      {FormatNumber(days, 1)} days
+    </span>
   );
 }
 
@@ -114,113 +71,147 @@ const columns: DataTableColumn<StockHealthRowDTO>[] = [
   {
     key: "name",
     header: "Product",
-    cell: (row) => `${row.productName} (${row.productSku})`,
-  },
-  { key: "quantity", header: "On hand (kg)", cell: (row) => row.quantityKg },
-  {
-    key: "threshold",
-    header: "Threshold (kg)",
-    cell: (row) => row.thresholdKg ?? "—",
-    className: "text-muted-foreground",
+    cell: (row) => (
+      <Link
+        href={`/manager/stock/${row.productId}`}
+        className="underline-offset-4 hover:underline"
+      >
+        {row.productName}{" "}
+        <span className="text-muted-foreground">{row.productSku}</span>
+      </Link>
+    ),
   },
   {
     key: "status",
     header: "Status",
-    cell: (row) => <StatusBadge status={row.status} />,
+    cell: (row) => <StockStatusBadge status={row.status} />,
+  },
+  {
+    key: "quantity",
+    header: "On hand",
+    cell: (row) => FormatKg(row.quantityKg),
+    className: "text-right tabular-nums",
+  },
+  {
+    key: "threshold",
+    header: "Alert level",
+    cell: (row) =>
+      row.thresholdKg === null ? "Not set" : FormatKg(row.thresholdKg),
+    className: "text-right tabular-nums text-muted-foreground",
   },
   {
     key: "velocity",
-    header: "Avg. daily sales (kg)",
-    cell: (row) => row.averageDailySalesKg,
-    className: "text-muted-foreground",
+    header: "Sells per day",
+    cell: (row) =>
+      Number(row.averageDailySalesKg) === 0
+        ? "—"
+        : FormatKg(row.averageDailySalesKg),
+    className: "text-right tabular-nums text-muted-foreground",
   },
   {
     key: "cover",
-    header: "Days of cover",
-    cell: (row) => row.daysOfCover ?? "—",
-    className: "text-muted-foreground",
+    header: "Stock lasts",
+    cell: (row) => <DaysOfCover value={row.daysOfCover} />,
+    className: "text-right",
   },
 ];
 
 const exportColumns: ExportColumn<StockHealthRowDTO>[] = [
-  {
-    header: "Product",
-    value: (row) => `${row.productName} (${row.productSku})`,
-  },
+  { header: "Product", value: (row) => row.productName },
+  { header: "SKU", value: (row) => row.productSku },
+  { header: "Status", value: (row) => STOCK_STATUS_META[row.status].label },
   { header: "On hand (kg)", value: (row) => row.quantityKg },
-  { header: "Threshold (kg)", value: (row) => row.thresholdKg ?? "—" },
-  { header: "Status", value: (row) => STATUS_META[row.status].label },
-  { header: "Avg. daily sales (kg)", value: (row) => row.averageDailySalesKg },
-  { header: "Days of cover", value: (row) => row.daysOfCover ?? "—" },
+  { header: "Alert level (kg)", value: (row) => row.thresholdKg ?? "" },
+  { header: "Sells per day (kg)", value: (row) => row.averageDailySalesKg },
+  { header: "Days of stock left", value: (row) => row.daysOfCover ?? "" },
 ];
 
+function InitialStatus(param: string | null): StockStatus | "ATTENTION" | null {
+  if (param === "attention") return "ATTENTION";
+  return STOCK_STATUSES.includes(param as StockStatus)
+    ? (param as StockStatus)
+    : null;
+}
+
 export function StockHealthTab() {
+  const searchParams = useSearchParams();
   const { data, isLoading } = useStockHealth(true);
-  const [statusFilter, setStatusFilter] = useState<StockHealthStatus | "ALL">(
-    "ALL",
-  );
+  // `?status=LOW` or `?status=attention` (every status that needs action)
+  // pre-filters the table — the Dashboard links here that way.
+  const [statusFilter, setStatusFilter] = useState<
+    StockStatus | "ATTENTION" | null
+  >(() => InitialStatus(searchParams.get("status")));
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("productName");
-  const [descending, setDescending] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("urgency");
 
   const filteredRows = useMemo(() => {
     if (!data) return [];
     const query = search.trim().toLowerCase();
     const rows = data.rows.filter((row) => {
       const matchesStatus =
-        statusFilter === "ALL" || row.status === statusFilter;
+        statusFilter === null ||
+        (statusFilter === "ATTENTION"
+          ? ATTENTION_STOCK_STATUSES.includes(row.status)
+          : row.status === statusFilter);
       const matchesSearch =
-        !query || row.productName.toLowerCase().includes(query);
+        !query ||
+        row.productName.toLowerCase().includes(query) ||
+        row.productSku.toLowerCase().includes(query);
       return matchesStatus && matchesSearch;
     });
 
     rows.sort((a, b) => {
-      let diff: number;
       if (sortKey === "productName") {
-        diff = a.productName.localeCompare(b.productName);
-      } else {
-        diff = Number(a[sortKey] ?? 0) - Number(b[sortKey] ?? 0);
+        return a.productName.localeCompare(b.productName);
       }
-      return descending ? -diff : diff;
+      if (sortKey === "urgency") {
+        return (
+          (URGENCY.get(a.status) ?? 0) - (URGENCY.get(b.status) ?? 0) ||
+          Number(a.quantityKg) - Number(b.quantityKg)
+        );
+      }
+      // Rows with no figure sort last.
+      const left = a[sortKey];
+      const right = b[sortKey];
+      if (left === null) return 1;
+      if (right === null) return -1;
+      return Number(left) - Number(right);
     });
 
     return rows;
-  }, [data, statusFilter, search, sortKey, descending]);
-
-  const distributionData: RankedBarDatum[] = (data?.distribution ?? []).map(
-    (bucket) => ({
-      key: bucket.status,
-      label: STATUS_META[bucket.status].label,
-      value: bucket.count,
-      color: STATUS_META[bucket.status].colorVar,
-    }),
-  );
+  }, [data, statusFilter, search, sortKey]);
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-sm font-medium">Stock Health</h2>
-        <p className="text-xs text-muted-foreground">
-          Every active product bucketed by on-hand quantity vs. its low-stock
-          threshold, plus an estimate of days of cover from the trailing 30-day
-          sale velocity.
-        </p>
-      </div>
+      <Section
+        title="Where stock stands"
+        description={`Every active product, compared with its low-stock alert level. "Stock lasts" estimates days left at the last ${data?.windowDays ?? 30} days' sales pace. Click a status to filter.`}
+      >
+        {isLoading || !data ? (
+          <CardSkeleton />
+        ) : (
+          <StockStatusStrip
+            counts={data.distribution}
+            selected={statusFilter === "ATTENTION" ? null : statusFilter}
+            onSelect={setStatusFilter}
+          />
+        )}
+      </Section>
 
-      {isLoading || !data ? (
-        <CardSkeleton />
-      ) : (
-        <RankedBarChart data={distributionData} />
-      )}
-
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">Products</h3>
-          <div className="flex flex-wrap items-center gap-2">
+      <Section
+        title={
+          statusFilter === "ATTENTION"
+            ? "Products that need attention"
+            : statusFilter
+              ? `${STOCK_STATUS_META[statusFilter].label} products`
+              : "All products"
+        }
+        actions={
+          <>
             {data && (
               <ExportMenu
                 filename="stock-health"
-                title="Stock Health"
+                title="Stock health"
                 columns={exportColumns}
                 rows={filteredRows}
               />
@@ -229,33 +220,17 @@ export function StockHealthTab() {
               <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search product…"
+                aria-label="Search products"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="w-40 pl-7"
+                className="w-44 pl-7"
               />
             </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value) =>
-                setStatusFilter(value as StockHealthStatus | "ALL")
-              }
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_FILTER_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select
               value={sortKey}
               onValueChange={(value) => setSortKey(value as SortKey)}
             >
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-44" aria-label="Sort">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -266,16 +241,18 @@ export function StockHealthTab() {
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label={descending ? "Sort ascending" : "Sort descending"}
-              onClick={() => setDescending((value) => !value)}
-            >
-              {descending ? <SortDescendingIcon /> : <SortAscendingIcon />}
-            </Button>
-          </div>
-        </div>
+          </>
+        }
+      >
+        {statusFilter !== null && (
+          <button
+            type="button"
+            onClick={() => setStatusFilter(null)}
+            className="self-start text-xs font-medium underline-offset-4 hover:underline"
+          >
+            Show all products
+          </button>
+        )}
         {isLoading || !data ? (
           <TableSkeleton columns={columns.length} />
         ) : (
@@ -286,7 +263,7 @@ export function StockHealthTab() {
             emptyMessage="No products match this filter."
           />
         )}
-      </div>
+      </Section>
     </div>
   );
 }

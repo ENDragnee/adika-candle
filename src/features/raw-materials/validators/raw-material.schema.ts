@@ -102,6 +102,7 @@ export const RawMaterialLedgerEntrySchema = z.object({
   balanceAfterKg: z.string(),
   note: z.string().nullable(),
   createdById: z.string(),
+  createdByName: z.string().nullable(),
   createdAt: z.iso.datetime(),
 });
 
@@ -115,6 +116,7 @@ export const RawMaterialLedgerEntryListResponseSchema = z.array(
 
 export function ToRawMaterialLedgerEntryDTO(
   entry: RawMaterialLedgerEntry,
+  createdByName: string | null = null,
 ): RawMaterialLedgerEntryDTO {
   return {
     id: entry.id,
@@ -124,6 +126,7 @@ export function ToRawMaterialLedgerEntryDTO(
     balanceAfterKg: entry.balanceAfterKg.toString(),
     note: entry.note,
     createdById: entry.createdById,
+    createdByName,
     createdAt: entry.createdAt.toISOString(),
   };
 }

@@ -3,10 +3,11 @@ import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CreateCustomerInput,
   CustomerDTO,
+  CustomerQuery,
   UpdateCustomerInput,
 } from "../validators/customer.schema";
 
-export type CustomersQueryParams = PaginationParams & { search?: string };
+export type CustomersQueryParams = PaginationParams & CustomerQuery;
 
 export async function FetchCustomers(
   params: CustomersQueryParams = {},

@@ -1,15 +1,22 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { GetErrorMessage } from "@/lib/get-error-message";
+import { InvalidateLedgerQueries } from "@/lib/query-invalidation";
 import {
   CreateSale,
   FetchSale,
   FetchSales,
   type SalesQueryParams,
+  VoidSale,
 } from "../services/sale.service";
-import type { CreateSaleInput } from "../validators/sale.schema";
+import type { CreateSaleInput, VoidSaleInput } from "../validators/sale.schema";
 
 export const salesQueryKey = (query?: SalesQueryParams) =>
   ["sales", query ?? {}] as const;
@@ -19,6 +26,8 @@ export function useSales(query?: SalesQueryParams) {
   return useQuery({
     queryKey: salesQueryKey(query),
     queryFn: () => FetchSales(query),
+    // Keep the current rows on screen while a new filter/page loads.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -30,20 +39,32 @@ export function useSale(id: string) {
   });
 }
 
+// Errors are left to the caller: the Record Sale dialog handles the
+// INSUFFICIENT_STOCK answer itself (it asks the user to confirm) and
+// toasts everything else.
 export function useCreateSale() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (input: CreateSaleInput) => CreateSale(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-      queryClient.invalidateQueries({ queryKey: ["stock"] });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      InvalidateLedgerQueries(queryClient);
       toast.success("Sale recorded");
     },
+  });
+}
+
+export function useVoidSale(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: VoidSaleInput) => VoidSale(id, input),
+    onSuccess: (sale) => {
+      InvalidateLedgerQueries(queryClient);
+      toast.success(`Sale ${sale.referenceCode} voided`);
+    },
     onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't record sale"));
+      toast.error(GetErrorMessage(error, "Couldn't void sale"));
     },
   });
 }

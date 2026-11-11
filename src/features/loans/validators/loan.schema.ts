@@ -20,9 +20,15 @@ export const LoanTransactionSchema = z.object({
   type: LoanTransactionTypeSchema,
   amount: z.string(),
   balanceAfter: z.string(),
+  // Signed effect on the balance (+ = customer owes more, − = owes less /
+  // has more credit). `amount` is a positive magnitude whose direction is
+  // implied by type — except MANUAL_ADJUSTMENT, whose direction isn't
+  // stored, so the ledger list derives this from consecutive balances.
+  change: z.string().nullable(),
   note: z.string().nullable(),
   saleId: z.string().nullable(),
   createdById: z.string(),
+  createdByName: z.string().nullable(),
   createdAt: z.iso.datetime(),
 });
 
@@ -32,8 +38,11 @@ export const LoanTransactionListResponseSchema = z.array(LoanTransactionSchema);
 
 export function ToLoanTransactionDTO(
   transaction: LoanTransaction,
+  extras: { change?: string | null; createdByName?: string | null } = {},
 ): LoanTransactionDTO {
   return {
+    change: extras.change ?? null,
+    createdByName: extras.createdByName ?? null,
     id: transaction.id,
     loanAccountId: transaction.loanAccountId,
     type: transaction.type,

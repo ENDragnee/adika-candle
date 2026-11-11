@@ -11,6 +11,7 @@ import {
   ToSkipTake,
 } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
+import { LoadUserNames } from "@/lib/server/user-names";
 
 type Params = { id: string };
 
@@ -33,8 +34,13 @@ export const GET = CreateApiRoute<PaginationQuery, Params>({
       }),
       prisma.rawMaterialLedgerEntry.count({ where }),
     ]);
+    const userNames = await LoadUserNames(
+      entries.map((entry) => entry.createdById),
+    );
     return {
-      data: entries.map(ToRawMaterialLedgerEntryDTO),
+      data: entries.map((entry) =>
+        ToRawMaterialLedgerEntryDTO(entry, userNames.get(entry.createdById) ?? null),
+      ),
       pagination: BuildPaginationMeta(query, total),
     };
   },

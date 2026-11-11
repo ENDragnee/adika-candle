@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { TrendDownIcon, TrendUpIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { ExportMenu } from "@/components/ui/export-menu";
 import { Input } from "@/components/ui/input";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import type { ExportColumn } from "@/lib/export/export-column";
+import { FormatKg, FormatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBestSellers } from "../hooks/use-analytics";
 import type { BestSellerRowDTO } from "../validators/analytics.schema";
@@ -31,7 +33,7 @@ function TrendIndicator({
   prior: number;
 }) {
   if (prior === 0) {
-    return <span className="text-muted-foreground">—</span>;
+    return <span className="text-xs text-muted-foreground">New</span>;
   }
 
   const changePercent = ((current - prior) / prior) * 100;
@@ -59,10 +61,26 @@ function BuildColumns(
     {
       key: "name",
       header: "Product",
-      cell: (row) => `${row.productName} (${row.productSku})`,
+      cell: (row) => (
+        <Link
+          href={`/manager/products/${row.productId}`}
+          className="underline-offset-4 hover:underline"
+        >
+          {row.productName}{" "}
+          <span className="text-muted-foreground">{row.productSku}</span>
+        </Link>
+      ),
     },
     { key: "category", header: "Category", cell: (row) => row.categoryName },
-    { key: "value", header: valueHeader, cell: (row) => row[valueKey] },
+    {
+      key: "value",
+      header: valueHeader,
+      cell: (row) =>
+        valueKey === "revenue"
+          ? FormatMoney(row.revenue)
+          : FormatKg(row.unitsSoldKg),
+      className: "text-right tabular-nums",
+    },
     {
       key: "trend",
       header: "vs. prior period",
@@ -76,11 +94,7 @@ function BuildColumns(
   ];
 }
 
-const quantityColumns = BuildColumns(
-  "unitsSoldKg",
-  "priorUnitsSoldKg",
-  "Units sold (kg)",
-);
+const quantityColumns = BuildColumns("unitsSoldKg", "priorUnitsSoldKg", "Sold");
 const revenueColumns = BuildColumns("revenue", "priorRevenue", "Revenue");
 
 function FormatTrendValue(current: number, prior: number): string {
@@ -169,6 +183,7 @@ export function BestSellersTab() {
           <Input
             type="number"
             min="1"
+            max="366"
             placeholder="Custom days"
             className="w-28"
             value={customDays}
@@ -176,7 +191,8 @@ export function BestSellersTab() {
               const next = event.target.value;
               setCustomDays(next);
               const parsed = Number(next);
-              if (parsed > 0) setDays(parsed);
+              // The API caps report windows at a year.
+              if (parsed > 0) setDays(Math.min(Math.floor(parsed), 366));
             }}
           />
         </div>
@@ -197,10 +213,7 @@ export function BestSellersTab() {
         {isLoading || !data ? (
           <CardSkeleton />
         ) : (
-          <RankedBarChart
-            data={quantityChartData}
-            valueFormatter={(value) => `${value.toFixed(1)} kg`}
-          />
+          <RankedBarChart data={quantityChartData} valueFormatter={FormatKg} />
         )}
         {isLoading || !data ? (
           <TableSkeleton columns={quantityColumns.length} />
@@ -229,7 +242,10 @@ export function BestSellersTab() {
         {isLoading || !data ? (
           <CardSkeleton />
         ) : (
-          <RankedBarChart data={revenueChartData} />
+          <RankedBarChart
+            data={revenueChartData}
+            valueFormatter={FormatMoney}
+          />
         )}
         {isLoading || !data ? (
           <TableSkeleton columns={revenueColumns.length} />

@@ -15,7 +15,7 @@ export default async function ManagerDashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="Sales trend, stock levels, loan exposure, and low-stock alerts." />
+      <PageHeader description="How today is going, what needs your attention, and where stock and money stand." />
       <ManagerDashboard />
     </div>
   );

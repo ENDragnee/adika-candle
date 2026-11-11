@@ -16,6 +16,7 @@ import {
   ToSkipTake,
 } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
+import { LoadUserNames } from "@/lib/server/user-names";
 
 type Params = { accountId: string };
 
@@ -27,16 +28,34 @@ export const GET = CreateApiRoute<PaginationQuery, Params>({
   handler: async (query, _session, params) => {
     const where = { loanAccountId: params?.accountId };
 
-    const [transactions, total] = await Promise.all([
+    const { skip, take } = ToSkipTake(query);
+    // One extra row past the page: the entry just before the page's oldest
+    // one, whose balanceAfter is the starting point for that oldest row's
+    // signed change.
+    const [rows, total] = await Promise.all([
       prisma.loanTransaction.findMany({
         where,
-        orderBy: { createdAt: "desc" },
-        ...ToSkipTake(query),
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip,
+        take: take + 1,
       }),
       prisma.loanTransaction.count({ where }),
     ]);
+    const transactions = rows.slice(0, take);
+    const userNames = await LoadUserNames(
+      transactions.map((transaction) => transaction.createdById),
+    );
     return {
-      data: transactions.map(ToLoanTransactionDTO),
+      data: transactions.map((transaction, index) => {
+        // Accounts start at 0, so the very first entry's change is its
+        // own balanceAfter.
+        const previousBalance =
+          rows[index + 1]?.balanceAfter ?? new Prisma.Decimal(0);
+        return ToLoanTransactionDTO(transaction, {
+          change: transaction.balanceAfter.minus(previousBalance).toString(),
+          createdByName: userNames.get(transaction.createdById) ?? null,
+        });
+      }),
       pagination: BuildPaginationMeta(query, total),
     };
   },
@@ -119,6 +138,8 @@ export const POST = CreateApiRoute<CreateLoanTransactionInput, Params>({
       });
     });
 
-    return ToLoanTransactionDTO(transaction);
+    return ToLoanTransactionDTO(transaction, {
+      change: delta.toString(),
+    });
   },
 });

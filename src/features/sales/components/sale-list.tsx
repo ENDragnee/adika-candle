@@ -1,117 +1,512 @@
 "use client";
 
+import {
+  DotsThreeVerticalIcon,
+  EyeIcon,
+  MagnifyingGlassIcon,
+  ProhibitIcon,
+} from "@phosphor-icons/react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   DataTable,
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ExportMenu } from "@/components/ui/export-menu";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ToneBadge } from "@/components/ui/tone-badge";
+import { useCustomers } from "@/features/customers/hooks/use-customers";
+import { useProducts } from "@/features/products/hooks/use-products";
+import {
+  AddBusinessDays,
+  BusinessDateKey,
+  StartOfBusinessDay,
+  StartOfBusinessMonth,
+} from "@/lib/business-time";
 import type { ExportColumn } from "@/lib/export/export-column";
+import {
+  FormatDateTime,
+  FormatKg,
+  FormatMoney,
+  FormatNumber,
+  Pluralize,
+} from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
+import { useDebounce } from "@/lib/use-debounce";
+import { cn } from "@/lib/utils";
 import { useSales } from "../hooks/use-sales";
-import { FetchSales } from "../services/sale.service";
+import { PAYMENT_TYPE_META } from "../labels";
+import { FetchSales, type SalesQueryParams } from "../services/sale.service";
 import type { SaleDTO } from "../validators/sale.schema";
+import { SaleDetailsDialog } from "./sale-details-dialog";
+import { VoidSaleDialog } from "./void-sale-dialog";
 
-function FormatDateTime(value: string) {
-  return new Date(value).toLocaleString();
+export type SaleRange = "today" | "7d" | "30d" | "month" | "all";
+
+const RANGE_OPTIONS: { value: SaleRange; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "month", label: "This month" },
+  { value: "all", label: "All time" },
+];
+
+const ALL = "__all__";
+
+// Business-local calendar dates for a preset, matching how the API and the
+// analytics bucket days (see src/lib/business-time.ts).
+function RangeDates(range: SaleRange): { from?: string; to?: string } {
+  const now = new Date();
+  const today = StartOfBusinessDay(now);
+  switch (range) {
+    case "today":
+      return { from: BusinessDateKey(today) };
+    case "7d":
+      return { from: BusinessDateKey(AddBusinessDays(today, -6)) };
+    case "30d":
+      return { from: BusinessDateKey(AddBusinessDays(today, -29)) };
+    case "month":
+      return { from: BusinessDateKey(StartOfBusinessMonth(now)) };
+    default:
+      return {};
+  }
 }
 
-const columns: DataTableColumn<SaleDTO>[] = [
-  { key: "reference", header: "Reference", cell: (sale) => sale.referenceCode },
-  {
-    key: "product",
-    header: "Product",
-    cell: (sale) => (
-      <>
-        {sale.productName}{" "}
-        <span className="text-muted-foreground">({sale.productSku})</span>
-      </>
-    ),
-  },
-  {
-    key: "customer",
-    header: "Customer",
-    cell: (sale) =>
-      sale.customerName ?? (
-        <span className="text-muted-foreground">Walk-in</span>
+function SaleActions({
+  sale,
+  canVoid,
+  linkBase,
+}: {
+  sale: SaleDTO;
+  canVoid: boolean;
+  linkBase: string;
+}) {
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isVoidOpen, setIsVoidOpen] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" aria-label="Sale actions">
+            <DotsThreeVerticalIcon />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setIsDetailsOpen(true)}>
+            <EyeIcon />
+            View details
+          </DropdownMenuItem>
+          {canVoid && !sale.voidedAt && (
+            <DropdownMenuItem
+              onSelect={() => setIsVoidOpen(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <ProhibitIcon />
+              Void sale
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <SaleDetailsDialog
+        sale={sale}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+        linkBase={linkBase}
+      />
+      {canVoid && (
+        <VoidSaleDialog
+          sale={sale}
+          open={isVoidOpen}
+          onOpenChange={setIsVoidOpen}
+        />
+      )}
+    </>
+  );
+}
+
+function BuildColumns({
+  showProduct,
+  showCustomer,
+  canVoid,
+  linkBase,
+}: {
+  showProduct: boolean;
+  showCustomer: boolean;
+  canVoid: boolean;
+  linkBase: string;
+}): DataTableColumn<SaleDTO>[] {
+  return [
+    {
+      key: "date",
+      header: "Sale",
+      cell: (sale) => (
+        <span className="flex flex-col">
+          <span className={cn(sale.voidedAt && "text-muted-foreground")}>
+            {FormatDateTime(sale.createdAt)}
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {sale.referenceCode}
+          </span>
+        </span>
       ),
-  },
+    },
+    ...(showProduct || showCustomer
+      ? [
+          {
+            key: "item",
+            header: showProduct ? "Product" : "Customer",
+            cell: (sale: SaleDTO) => (
+              <span className="flex flex-col">
+                <span
+                  className={cn(sale.voidedAt && "line-through opacity-60")}
+                >
+                  {showProduct
+                    ? sale.productName
+                    : (sale.customerName ?? "Walk-in")}
+                </span>
+                {showProduct && showCustomer && (
+                  <span className="text-xs text-muted-foreground">
+                    {sale.customerName ?? "Walk-in"}
+                  </span>
+                )}
+              </span>
+            ),
+          },
+        ]
+      : []),
+    {
+      key: "quantity",
+      header: "Quantity",
+      cell: (sale) => (
+        <span className="flex flex-col tabular-nums">
+          <span>{FormatKg(sale.quantityKg)}</span>
+          <span className="text-xs text-muted-foreground">
+            {FormatNumber(sale.inputQuantity)} {sale.inputUnitName}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: "total",
+      header: "Total",
+      cell: (sale) => (
+        <span
+          className={cn(
+            "font-medium tabular-nums",
+            sale.voidedAt && "line-through opacity-60",
+          )}
+        >
+          {FormatMoney(sale.totalAmount)}
+        </span>
+      ),
+      className: "text-right",
+    },
+    {
+      key: "payment",
+      header: "Payment",
+      cell: (sale) =>
+        sale.voidedAt ? (
+          <ToneBadge tone="critical" title={sale.voidReason ?? undefined}>
+            Voided
+          </ToneBadge>
+        ) : (
+          <ToneBadge tone={PAYMENT_TYPE_META[sale.paymentType].tone}>
+            {PAYMENT_TYPE_META[sale.paymentType].label}
+          </ToneBadge>
+        ),
+    },
+    {
+      key: "by",
+      header: "By",
+      cell: (sale) => sale.createdByName ?? "—",
+      className: "text-muted-foreground",
+    },
+    {
+      key: "actions",
+      header: "",
+      cell: (sale) => (
+        <SaleActions sale={sale} canVoid={canVoid} linkBase={linkBase} />
+      ),
+      className: "w-10",
+    },
+  ];
+}
+
+const exportColumns: ExportColumn<SaleDTO>[] = [
+  { header: "Date", value: (sale) => FormatDateTime(sale.createdAt) },
+  { header: "Reference", value: (sale) => sale.referenceCode },
+  { header: "Product", value: (sale) => sale.productName },
+  { header: "SKU", value: (sale) => sale.productSku },
+  { header: "Customer", value: (sale) => sale.customerName ?? "Walk-in" },
+  { header: "Quantity", value: (sale) => sale.inputQuantity },
+  { header: "Unit", value: (sale) => sale.inputUnitName },
+  { header: "Weight (kg)", value: (sale) => sale.quantityKg },
+  { header: "Price / kg", value: (sale) => sale.unitPriceAtSale },
+  { header: "Total", value: (sale) => sale.totalAmount },
   {
-    key: "quantity",
-    header: "Quantity",
-    cell: (sale) => `${sale.inputQuantity} ${sale.inputUnitName}`,
+    header: "Payment",
+    value: (sale) => PAYMENT_TYPE_META[sale.paymentType].label,
   },
-  { key: "total", header: "Total", cell: (sale) => sale.totalAmount },
-  { key: "payment", header: "Payment", cell: (sale) => sale.paymentType },
+  { header: "Recorded by", value: (sale) => sale.createdByName ?? "" },
   {
-    key: "date",
-    header: "Date",
-    cell: (sale) => FormatDateTime(sale.createdAt),
-    className: "text-muted-foreground",
+    header: "Status",
+    value: (sale) => (sale.voidedAt ? `Voided: ${sale.voidReason}` : "Active"),
   },
 ];
 
-const exportColumns: ExportColumn<SaleDTO>[] = [
-  { header: "Reference", value: (sale) => sale.referenceCode },
-  {
-    header: "Product",
-    value: (sale) => `${sale.productName} (${sale.productSku})`,
-  },
-  { header: "Customer", value: (sale) => sale.customerName ?? "Walk-in" },
-  {
-    header: "Quantity",
-    value: (sale) => `${sale.inputQuantity} ${sale.inputUnitName}`,
-  },
-  { header: "Total", value: (sale) => sale.totalAmount },
-  { header: "Payment", value: (sale) => sale.paymentType },
-  { header: "Date", value: (sale) => FormatDateTime(sale.createdAt) },
-];
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-base font-semibold tabular-nums">{value}</span>
+    </div>
+  );
+}
 
 export function SaleList({
   // When set (the Inventory Manager's "own recent sales" page), the list is
   // scoped to sales created by this user id. Omitted on /manager/sales,
   // which sees every sale — see SaleQuerySchema.
   createdById,
+  // Fixed scope for a product's or customer's own Sales tab.
+  productId,
+  customerId,
+  showFilters = false,
+  canVoid = false,
+  initialRange = "all",
+  linkBase = "/manager",
 }: {
   createdById?: string;
+  productId?: string;
+  customerId?: string;
+  showFilters?: boolean;
+  canVoid?: boolean;
+  initialRange?: SaleRange;
+  linkBase?: string;
 }) {
   const [page, setPage] = useState(1);
-  const { data: result, isLoading } = useSales({
-    page,
+  const [range, setRange] = useState<SaleRange>(initialRange);
+  const [productFilter, setProductFilter] = useState(ALL);
+  const [customerFilter, setCustomerFilter] = useState(ALL);
+  const [paymentFilter, setPaymentFilter] = useState(ALL);
+  const [status, setStatus] = useState<"ACTIVE" | "VOIDED" | "ALL">("ACTIVE");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search.trim(), 300);
+
+  const { data: products } = useProducts(
+    showFilters && !productId ? { pageSize: MAX_PAGE_SIZE } : { pageSize: 1 },
+  );
+  const { data: customers } = useCustomers(
+    showFilters && !customerId ? { pageSize: MAX_PAGE_SIZE } : { pageSize: 1 },
+  );
+
+  const query: SalesQueryParams = {
+    ...RangeDates(range),
     ...(createdById && { createdById }),
+    ...((productId || productFilter !== ALL) && {
+      productId: productId ?? productFilter,
+    }),
+    ...((customerId || customerFilter !== ALL) && {
+      customerId: customerId ?? customerFilter,
+    }),
+    ...(paymentFilter !== ALL && {
+      paymentType: paymentFilter as "CASH" | "LOAN",
+    }),
+    ...(debouncedSearch && { search: debouncedSearch }),
+    status,
+  };
+  const { data: result, isLoading, isFetching } = useSales({ ...query, page });
+
+  const columns = BuildColumns({
+    showProduct: !productId,
+    showCustomer: !customerId,
+    canVoid,
+    linkBase,
   });
 
-  if (isLoading) {
-    return <TableSkeleton columns={columns.length} />;
+  // Any filter change goes back to page 1.
+  function Filter<T>(setter: (value: T) => void) {
+    return (value: T) => {
+      setter(value);
+      setPage(1);
+    };
   }
 
+  const summary = result?.summary;
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <ExportMenu
-          filename="sales"
-          title="Sales"
-          columns={exportColumns}
-          rows={() =>
-            FetchSales({
-              pageSize: MAX_PAGE_SIZE,
-              ...(createdById && { createdById }),
-            }).then((result) => result.data)
-          }
-        />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={range}
+          onValueChange={Filter((v) => setRange(v as SaleRange))}
+        >
+          <SelectTrigger className="w-36" aria-label="Date range">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {RANGE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {showFilters && !productId && (
+          <Select
+            value={productFilter}
+            onValueChange={Filter(setProductFilter)}
+          >
+            <SelectTrigger className="w-44" aria-label="Product">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All products</SelectItem>
+              {products?.data.map((product) => (
+                <SelectItem key={product.id} value={product.id}>
+                  {product.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {showFilters && !customerId && (
+          <Select
+            value={customerFilter}
+            onValueChange={Filter(setCustomerFilter)}
+          >
+            <SelectTrigger className="w-44" aria-label="Customer">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All customers</SelectItem>
+              {customers?.data.map((customer) => (
+                <SelectItem key={customer.id} value={customer.id}>
+                  {customer.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {showFilters && (
+          <Select
+            value={paymentFilter}
+            onValueChange={Filter(setPaymentFilter)}
+          >
+            <SelectTrigger className="w-36" aria-label="Payment">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Any payment</SelectItem>
+              <SelectItem value="CASH">Cash</SelectItem>
+              <SelectItem value="LOAN">On account</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {showFilters && (
+          <Select
+            value={status}
+            onValueChange={Filter((v) =>
+              setStatus(v as "ACTIVE" | "VOIDED" | "ALL"),
+            )}
+          >
+            <SelectTrigger className="w-36" aria-label="Status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ACTIVE">Active sales</SelectItem>
+              <SelectItem value="VOIDED">Voided only</SelectItem>
+              <SelectItem value="ALL">Active + voided</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {showFilters && (
+          <div className="relative">
+            <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Reference…"
+              aria-label="Search by reference"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              className="w-36 pl-7"
+            />
+          </div>
+        )}
+        <div className="ml-auto">
+          <ExportMenu
+            filename="sales"
+            title="Sales"
+            columns={exportColumns}
+            rows={() =>
+              FetchSales({ ...query, pageSize: MAX_PAGE_SIZE }).then(
+                (page) => page.data,
+              )
+            }
+          />
+        </div>
       </div>
-      <DataTable
-        columns={columns}
-        data={result?.data ?? []}
-        getRowKey={(sale) => sale.id}
-        emptyMessage="No sales yet."
-        pagination={{
-          page,
-          totalPages: result?.pagination.totalPages ?? 1,
-          onPageChange: setPage,
-        }}
-      />
+
+      {summary && (
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-4 rounded-xl border border-border bg-muted/30 px-4 py-3 sm:grid-cols-4",
+            isFetching && "opacity-70",
+          )}
+        >
+          <SummaryStat
+            label="Sales"
+            value={Pluralize(summary.saleCount, "sale")}
+          />
+          <SummaryStat label="Weight" value={FormatKg(summary.totalKg)} />
+          <SummaryStat label="Cash" value={FormatMoney(summary.cashAmount)} />
+          <SummaryStat
+            label="On account"
+            value={FormatMoney(summary.onAccountAmount)}
+          />
+          <div className="col-span-2 flex items-baseline justify-between border-t border-border pt-2 sm:col-span-4">
+            <span className="text-sm text-muted-foreground">
+              Total{status !== "ACTIVE" && " (voided sales excluded)"}
+            </span>
+            <span className="text-lg font-semibold tabular-nums">
+              {FormatMoney(summary.totalAmount)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <TableSkeleton columns={columns.length} />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={result?.data ?? []}
+          getRowKey={(sale) => sale.id}
+          emptyMessage="No sales match these filters."
+          pagination={{
+            page,
+            totalPages: result?.pagination.totalPages ?? 1,
+            onPageChange: setPage,
+          }}
+        />
+      )}
     </div>
   );
 }
