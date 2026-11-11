@@ -15,6 +15,23 @@ export interface TourStepDef {
   // use-product-tour.ts for how a route step triggers client-side
   // navigation before driver.js waits for its element to mount.
   route?: string;
+  // Shown only to users holding at least one of these (Epic 21: the nav is
+  // permission-filtered, so a step pointing at a hidden nav item or a page
+  // the user can't open would otherwise hang waiting for its element).
+  // Omitted = always shown.
+  permission?: string[];
+}
+
+export function VisibleTourSteps(
+  steps: TourStepDef[],
+  permissions: string[],
+): TourStepDef[] {
+  return steps.filter(
+    (step) =>
+      !step.permission ||
+      step.permission.length === 0 ||
+      step.permission.some((name) => permissions.includes(name)),
+  );
 }
 
 function NavStep(
@@ -26,7 +43,12 @@ function NavStep(
   if (!item) {
     throw new Error(`Tour step references unknown nav href: ${href}`);
   }
-  return { id: NavTourId(href), title: item.label, description };
+  return {
+    id: NavTourId(href),
+    title: item.label,
+    description,
+    permission: item.permission,
+  };
 }
 
 const TOPBAR_STEP: TourStepDef = {
@@ -48,7 +70,7 @@ export const MANAGER_TOUR_STEPS: TourStepDef[] = [
   NavStep(
     MANAGER_NAV_ITEMS,
     "/manager/dashboard",
-    "Your landing page after signing in — a snapshot of stock, loans, and recent activity.",
+    "Your landing page: today's sales, what needs your attention, stock status, and who owes you money.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
@@ -70,21 +92,22 @@ export const MANAGER_TOUR_STEPS: TourStepDef[] = [
     title: "New product",
     description: "Add a new product to the catalog from here.",
     route: "/manager/products",
+    permission: ["product:manage"],
   },
   NavStep(
     MANAGER_NAV_ITEMS,
     "/manager/stock",
-    "Read-only view of current stock balances and the full accept/sell ledger.",
+    "What's on hand for every product. Open one to see its history or record a stock count.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
     "/manager/materials",
-    "Read-only raw-material balances and ledger — mirrors Stock.",
+    "Raw-material balances and history. Open one to record a stock count.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
     "/manager/sales",
-    "Every recorded sale, across both roles.",
+    "Every sale with filters and totals. Void a mistaken sale from its row menu.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
@@ -94,7 +117,7 @@ export const MANAGER_TOUR_STEPS: TourStepDef[] = [
   NavStep(
     MANAGER_NAV_ITEMS,
     "/manager/loans",
-    "Oversight of every customer's loan balance.",
+    "Who owes you, who has credit, and when each customer last paid.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
@@ -104,7 +127,7 @@ export const MANAGER_TOUR_STEPS: TourStepDef[] = [
   NavStep(
     MANAGER_NAV_ITEMS,
     "/manager/roles",
-    "Manager-only: see exactly what each role can and can't do.",
+    "Turn features on or off for each role. The sidebar follows these settings.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
@@ -136,6 +159,7 @@ export const INVENTORY_TOUR_STEPS: TourStepDef[] = [
     title: "Accept stock",
     description: "Record newly received stock here.",
     route: "/inventory/stock",
+    permission: ["stock:accept"],
   },
   NavStep(
     INVENTORY_NAV_ITEMS,
@@ -152,6 +176,7 @@ export const INVENTORY_TOUR_STEPS: TourStepDef[] = [
     title: "Record sale",
     description: "Log a new sale against a customer here.",
     route: "/inventory/sales",
+    permission: ["sale:create"],
   },
   NavStep(
     INVENTORY_NAV_ITEMS,

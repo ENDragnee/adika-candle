@@ -80,7 +80,7 @@ export function StackedBarChart({
           style={{ width: Y_AXIS_WIDTH_PX, height: CHART_HEIGHT_PX }}
           aria-hidden="true"
         >
-          {scale.ticks.map((tick) => (
+          {(isEmpty ? [] : scale.ticks).map((tick) => (
             <span
               key={tick}
               className="absolute right-2 -translate-y-1/2"

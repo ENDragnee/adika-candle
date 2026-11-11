@@ -12,6 +12,123 @@ undo.
 
 ---
 
+## 2026-11-12 — Epic 21 (Manager UX & Logic Audit Fixes) decisions
+
+**Profit and margin are computed over costed sales only; uncosted sales
+make them `null`, never 100%.** Before, `BuildProfitability` added every
+sale to revenue but only costed sales to cost, so a window with no cost
+data reported 100% margin. `src/features/analytics/server/profitability.ts`
+now tracks `costedRevenue` separately; `totalProfit`/`averageMarginPercent`
+are nullable, and the UI renders null as "—" with a coverage meter
+("Cost data covers N% of revenue"). Per-product rows split *realized*
+margin (from sale snapshots) from *current* margin (today's price/cost) —
+mixing the two in one row is what made the old table self-contradictory.
+
+**One stock-status rule, shared client and server
+(`src/features/stock/stock-status.ts`), with two new statuses.**
+`NEGATIVE` (balance < 0 — a data problem, not "empty") and `UNTRACKED`
+(stocked but no threshold — previously reported as `HEALTHY`, which hid
+that nothing was being tracked). The Dashboard and Stock Health had
+separate rules and disagreed on the same data. It takes plain numbers,
+not Decimals, because it must run in client components and only compares
+kg (never money).
+
+**Overselling: soft block, not hard block.** `POST /api/v1/sales` answers
+`409 INSUFFICIENT_STOCK` (with `availableKg`) unless the request carries
+`allowOversell: true`; the Record Sale dialog shows on-hand stock up front
+and asks for explicit confirmation. A hard block was rejected because a
+wrong recorded balance would then stop real sales; instead, the new stock
+count (below) is the way to fix the number afterwards. Reverses the Epic 6
+"no guard" call only as far as requiring an explicit confirmation.
+
+**Stock counts, not free-form adjustments.** The `ADJUSTMENT` ledger type
+finally has a writer: `POST /api/v1/stock/[productId]/count` and
+`/raw-materials/[id]/count` take the *counted* quantity and a required
+reason; the server computes the difference under a row lock and writes it
+as one signed ADJUSTMENT. Entering the count (not the delta) is what staff
+actually know after a stock-take, and the lock stops a concurrent sale
+from making the correction overshoot. New permission `stock:adjust`
+(Manager). Raw-material ADJUSTMENT `quantityKg` is stored *signed* — the
+one exception to that ledger's "positive magnitude, direction by type"
+rule, since a correction has no implied direction (documented on the
+schema field).
+
+**Sales are voided, never edited or deleted.** `POST /api/v1/sales/[id]/void`
+(permission `sale:void`) sets `voidedAt`/`voidedById`/`voidReason` and
+writes reversing `SALE_VOID` entries (new enum value on both
+`StockEntryType` and `LoanTransactionType`) in one transaction. Every
+analytics query filters `voidedAt: null`; the production report nets
+SALE_VOID out of "sold". In-place edits were rejected because a sale's
+stock and loan effects are already in two ledgers — void + re-record keeps
+both ledgers append-only and auditable. To allow a voided sale's reversal
+entries to reference it, `StockLedgerEntry.saleId` and
+`LoanTransaction.saleId` are no longer `@unique` (`Sale` now has
+`stockLedgerEntries[]`/`loanTransactions[]`).
+
+**On-account sales spend existing credit first (`ADVANCE_REDEEMED`).** If
+the customer's balance is negative (they paid in advance), the sale posts
+`ADVANCE_REDEEMED` for `min(total, credit)` and `SALE_ON_CREDIT` only for
+the remainder. The account row is locked (`SELECT … FOR UPDATE`) while the
+split is computed. The enum value existed since Epic 5 but nothing wrote
+it, so spending an advance read as "went into debt". UI calls `LOAN`
+"On account".
+
+**Cached balances update with atomic increments
+(`src/lib/ledger-balance.ts`).** Read → compute → `update({ value })`
+inside `$transaction` loses writes under Postgres READ COMMITTED (two
+sales both read 100 and both write 90). `{ increment: delta }` compiles to
+`SET col = col + delta`, which serializes on the row lock; the returned
+row supplies the ledger's `balanceAfter`. Applied to stock, raw materials
+and loans.
+
+**Day/week/month buckets use the business time zone
+(`BUSINESS_TIMEZONE = "Africa/Addis_Ababa"`, `src/lib/business-time.ts`).**
+UTC buckets put a 01:30-local sale on the previous day. Implemented with
+`Intl.DateTimeFormat` only (no date library). Every displayed time also
+formats in that zone (`src/lib/format.ts`), so a person in another zone
+sees the same "day" the reports use. Best Sellers moved from a rolling
+`now − days` window to the same midnight-aligned windows as the other
+reports.
+
+**Navigation and area access follow permissions, not role names.** Before,
+`/manager/*` admitted only the role named `MANAGER`, so most Roles-page
+toggles had no visible effect. Now the area layouts only require an active
+role, every page checks its own permission (they already did), and
+`BuildNavItems` (`nav-config.ts`) filters the role's own nav by permission
+and appends any Manager page the role was granted. The two areas
+(`/manager`, `/inventory`) were kept rather than merged into one route
+tree — merging would be a much larger change for no user-visible gain.
+Self-lockout guard: the Roles API refuses to remove `role:manage` from the
+caller's own role, and the switch is locked in the UI. The product tour
+skips steps for nav items the user can't see.
+
+**Analytics computations live in `src/features/analytics/server/*` as pure
+functions with unit tests;** the GraphQL route is schema + wiring only
+(it had grown to ~960 lines of untested logic). The Dashboard's "needs
+attention" items are structured data (`kind` + numbers), not server-written
+sentences, so the client formats every number and date.
+
+**Charts stay hand-built (Epic 17's call stands), extended rather than
+replaced:** a shared nice-ticks scale (`chart-scale.ts`), value axes,
+`null` gaps in line charts (no-data days are gaps, not zeros), stacked
+cash/on-account bars, tooltips, and a reference line for alert levels. The
+existing validated `--chart-series-1/2` and `--status-*` tokens were
+reused; no new palette. Status colors appear only on tints and icons, with
+the label in text ink (`ToneBadge`), because yellow/orange text fails
+contrast on light surfaces.
+
+**Money is formatted as ETB with 2 decimals everywhere** (`FormatMoney`);
+CSV exports keep raw numbers (spreadsheets need numbers), PDF uses the
+formatted ones. Customer balances are shown in words ("Owes you" /
+"Credit" / "Settled") instead of a signed number; exports keep the signed
+number with the sign spelled out in the column header.
+
+**Production variance beyond ±10% is highlighted** — a judgment call for
+"worth a look", not a business rule; change `VARIANCE_WARNING_PERCENT` in
+`production-tab.tsx` if the factory wants a different tolerance.
+
+---
+
 ## 2026-11-10 — Roles permission matrix + collapsible sidebar (outside the epic sequence)
 
 **Two separate requests, landed back to back on the same day as the

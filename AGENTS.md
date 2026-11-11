@@ -100,6 +100,26 @@ password" action — which also reverses Epic 7's original "auto-generated
 temp password, never manager-typed" call, per explicit user request. See
 `docs/DECISIONS.md` for the full reasoning on each.
 
+**Manager UX & Logic Audit Fixes (Epic 21)** is done: profit/margin are
+computed over costed sales only (null, never 100%, when costs are
+missing); one shared stock-status rule (`src/features/stock/stock-status.ts`,
+adds Negative / Not tracked); sales are voided (never edited/deleted) with
+`SALE_VOID` reversals; stock counts write signed `ADJUSTMENT` entries;
+on-account sales spend customer credit first (`ADVANCE_REDEEMED`);
+overselling needs explicit confirmation (`409 INSUFFICIENT_STOCK` unless
+`allowOversell`); cached balances update with atomic increments
+(`src/lib/ledger-balance.ts`); analytics buckets use
+`BUSINESS_TIMEZONE` (Africa/Addis_Ababa); navigation and area access
+follow permissions (`BuildNavItems`), not role names. Analytics math lives
+in tested pure modules under `src/features/analytics/server/`. UI: shared
+formatters (`src/lib/format.ts` — ETB money, kg, business-zone dates; never
+render raw Decimal strings), plain-language enum labels (each feature's
+`labels.ts`), `ToneBadge`, chart axes/tooltips, a rebuilt Dashboard
+("needs attention"), receivables-style Loans page, sales filters/totals,
+breadcrumb back-links (`usePageHeader({ parent })`), and server-side
+search/sort on lists (`useListParams` + `ListSearch` + `DataTable` `sort`).
+New permissions: `stock:adjust`, `sale:void` (re-run `pnpm db:seed`).
+
 ## Tech stack
 
 Next.js (App Router) · React · TanStack Query · Axios · better-auth ·

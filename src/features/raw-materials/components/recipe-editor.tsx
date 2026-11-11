@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormatNumber } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import {
   useCreateMaterialRequirement,
@@ -204,7 +205,7 @@ export function RecipeEditor({
     {
       key: "ratio",
       header: "kg per kg of output",
-      cell: (row) => row.quantityKgPerOutputKg,
+      cell: (row) => `${FormatNumber(row.quantityKgPerOutputKg, 3)} kg per kg`,
     },
     ...(canManage
       ? [
@@ -237,8 +238,9 @@ export function RecipeEditor({
         <div>
           <h2 className="text-sm font-medium">Recipe</h2>
           <p className="text-xs text-muted-foreground">
-            Optional. Used by Epic 17&apos;s expected-output report — a product
-            with no rows here just shows actual output, no variance.
+            Optional. How many kg of each raw material go into 1 kg of this
+            candle. Used to estimate expected output in Analytics → Production;
+            without a recipe that report shows actual output only.
           </p>
         </div>
         {canManage && (

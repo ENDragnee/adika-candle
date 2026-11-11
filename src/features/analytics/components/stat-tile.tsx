@@ -9,7 +9,7 @@ import Link from "next/link";
 import type * as React from "react";
 import { useCountUp } from "@/components/motion/use-count-up";
 import { Card, CardContent } from "@/components/ui/card";
-import { EMPTY_VALUE, FormatPercent } from "@/lib/format";
+import { EMPTY_VALUE, FormatNumber, FormatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function CountUpValue({
@@ -75,7 +75,7 @@ function DeltaLine({
 export function StatTile({
   label,
   value,
-  format = (n: number) => Math.round(n).toLocaleString(),
+  format = (n: number) => FormatNumber(n, 0),
   icon: IconComponent,
   hint,
   delta,

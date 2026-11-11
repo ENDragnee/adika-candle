@@ -1,7 +1,7 @@
 # Epic 21 — Manager UX & Logic Audit Fixes
 
 **Depends on:** 8, 13, 15, 17 (all done)
-**Status:** not-started
+**Status:** done
 
 ## Goal
 
@@ -365,16 +365,20 @@ shows the new margin when a cost is set.
 
 ---
 
-## Open questions (product decisions before building)
+## Decisions taken (were open questions)
 
-1. **Overselling:** soft warning (proposed in 0.4) or a hard block?
-   A hard block needs 1.1 (adjustments) to ship first, so a wrong count
-   can't stop sales.
-2. **Currency:** confirm ETB, and whether to show decimals (santim).
-3. **Void vs. edit:** 1.2 proposes void-and-re-record only (an audit
-   trail with no in-place edits). Confirm that's acceptable.
-4. **Roles:** move to permission-only gating (1.5b preferred), or keep
-   the two fixed areas and simplify the matrix?
+1. **Overselling:** soft block — the API refuses with `409
+   INSUFFICIENT_STOCK` unless the sale is explicitly confirmed
+   (`allowOversell`), and the stock count (1.1) corrects the balance
+   afterwards. A hard block would stop real sales on a bad count.
+2. **Currency:** ETB, 2 decimals (`BUSINESS_CURRENCY` in
+   `src/configs/global-vars.ts`).
+3. **Void vs. edit:** void + re-record only; sales are never edited or
+   deleted.
+4. **Roles:** permission-only gating (1.5b). The `/manager` and
+   `/inventory` route areas stay; nav and access follow permissions.
+
+See `docs/DECISIONS.md`, "Epic 21 decisions", for the reasoning.
 
 ## Suggested build order
 
