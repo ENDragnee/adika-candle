@@ -1,3 +1,10 @@
 allowBuilds:
+  '@prisma/engines': true
+  bcrypt: true
+  core-js: true
+  esbuild: true
+  prisma: true
   sharp: false
   unrs-resolver: false
+minimumReleaseAgeExclude:
+  - driver.js@1.11.0

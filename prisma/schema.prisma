@@ -1,0 +1,460 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth (better-auth) — core tables required by the prisma adapter.
+// ---------------------------------------------------------------------------
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  emailVerified   Boolean  @default(false)
+  image           String?
+  username        String?  @unique
+  displayUsername String?
+  // Deactivation flag (Epic 7). better-auth's own sign-in has no concept of
+  // this — gating happens in customSession (src/lib/auth.ts), which returns
+  // role: null, permissions: [] for an inactive user so every
+  // CheckPermission/CheckAnyPermission call and layout role gate rejects
+  // them post-login without touching the auth flow itself. See
+  // docs/DECISIONS.md, "Epic 7 decisions".
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id])
+
+  sessions Session[]
+  accounts Account[]
+  logs     Log[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id         String @id @default(cuid())
+  accountId  String
+  providerId String
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// RBAC — two seeded roles (Manager, Inventory Manager) but modeled as data
+// so the Manager can manage permission assignments from the UI.
+// ---------------------------------------------------------------------------
+
+model Module {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  permissions Permission[]
+
+  @@map("module")
+}
+
+model Permission {
+  id   String @id @default(cuid())
+  name String @unique
+
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  roles Role[] @relation("RolePermissions")
+
+  @@map("permission")
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  permissions Permission[] @relation("RolePermissions")
+  users       User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("role")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog — categories, products, and price history (pricing is variable
+// over time, never a single current-price field; see AGENTS.md).
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("category")
+}
+
+model Product {
+  id                   String                       @id @default(cuid())
+  name                 String
+  sku                  String                       @unique
+  isActive             Boolean                      @default(true)
+  categoryId           String
+  category             Category                     @relation(fields: [categoryId], references: [id])
+  // Manager-editable, nullable opt-in per product (Epic 8). Null means no
+  // alert is ever raised for this product — there is no global default
+  // threshold. See docs/DECISIONS.md, "Epic 8 decisions".
+  lowStockThresholdKg  Decimal?
+  prices               Price[]
+  costs                Cost[]
+  stockBalance         StockBalance?
+  stockLedgerEntries   StockLedgerEntry[]
+  sales                Sale[]
+  materialRequirements ProductMaterialRequirement[]
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+
+  @@map("product")
+}
+
+model Price {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  amountPerKg   Decimal
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  createdById   String
+  createdAt     DateTime  @default(now())
+
+  @@index([productId, effectiveFrom])
+  @@map("price")
+}
+
+// ---------------------------------------------------------------------------
+// Product cost (Epic 15) — variable over time, mirrors Price exactly (see
+// AGENTS.md "Pricing is variable over time..."). Powers margin computation
+// (Sale.totalAmount minus Sale.costPerKgAtSale) in Epic 17's Profitability
+// tab. Deliberately decoupled from Epic 14's raw-material recipe math — a
+// direct Manager-entered COGS estimate, not derived live. See
+// docs/DECISIONS.md.
+// ---------------------------------------------------------------------------
+
+model Cost {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  amountPerKg   Decimal
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  createdById   String
+  createdAt     DateTime  @default(now())
+
+  @@index([productId, effectiveFrom])
+  @@map("cost")
+}
+
+// ---------------------------------------------------------------------------
+// Unit conversions — Carton/Packet/Wax/Kir → KG ratios, Manager-editable at
+// runtime. unitName is a plain string, not an enum (see docs/DECISIONS.md,
+// 2026-11-07, "UnitConversion.unitName is a string, not a Prisma enum").
+// ---------------------------------------------------------------------------
+
+model UnitConversion {
+  id        String   @id @default(cuid())
+  unitName  String   @unique
+  ratioToKg Decimal
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("unit_conversion")
+}
+
+// ---------------------------------------------------------------------------
+// Stock — append-only ledger + cached balance (hybrid, see docs/DECISIONS.md,
+// 2026-11-07 "Stock and loan balances: cached column + append-only ledger").
+// Only the inbound ACCEPT side is written here; SALE decrement is Epic 6's
+// job even though it writes into these same tables.
+// ---------------------------------------------------------------------------
+
+enum StockEntryType {
+  ACCEPT
+  SALE
+  ADJUSTMENT
+}
+
+model StockBalance {
+  id         String   @id @default(cuid())
+  productId  String   @unique
+  product    Product  @relation(fields: [productId], references: [id])
+  quantityKg Decimal  @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@map("stock_balance")
+}
+
+model StockLedgerEntry {
+  id             String         @id @default(cuid())
+  productId      String
+  product        Product        @relation(fields: [productId], references: [id])
+  type           StockEntryType
+  quantityKg     Decimal
+  balanceAfterKg Decimal
+  inputQuantity  Decimal?
+  inputUnitName  String?
+  inputRatioToKg Decimal?
+  note           String?
+  saleId         String?        @unique
+  sale           Sale?          @relation(fields: [saleId], references: [id])
+  createdById    String
+  createdAt      DateTime       @default(now())
+
+  @@index([productId, createdAt])
+  @@map("stock_ledger_entry")
+}
+
+// ---------------------------------------------------------------------------
+// Raw materials (Epic 14) — true production inputs (wax, color dye) that get
+// consumed *into* a finished product, distinct from Product/StockLedgerEntry
+// which already model the finished-goods side. Same append-only-ledger +
+// cached-balance hybrid as Stock (see docs/DECISIONS.md, "Stock and loan
+// balances: cached column + append-only ledger"). Tracked directly in KG —
+// no UnitConversion reuse, see docs/epics/14-raw-materials-production-tracking.md.
+// ---------------------------------------------------------------------------
+
+model RawMaterial {
+  id                   String                       @id @default(cuid())
+  name                 String                       @unique
+  isActive             Boolean                      @default(true)
+  balance              RawMaterialBalance?
+  ledgerEntries        RawMaterialLedgerEntry[]
+  materialRequirements ProductMaterialRequirement[]
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+
+  @@map("raw_material")
+}
+
+enum RawMaterialEntryType {
+  RECEIVED
+  CONSUMED
+  ADJUSTMENT
+}
+
+model RawMaterialBalance {
+  id         String      @id @default(cuid())
+  materialId String      @unique
+  material   RawMaterial @relation(fields: [materialId], references: [id])
+  quantityKg Decimal     @default(0)
+  updatedAt  DateTime    @updatedAt
+
+  @@map("raw_material_balance")
+}
+
+model RawMaterialLedgerEntry {
+  id             String               @id @default(cuid())
+  materialId     String
+  material       RawMaterial          @relation(fields: [materialId], references: [id])
+  type           RawMaterialEntryType
+  quantityKg     Decimal // always a positive magnitude; direction implied by type
+  balanceAfterKg Decimal
+  note           String?
+  createdById    String
+  createdAt      DateTime             @default(now())
+
+  @@index([materialId, createdAt])
+  @@map("raw_material_ledger_entry")
+}
+
+// Optional recipe/BOM row: "1kg of `product` requires `quantityKgPerOutputKg`
+// kg of `material`." A product with no rows here just has no computed
+// "expected output" in Epic 17 — never required for every product.
+model ProductMaterialRequirement {
+  id                    String      @id @default(cuid())
+  productId             String
+  product               Product     @relation(fields: [productId], references: [id])
+  materialId            String
+  material              RawMaterial @relation(fields: [materialId], references: [id])
+  quantityKgPerOutputKg Decimal
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@unique([productId, materialId])
+  @@map("product_material_requirement")
+}
+
+// ---------------------------------------------------------------------------
+// Customers + loans — standard customers (Merkato, Gondor, Moges, Mekele)
+// can lend/borrow items or money against future purchases. Balance + ledger
+// is the same cached-column + append-only-ledger hybrid as Stock (see
+// docs/DECISIONS.md, "Stock and loan balances: cached column + append-only
+// ledger"). LoanAccount.balance sign: + = customer owes the business,
+// - = business owes the customer (see docs/DECISIONS.md).
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id          String       @id @default(cuid())
+  name        String
+  phone       String?
+  location    String?
+  isActive    Boolean      @default(true)
+  loanAccount LoanAccount?
+  sales       Sale[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("customer")
+}
+
+model LoanAccount {
+  id           String            @id @default(cuid())
+  customerId   String            @unique
+  customer     Customer          @relation(fields: [customerId], references: [id])
+  balance      Decimal           @default(0)
+  transactions LoanTransaction[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@map("loan_account")
+}
+
+enum LoanTransactionType {
+  SALE_ON_CREDIT
+  REPAYMENT_RECEIVED
+  ADVANCE_FROM_CUSTOMER
+  ADVANCE_REDEEMED
+  MANUAL_ADJUSTMENT
+}
+
+model LoanTransaction {
+  id            String              @id @default(cuid())
+  loanAccountId String
+  loanAccount   LoanAccount         @relation(fields: [loanAccountId], references: [id])
+  type          LoanTransactionType
+  amount        Decimal
+  balanceAfter  Decimal
+  note          String?
+  saleId        String?             @unique
+  sale          Sale?               @relation(fields: [saleId], references: [id])
+  createdById   String
+  createdAt     DateTime            @default(now())
+
+  @@index([loanAccountId, createdAt])
+  @@map("loan_transaction")
+}
+
+// ---------------------------------------------------------------------------
+// Sales — the unified Record Sale flow (Epic 6). The only place a sale is
+// ever recorded: POST /api/v1/sales writes this row plus a SALE
+// StockLedgerEntry and (if paymentType is LOAN) a SALE_ON_CREDIT
+// LoanTransaction, all in one DB transaction. inputRatioToKg/unitPriceAtSale
+// are snapshots, not live joins — see docs/DECISIONS.md. Single-product-per-
+// transaction by design (no SaleLine) — see docs/DECISIONS.md.
+// ---------------------------------------------------------------------------
+
+enum SalePaymentType {
+  CASH
+  LOAN
+}
+
+model Sale {
+  id               String            @id @default(cuid())
+  referenceCode    String            @unique // via GenerateCode()
+  productId        String
+  product          Product           @relation(fields: [productId], references: [id])
+  customerId       String? // null = walk-in
+  customer         Customer?         @relation(fields: [customerId], references: [id])
+  inputQuantity    Decimal
+  inputUnitName    String // snapshot, e.g. "CARTON"
+  inputRatioToKg   Decimal // snapshot of ratio used at sale time
+  quantityKg       Decimal // inputQuantity * inputRatioToKg
+  unitPriceAtSale  Decimal // snapshot of Price.amountPerKg
+  totalAmount      Decimal // quantityKg * unitPriceAtSale
+  // Snapshot of the active Cost.amountPerKg at sale time (Epic 15); null if
+  // no Cost had ever been set for this product — margin isn't computable
+  // for that one sale, not an error, doesn't block the sale. Never
+  // backfilled for sales recorded before Epic 15 shipped.
+  costPerKgAtSale  Decimal?
+  paymentType      SalePaymentType
+  createdById      String
+  createdAt        DateTime          @default(now())
+  stockLedgerEntry StockLedgerEntry?
+  loanTransaction  LoanTransaction?
+
+  @@index([productId, createdAt])
+  @@index([customerId, createdAt])
+  @@index([createdById, createdAt])
+  @@map("sale")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log — written from auth and domain events.
+// ---------------------------------------------------------------------------
+
+enum LogSeverity {
+  INFO
+  WARN
+  ERROR
+}
+
+model Log {
+  id       String      @id @default(cuid())
+  type     String
+  severity LogSeverity
+  message  String
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@map("log")
+}

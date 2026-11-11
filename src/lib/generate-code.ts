@@ -13,13 +13,13 @@ const GenerateCodeSchema = z
   })
   .default({ length: 7, mode: "UPPER" });
 
-type GenerateCodeInput = z.infer<typeof GenerateCodeSchema>;
+type GenerateCodeInput = z.input<typeof GenerateCodeSchema>;
 
 export function GenerateCode(params?: GenerateCodeInput) {
   try {
     const safeParams = GenerateCodeSchema.parse(params);
     const { length, mode } = safeParams;
-    let vaidChars;
+    let vaidChars: string;
 
     const chars = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 

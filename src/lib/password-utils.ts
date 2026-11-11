@@ -1,4 +1,4 @@
-import { hash, compare, genSalt } from "bcrypt";
+import { compare, genSalt, hash } from "bcrypt";
 
 export async function HashPassword(password: string): Promise<string> {
   const saltRound = Number(process.env.ROUND_SALT);

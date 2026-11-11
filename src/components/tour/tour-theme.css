@@ -1,0 +1,93 @@
+/* Epic 20 (Interactive Product Tutorial) — driver.js's default popover is
+   plain white/black with no theme awareness; this restyles it against this
+   app's own border/background/foreground/ring tokens, matching every
+   src/components/ui/* primitive (see DropdownMenuContent's
+   "rounded-lg bg-popover text-popover-foreground shadow-md ring-1
+   ring-foreground/10" for the shape this mirrors). Imported directly after
+   driver.js/dist/driver.css in use-product-tour.ts so these rules reliably
+   load after the library's own (same-module import order is preserved by
+   the bundler) — several rules below depend on winning a same-specificity
+   tie against driver's base rules by loading later, not on a selector
+   trick, so don't move this import earlier than driver.css's. */
+
+.driver-popover {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  font-family: var(--font-sans);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1),
+    0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent);
+  padding: 1rem;
+}
+
+.driver-popover-title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--popover-foreground);
+}
+
+.driver-popover-description {
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+
+.driver-popover-close-btn {
+  color: var(--muted-foreground);
+  border-radius: var(--radius-sm);
+}
+
+.driver-popover-close-btn:hover,
+.driver-popover-close-btn:focus-visible {
+  color: var(--foreground);
+  background-color: var(--muted);
+}
+
+.driver-popover-progress-text {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+.driver-popover-footer-btn {
+  color: var(--foreground);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  padding: 0.3rem 0.65rem;
+}
+
+.driver-popover-footer-btn:hover,
+.driver-popover-footer-btn:focus {
+  background-color: var(--muted);
+}
+
+/* The arrow's visible side inherits from the base .driver-popover-arrow
+   rule's border-color (driver.css's own default: solid #fff on all four
+   sides); each side-specific class below only zeroes the OTHER three
+   sides to transparent, leaving the fourth at whatever border-color the
+   base rule set. Recoloring the base rule itself (or using any selector
+   with equal-or-higher specificity than the side classes) would also win
+   the cascade for those "transparent" sides and bring the white border
+   back — so each visible side's color is set here, on the matching
+   side-specific class itself, touching only that one side. */
+.driver-popover-arrow-side-left {
+  border-left-color: var(--popover);
+}
+.driver-popover-arrow-side-right {
+  border-right-color: var(--popover);
+}
+.driver-popover-arrow-side-top {
+  border-top-color: var(--popover);
+}
+.driver-popover-arrow-side-bottom {
+  border-bottom-color: var(--popover);
+}
+
+/* Entering is ease-out, not the browser default `ease` — same strong
+   curve Epic 16 uses for the route-change crossfade. */
+.driver-fade .driver-popover {
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}

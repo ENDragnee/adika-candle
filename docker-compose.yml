@@ -1,0 +1,45 @@
+name: adika-candle
+
+services:
+  postgres:
+    image: postgres:18.3
+    container_name: adika-candle-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-adika}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adika}
+      POSTGRES_DB: ${POSTGRES_DB:-adika_candle}
+    ports:
+      - "5432:5432"
+    volumes:
+      - adika-candle-postgres-vol:/var/lib/postgresql
+    networks:
+      - adika-candle-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-adika} -d ${POSTGRES_DB:-adika_candle}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: adika-candle-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    networks:
+      - adika-candle-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  adika-candle-postgres-vol:
+
+networks:
+  adika-candle-network:
+    driver: bridge

@@ -1,9 +1,8 @@
-import { ZodType } from "zod";
-import { GetApiSession } from "@lib/session";
-import { checkPermission } from "@lib/auth-options";
 import { GraphQLError } from "graphql";
-import { Logger } from "pino";
+import type { Logger } from "pino";
+import type { ZodType } from "zod";
 import { logger as baseLogger } from "@/lib/logger";
+import { CheckPermission, GetApiSession } from "@/lib/session";
 
 interface IGraphqlHandlerConfig<T> {
   moduleName: string;
@@ -30,9 +29,9 @@ export function CreateGraphqlRoute<T = any>(config: IGraphqlHandlerConfig<T>) {
 
     try {
       if (config.requiresAuth.status) {
-        const session = context?.session || (await GetApiSession());
+        const user = context?.session ?? (await GetApiSession())?.user;
 
-        if (!session?.id && !session?.user?.id) {
+        if (!user?.id) {
           reqLogger.warn("Unauthorized: No session found");
           throw new GraphQLError("Unauthorized", {
             extensions: { code: "UNAUTHORIZED", http: { status: 401 } },
@@ -46,21 +45,18 @@ export function CreateGraphqlRoute<T = any>(config: IGraphqlHandlerConfig<T>) {
           });
         }
 
-        const hasPermission = await checkPermission(
+        const hasPermission = await CheckPermission(
           config.requiresAuth.permission,
         );
 
         if (!hasPermission) {
-          reqLogger.warn(
-            { userId: session.user?.id || session.id },
-            "Forbidden: Missing permissions",
-          );
+          reqLogger.warn({ userId: user.id }, "Forbidden: Missing permissions");
           throw new GraphQLError("Forbidden", {
             extensions: { code: "FORBIDDEN", http: { status: 403 } },
           });
         }
 
-        context.session = session.user ? session.user : session;
+        context.session = user;
       }
 
       if (config.schema) {

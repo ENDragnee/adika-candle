@@ -1,32 +1,19 @@
 import { redirect } from "next/navigation";
+import { ROLES } from "./roles";
 import { GetSession } from "./session";
 
-// Define the role constants to match your database exactly
-export const ROLES = {
-  ADMIN: "ADMIN",
-  MANAGER: "MANAGER",
-  CASHIER: "CASHIER",
-} as const;
+export { ROLES };
 
 export async function RoleRedirector() {
   const session = await GetSession();
+  const role = session.user.role;
 
-  if (!session?.user) {
-    redirect("/auth/signin");
-  }
-
-  const userRoles = session.user.role || [];
-
-  if (userRoles.includes(ROLES.ADMIN)) {
-    redirect("/admin/dashboard");
-  }
-
-  if (userRoles.includes(ROLES.MANAGER)) {
+  if (role === ROLES.MANAGER) {
     redirect("/manager/dashboard");
   }
 
-  if (userRoles.includes(ROLES.CASHIER)) {
-    redirect("/cashier/dashboard");
+  if (role === ROLES.INVENTORY_MANAGER) {
+    redirect("/inventory/dashboard");
   }
 
   redirect("/unauthorized");

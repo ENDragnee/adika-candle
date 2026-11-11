@@ -1,30 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ZodType } from "zod";
-import { GetApiSession } from "@lib/session";
-import { checkPermission } from "@lib/auth-options";
-import { ISession } from "@/types/next-auth";
-import { Logger } from "pino";
+import { type NextRequest, NextResponse } from "next/server";
+import type { Logger } from "pino";
+import type { ZodType } from "zod";
+import type { AppUser } from "@/lib/auth";
+import {
+  CheckAnyPermission,
+  CheckPermission,
+  GetApiSession,
+} from "@/lib/session";
 import { logger as baseLogger } from "../logger";
 
-interface IApiHandlerConfig<T, P = Record<string, string>> {
+interface IApiHandlerConfig<T, P = Record<string, string>, R = any> {
   moduleName: string;
   schema?: ZodType<T>;
+  // Validates the handler's return value before it's sent — catches a
+  // handler that drifts from its documented response shape. Skipped for
+  // void responses and for handlers that return a NextResponse directly.
+  responseSchema?: ZodType<R>;
   requiresAuth: {
     status: boolean;
-    permission: string;
+    // A string[] grants access to any one of the listed permissions (via
+    // CheckAnyPermission) — e.g. a read endpoint that both a "manage" role
+    // and a narrower "use" role may call. Single-string behavior (the
+    // common case) is unchanged.
+    permission: string | string[];
   };
   handler: (
     body: T,
-    session?: ISession,
+    session?: AppUser,
     params?: P,
     logger?: Logger,
-  ) => Promise<any>;
+  ) => Promise<R | NextResponse>;
 }
 
-export function CreateApiRoute<T = any, P = Record<string, string>>(
-  config: IApiHandlerConfig<T, P>,
+export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
+  config: IApiHandlerConfig<T, P, R>,
 ) {
-  return async (req: NextRequest, context?: { params: Promise<P> }) => {
+  return async (req: NextRequest, context: { params: Promise<P> }) => {
     const reqId = crypto.randomUUID();
     const method = req.method;
     const url = req.nextUrl.pathname;
@@ -40,9 +51,9 @@ export function CreateApiRoute<T = any, P = Record<string, string>>(
     reqLogger.info("Request started");
 
     try {
-      let session: ISession | undefined;
+      let session: AppUser | undefined;
       const environment = process.env.ENVIRONMENT;
-      const params = context?.params ? await context.params : undefined;
+      const params = await context.params;
 
       if (config.requiresAuth.status) {
         session = (await GetApiSession())?.user;
@@ -52,9 +63,9 @@ export function CreateApiRoute<T = any, P = Record<string, string>>(
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const hasPermission = await checkPermission(
-          config.requiresAuth.permission,
-        );
+        const hasPermission = Array.isArray(config.requiresAuth.permission)
+          ? await CheckAnyPermission(config.requiresAuth.permission)
+          : await CheckPermission(config.requiresAuth.permission);
 
         if (!hasPermission) {
           reqLogger.warn(
@@ -125,11 +136,33 @@ export function CreateApiRoute<T = any, P = Record<string, string>>(
         return NextResponse.json({ success: true }, { status: 200 });
       }
 
+      // Narrowed past the NextResponse/void checks above — the remaining
+      // value is the handler's typed result.
+      const typedResult = result as R;
+      let responseData: unknown = typedResult;
+
+      if (config.responseSchema) {
+        const responseValidation = config.responseSchema.safeParse(typedResult);
+
+        if (!responseValidation.success) {
+          reqLogger.error(
+            { issues: responseValidation.error.issues, durationMs },
+            "Handler response does not match responseSchema",
+          );
+          return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 },
+          );
+        }
+
+        responseData = responseValidation.data;
+      }
+
       reqLogger.info(
         { status: 200, durationMs },
         "Request completed successfully",
       );
-      return NextResponse.json(result, { status: 200 });
+      return NextResponse.json(responseData, { status: 200 });
     } catch (err: any) {
       const durationMs = Math.round(performance.now() - startTime);
 

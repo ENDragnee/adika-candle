@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+.direnv
+.env*
+!.env.example
+*.log
+coverage
