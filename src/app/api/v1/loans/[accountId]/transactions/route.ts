@@ -7,6 +7,7 @@ import {
 } from "@/features/loans/validators/loan.schema";
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
+import { ApplyLoanDelta } from "@/lib/ledger-balance";
 import {
   BuildPaginationMeta,
   PaginatedResponseSchema,
@@ -79,6 +80,10 @@ export const POST = CreateApiRoute<CreateLoanTransactionInput, Params>({
       );
     }
 
+    // Deliberately no isActive check: a deactivated customer can still pay
+    // off what they owe, and a Manager can still correct their balance.
+    // Only new sales are blocked for inactive customers (record-sale.ts).
+
     // requiresAuth.status guarantees a session with an id by the time the
     // handler runs — see CreateApiRoute's 401 check.
     const createdById = session?.id;
@@ -97,19 +102,10 @@ export const POST = CreateApiRoute<CreateLoanTransactionInput, Params>({
           )
         : new Prisma.Decimal(body.amount).times(-1);
 
+    // Atomic increment — see src/lib/ledger-balance.ts for why a
+    // read-then-write here could lose a concurrent posting.
     const transaction = await prisma.$transaction(async (tx) => {
-      // Re-read inside the transaction (not the `account` fetched above)
-      // so a concurrent write can't produce a stale balanceAfter snapshot
-      // — same pattern as StockLedgerEntry's balanceAfterKg.
-      const current = await tx.loanAccount.findUniqueOrThrow({
-        where: { id: accountId },
-      });
-      const balanceAfter = current.balance.plus(delta);
-
-      await tx.loanAccount.update({
-        where: { id: accountId },
-        data: { balance: balanceAfter },
-      });
+      const balanceAfter = await ApplyLoanDelta(tx, accountId, delta);
 
       return tx.loanTransaction.create({
         data: {

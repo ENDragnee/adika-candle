@@ -23,7 +23,14 @@ export const SaleSchema = z.object({
   costPerKgAtSale: z.string().nullable(),
   paymentType: SalePaymentTypeSchema,
   createdById: z.string(),
+  // Display name of the user who recorded it; null if that user was
+  // since deleted.
+  createdByName: z.string().nullable(),
   createdAt: z.iso.datetime(),
+  // Void, never delete (Epic 21) — null on a live sale.
+  voidedAt: z.iso.datetime().nullable(),
+  voidedByName: z.string().nullable(),
+  voidReason: z.string().nullable(),
 });
 
 export type SaleDTO = z.infer<typeof SaleSchema>;
@@ -32,7 +39,14 @@ export const SaleListResponseSchema = z.array(SaleSchema);
 
 type SaleWithRelations = Sale & { product: Product; customer: Customer | null };
 
-export function ToSaleDTO(sale: SaleWithRelations): SaleDTO {
+// User id → display name, looked up once per response (Sale.createdById
+// isn't a Prisma relation — see LoadUserNames).
+export type UserNameMap = Map<string, string>;
+
+export function ToSaleDTO(
+  sale: SaleWithRelations,
+  userNames: UserNameMap = new Map(),
+): SaleDTO {
   return {
     id: sale.id,
     referenceCode: sale.referenceCode,
@@ -50,7 +64,13 @@ export function ToSaleDTO(sale: SaleWithRelations): SaleDTO {
     costPerKgAtSale: sale.costPerKgAtSale?.toString() ?? null,
     paymentType: sale.paymentType,
     createdById: sale.createdById,
+    createdByName: userNames.get(sale.createdById) ?? null,
     createdAt: sale.createdAt.toISOString(),
+    voidedAt: sale.voidedAt?.toISOString() ?? null,
+    voidedByName: sale.voidedById
+      ? (userNames.get(sale.voidedById) ?? null)
+      : null,
+    voidReason: sale.voidReason,
   };
 }
 
@@ -59,7 +79,19 @@ export const WITH_SALE_RELATIONS_INCLUDE = {
   customer: true,
 } as const;
 
+export const SaleStatusFilterSchema = z.enum(["ACTIVE", "VOIDED", "ALL"]);
+
 export const SaleQuerySchema = z.object({
+  // Filters for /manager/sales (Epic 21). `from`/`to` are business-local
+  // calendar dates ("YYYY-MM-DD"), both inclusive.
+  from: z.iso.date().optional(),
+  to: z.iso.date().optional(),
+  productId: z.string().min(1).optional(),
+  customerId: z.string().min(1).optional(),
+  paymentType: SalePaymentTypeSchema.optional(),
+  status: SaleStatusFilterSchema.default("ACTIVE"),
+  // Matches the reference code.
+  search: z.string().trim().min(1).optional(),
   // Set by /inventory/sales ("own recent sales") to the current session's
   // user id; omitted by /manager/sales, which sees every sale. Both pages
   // share the same sale:read permission — scope is page-level, not
@@ -67,7 +99,7 @@ export const SaleQuerySchema = z.object({
   createdById: z.string().optional(),
 });
 
-export type SaleQuery = z.infer<typeof SaleQuerySchema>;
+export type SaleQuery = z.input<typeof SaleQuerySchema>;
 
 // A walk-in sale (no customerId) can only ever be CASH — there's no
 // LoanAccount to post a SALE_ON_CREDIT transaction against. Encoded as a
@@ -78,6 +110,11 @@ const SaleProductFields = {
   productId: z.string().min(1, "Product is required"),
   inputQuantity: z.coerce.number().positive().finite(),
   inputUnitName: z.string().trim().min(1, "Unit is required"),
+  // Required to record a sale that takes the product's stock below zero.
+  // Without it the API answers 409 INSUFFICIENT_STOCK with the available
+  // quantity, and the Record Sale dialog asks the user to confirm. See
+  // docs/DECISIONS.md, "Epic 21 decisions".
+  allowOversell: z.boolean().optional(),
 };
 
 export const CreateSaleInputSchema = z.discriminatedUnion("paymentType", [
@@ -94,3 +131,21 @@ export const CreateSaleInputSchema = z.discriminatedUnion("paymentType", [
 ]);
 
 export type CreateSaleInput = z.infer<typeof CreateSaleInputSchema>;
+
+export const SalesSummarySchema = z.object({
+  saleCount: z.number().int(),
+  totalKg: z.string(),
+  totalAmount: z.string(),
+  cashAmount: z.string(),
+  onAccountAmount: z.string(),
+});
+export type SalesSummaryDTO = z.infer<typeof SalesSummarySchema>;
+
+export const VoidSaleInputSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Say briefly why this sale is being voided")
+    .max(500),
+});
+export type VoidSaleInput = z.infer<typeof VoidSaleInputSchema>;

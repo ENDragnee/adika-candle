@@ -26,12 +26,19 @@ interface PermissionRow {
   module: ModuleDTO;
 }
 
+// Mirrors the server's self-lockout guard in
+// api/v1/roles/[id]/permissions: on your own role, "Manage roles" is
+// locked on, since turning it off would lock you out of this page.
+const SELF_LOCKED_PERMISSION = "role:manage";
+
 function RolePermissionMatrix({
   role,
   modules,
+  isOwnRole,
 }: {
   role: RoleDTO;
   modules: ModuleDTO[];
+  isOwnRole: boolean;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(role.permissionIds),
@@ -85,13 +92,25 @@ function RolePermissionMatrix({
       // wrap (see its own className below), everything else here stays
       // single-line, so Enabled would otherwise land past the fold on
       // anything narrower than a wide desktop viewport.
-      cell: ({ permission }) => (
-        <Switch
-          checked={selectedIds.has(permission.id)}
-          onCheckedChange={() => toggle(permission.id)}
-          aria-label={DescribePermission(permission.name).label}
-        />
-      ),
+      cell: ({ permission }) => {
+        const locked =
+          isOwnRole && permission.name === SELF_LOCKED_PERMISSION;
+        return (
+          <span className="inline-flex items-center gap-2">
+            <Switch
+              checked={selectedIds.has(permission.id)}
+              onCheckedChange={() => toggle(permission.id)}
+              disabled={locked}
+              aria-label={DescribePermission(permission.name).label}
+            />
+            {locked && (
+              <span className="text-xs text-muted-foreground">
+                Your role
+              </span>
+            )}
+          </span>
+        );
+      },
     },
     {
       key: "module",
@@ -197,7 +216,11 @@ function RoleManagerSkeleton() {
   );
 }
 
-export function RoleManager() {
+export function RoleManager({
+  currentRoleName,
+}: {
+  currentRoleName: string | null;
+}) {
   const { data, isLoading } = useRoles();
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
 
@@ -229,6 +252,7 @@ export function RoleManager() {
           key={activeRole.id}
           role={activeRole}
           modules={data.modules}
+          isOwnRole={activeRole.name === currentRoleName}
         />
       </div>
     </div>

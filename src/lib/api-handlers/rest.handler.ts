@@ -8,6 +8,7 @@ import {
   GetApiSession,
 } from "@/lib/session";
 import { logger as baseLogger } from "../logger";
+import { ToDomainErrorResponse } from "../server/domain-error";
 
 interface IApiHandlerConfig<T, P = Record<string, string>, R = any> {
   moduleName: string;
@@ -165,6 +166,17 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
       return NextResponse.json(responseData, { status: 200 });
     } catch (err: any) {
       const durationMs = Math.round(performance.now() - startTime);
+
+      // Business-rule rejections thrown from a service (see
+      // src/lib/server/domain-error.ts) are expected outcomes, not crashes.
+      const domainResponse = ToDomainErrorResponse(err);
+      if (domainResponse) {
+        reqLogger.info(
+          { status: domainResponse.status, code: err.code, durationMs },
+          "Request rejected by a business rule",
+        );
+        return domainResponse;
+      }
 
       reqLogger.error(
         { err, stack: err.stack, durationMs },

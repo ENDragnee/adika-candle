@@ -31,7 +31,26 @@ export const PATCH = CreateApiRoute<
   schema: UpdateRolePermissionsInputSchema,
   requiresAuth: { status: true, permission: "role:manage" },
   responseSchema: RoleSchema,
-  handler: async (body, _session, params) => {
+  handler: async (body, session, params) => {
+    // Self-lockout guard (Epic 21): taking "role:manage" off your *own*
+    // role would lock you out of this page with no way to undo it. The
+    // check below only ensures *some* role keeps the permission.
+    const role = await prisma.role.findUnique({ where: { id: params?.id } });
+    if (role && role.name === session?.role) {
+      const roleManage = await prisma.permission.findUnique({
+        where: { name: "role:manage" },
+      });
+      if (roleManage && !body.permissionIds.includes(roleManage.id)) {
+        return NextResponse.json(
+          {
+            error:
+              "You can't remove \"Manage roles\" from your own role — you'd be locked out of this page",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const guardedPermissions = await prisma.permission.findMany({
       where: { name: { in: GUARDED_PERMISSION_NAMES } },
     });

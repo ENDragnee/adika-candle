@@ -28,6 +28,7 @@ conventions.
 | 18 | [Page Header Consolidation](./18-page-header-consolidation.md) | 9 | done |
 | 19 | [Legend & Walkthrough Reference Page](./19-legend-walkthrough-reference.md) | 3, 4, 5, 14, 17 | done |
 | 20 | [Interactive Product Tutorial](./20-interactive-product-tutorial.md) | 9, 16 | done |
+| 21 | [Manager UX & Logic Audit Fixes](./21-manager-ux-logic-audit-fixes.md) | 8, 13, 15, 17 | not-started |
 
 Update the Status column as epics move through
 not-started → in-progress → done.

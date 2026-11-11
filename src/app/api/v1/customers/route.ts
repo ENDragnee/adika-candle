@@ -36,7 +36,10 @@ export const GET = CreateApiRoute({
       prisma.customer.findMany({
         where,
         include: WITH_LOAN_ACCOUNT_INCLUDE,
-        orderBy: { name: "asc" },
+        orderBy:
+          query.sort === "balance"
+            ? [{ loanAccount: { balance: query.dir } }, { name: "asc" }]
+            : [{ name: query.dir }],
         ...ToSkipTake(query),
       }),
       prisma.customer.count({ where }),

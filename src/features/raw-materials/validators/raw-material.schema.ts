@@ -4,6 +4,7 @@ import type {
   RawMaterialBalance,
   RawMaterialLedgerEntry,
 } from "@/generated/prisma/client";
+import { ListQuerySchema } from "@/lib/list-query";
 
 export const RawMaterialSchema = z.object({
   id: z.string(),
@@ -59,11 +60,16 @@ export const RawMaterialBalanceListResponseSchema = z.array(
   RawMaterialBalanceSchema,
 );
 
-export const RawMaterialBalanceQuerySchema = z.object({
+export const MATERIAL_SORT_KEYS = ["name", "quantity"] as const;
+
+export const RawMaterialBalanceQuerySchema = ListQuerySchema(
+  MATERIAL_SORT_KEYS,
+  "name",
+).extend({
   materialId: z.string().optional(),
 });
 
-export type RawMaterialBalanceQuery = z.infer<
+export type RawMaterialBalanceQuery = z.input<
   typeof RawMaterialBalanceQuerySchema
 >;
 
@@ -122,9 +128,9 @@ export function ToRawMaterialLedgerEntryDTO(
   };
 }
 
-// RECEIVED/CONSUMED only — ADJUSTMENT has no UI entry point in v1, same as
-// how StockEntryType.ADJUSTMENT has no dedicated form either; the enum
-// value exists on the schema for future manual corrections.
+// RECEIVED/CONSUMED only. Corrections (ADJUSTMENT) go through the separate
+// stock-count endpoint (POST /api/v1/raw-materials/[id]/count, Epic 21),
+// which needs the stricter stock:adjust permission.
 export const RecordMaterialActivityInputSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("RECEIVED"),

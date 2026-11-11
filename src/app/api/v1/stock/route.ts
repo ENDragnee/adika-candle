@@ -3,6 +3,7 @@ import {
   StockBalanceSchema,
   ToStockBalanceDTO,
 } from "@/features/stock/validators/stock.schema";
+import type { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import {
   BuildPaginationMeta,
@@ -22,13 +23,25 @@ export const GET = CreateApiRoute({
   requiresAuth: { status: true, permission: "stock:read" },
   responseSchema: PaginatedResponseSchema(StockBalanceSchema),
   handler: async (query) => {
-    const where = query.productId ? { id: query.productId } : undefined;
+    const where: Prisma.ProductWhereInput = {
+      ...(query.productId && { id: query.productId }),
+      ...(query.search && {
+        OR: [
+          { name: { contains: query.search, mode: "insensitive" } },
+          { sku: { contains: query.search, mode: "insensitive" } },
+        ],
+      }),
+    };
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] =
+      query.sort === "quantity"
+        ? [{ stockBalance: { quantityKg: query.dir } }, { name: "asc" }]
+        : [{ name: query.dir }];
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
         include: { stockBalance: true },
-        orderBy: { name: "asc" },
+        orderBy,
         ...ToSkipTake(query),
       }),
       prisma.product.count({ where }),

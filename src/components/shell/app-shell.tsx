@@ -24,13 +24,12 @@ import {
 import type { AppUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./bottom-nav";
-import type { NavItem } from "./nav-config";
+import { BuildNavItems, type NavItem } from "./nav-config";
 import { TopBar } from "./top-bar";
 import { useSidebarCollapsed } from "./use-sidebar-collapsed";
 
 interface AppShellProps {
   user: AppUser;
-  navItems: NavItem[];
   children: React.ReactNode;
 }
 
@@ -88,7 +87,8 @@ function SidebarNavLink({
   );
 }
 
-export function AppShell({ user, navItems, children }: AppShellProps) {
+export function AppShell({ user, children }: AppShellProps) {
+  const navItems = BuildNavItems(user.role, user.permissions);
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebarCollapsed();
 

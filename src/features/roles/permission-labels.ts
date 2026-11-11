@@ -52,6 +52,16 @@ export const PERMISSION_LABELS: Record<string, PermissionLabel> = {
     description:
       "See production, profitability, stock health, and best-seller reports.",
   },
+  "stock:adjust": {
+    label: "Correct stock counts",
+    description:
+      "Record a physical stock count that corrects a product's or raw material's balance.",
+  },
+  "sale:void": {
+    label: "Void sales",
+    description:
+      "Cancel a mistaken sale. Its stock and any customer balance change are reversed; the record is kept.",
+  },
   "product:read": {
     label: "View products",
     description: "See the product catalog, prices, and costs.",

@@ -6,6 +6,7 @@ import {
 } from "@/features/sales/validators/sale.schema";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
+import { LoadUserNames } from "@/lib/server/user-names";
 
 type Params = { id: string };
 
@@ -23,6 +24,9 @@ export const GET = CreateApiRoute<unknown, Params>({
       return NextResponse.json({ error: "Sale not found" }, { status: 404 });
     }
 
-    return ToSaleDTO(sale);
+    return ToSaleDTO(
+      sale,
+      await LoadUserNames([sale.createdById, sale.voidedById]),
+    );
   },
 });

@@ -19,33 +19,50 @@ import {
 const MANAGER_DASHBOARD_QUERY = /* GraphQL */ `
   query ManagerDashboard {
     dashboard {
+      today {
+        salesAmount
+        cashAmount
+        onAccountAmount
+        saleCount
+        yesterdaySalesAmount
+      }
       salesTrend {
         date
         totalAmount
+        cashAmount
+        onAccountAmount
         saleCount
       }
       salesTotalLast30Days
-      stockLevels {
-        productId
-        productName
-        productSku
-        quantityKg
-        updatedAt
+      salesTotalPrior30Days
+      receivables {
+        owedToUs
+        customerCredit
+        debtorCount
+        creditCount
       }
-      loanAccounts {
-        id
+      topDebtors {
+        accountId
         customerId
         customerName
         balance
-        updatedAt
+        lastPaymentAt
       }
-      totalLoanExposure
-      lowStockAlerts {
-        productId
-        productName
-        productSku
+      stockDistribution {
+        status
+        count
+      }
+      attention {
+        id
+        kind
+        severity
+        subjectName
+        href
         quantityKg
         thresholdKg
+        daysOfCover
+        amount
+        lastPaymentAt
       }
     }
   }
@@ -88,16 +105,21 @@ async function RunGraphqlQuery<T>(
 }
 
 const PRODUCTION_REPORT_QUERY = /* GraphQL */ `
-  query ProductionReport($granularity: ReportGranularity!) {
-    productionReport(granularity: $granularity) {
+  query ProductionReport($granularity: ReportGranularity!, $offset: Int) {
+    productionReport(granularity: $granularity, offset: $offset) {
       granularity
       periodLabel
+      periodStart
+      periodEnd
+      offset
+      hasNext
       materials {
         materialId
         materialName
         openingKg
         receivedKg
         consumedKg
+        adjustedKg
         closingKg
       }
       products {
@@ -107,11 +129,13 @@ const PRODUCTION_REPORT_QUERY = /* GraphQL */ `
         openingKg
         receivedKg
         consumedKg
+        adjustedKg
         closingKg
         expectedOutputKg
         variancePercent
       }
       trend {
+        periodKey
         periodLabel
         materialConsumedKg
         productActualOutputKg
@@ -122,10 +146,11 @@ const PRODUCTION_REPORT_QUERY = /* GraphQL */ `
 
 export async function FetchProductionReport(
   granularity: ReportGranularity,
+  offset = 0,
 ): Promise<ProductionReportDTO> {
   const result = await RunGraphqlQuery<{ productionReport: unknown }>(
     PRODUCTION_REPORT_QUERY,
-    { granularity },
+    { granularity, offset },
   );
   return ProductionReportSchema.parse(result.productionReport);
 }
@@ -133,8 +158,10 @@ export async function FetchProductionReport(
 const PROFITABILITY_QUERY = /* GraphQL */ `
   query Profitability($days: Int) {
     profitability(days: $days) {
+      periodDays
       stats {
         totalRevenue
+        costedRevenue
         totalCost
         totalProfit
         averageMarginPercent
@@ -143,17 +170,22 @@ const PROFITABILITY_QUERY = /* GraphQL */ `
       }
       trend {
         date
+        revenue
+        profit
         marginPercent
       }
       products {
         productId
         productName
         productSku
-        sellPricePerKg
-        costPerKg
-        marginPercent
+        currentPricePerKg
+        currentCostPerKg
+        currentMarginPercent
+        realizedMarginPercent
         unitsSoldKg
+        revenue
         totalProfit
+        uncostedSaleCount
       }
     }
   }
@@ -172,6 +204,7 @@ export async function FetchProfitability(
 const STOCK_HEALTH_QUERY = /* GraphQL */ `
   query StockHealth {
     stockHealth {
+      windowDays
       distribution {
         status
         count

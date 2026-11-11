@@ -4,6 +4,7 @@ import {
   ToCategoryDTO,
 } from "@/features/categories/validators/category.schema";
 import type { Category, Price, Product } from "@/generated/prisma/client";
+import { ListQuerySchema } from "@/lib/list-query";
 
 export const ProductSchema = z.object({
   id: z.string(),
@@ -74,3 +75,9 @@ export const ACTIVE_PRICE_INCLUDE = {
     select: { amountPerKg: true },
   },
 } as const;
+
+export const PRODUCT_SORT_KEYS = ["name", "sku", "createdAt"] as const;
+
+// Searches name and SKU.
+export const ProductQuerySchema = ListQuerySchema(PRODUCT_SORT_KEYS, "name");
+export type ProductQuery = z.input<typeof ProductQuerySchema>;
