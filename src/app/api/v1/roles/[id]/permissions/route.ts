@@ -4,6 +4,7 @@ import type {
   UpdateRolePermissionsInput,
 } from "@/features/roles/validators/role.schema";
 import {
+  ROLE_DTO_INCLUDE,
   RoleSchema,
   ToRoleDTO,
   UpdateRolePermissionsInputSchema,
@@ -93,7 +94,7 @@ export const PATCH = CreateApiRoute<
         data: {
           permissions: { set: body.permissionIds.map((id) => ({ id })) },
         },
-        include: { permissions: { select: { id: true } } },
+        include: ROLE_DTO_INCLUDE,
       });
       return ToRoleDTO(role);
     } catch (err) {

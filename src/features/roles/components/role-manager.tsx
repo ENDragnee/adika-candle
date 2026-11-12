@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/data-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { ToneBadge } from "@/components/ui/tone-badge";
 import { useRoles, useUpdateRolePermissions } from "../hooks/use-roles";
 import {
   DescribeModule,
@@ -20,6 +21,11 @@ import type {
   PermissionDTO,
   RoleDTO,
 } from "../validators/role.schema";
+import {
+  CreateRoleDialog,
+  DeleteRoleDialog,
+  EditRoleDialog,
+} from "./role-dialogs";
 
 interface PermissionRow {
   permission: PermissionDTO;
@@ -35,10 +41,12 @@ function RolePermissionMatrix({
   role,
   modules,
   isOwnRole,
+  onDeleted,
 }: {
   role: RoleDTO;
   modules: ModuleDTO[];
   isOwnRole: boolean;
+  onDeleted: () => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(role.permissionIds),
@@ -137,14 +145,33 @@ function RolePermissionMatrix({
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-base font-medium text-foreground">
-          {HumanizeRoleName(role.name)}
-        </h2>
-        {role.description && (
-          <p className="text-sm text-muted-foreground">{role.description}</p>
-        )}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex flex-wrap items-center gap-2 text-base font-medium text-foreground">
+            {HumanizeRoleName(role.name)}
+            {role.isBuiltIn && <ToneBadge tone="neutral">Built-in</ToneBadge>}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {role.description ? `${role.description} · ` : ""}
+            {role.userCount === 1
+              ? "1 person has this role"
+              : `${role.userCount} people have this role`}{" "}
+            · {selectedIds.size} of {rows.length} permissions on
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <EditRoleDialog role={role} />
+          {!role.isBuiltIn && (
+            <DeleteRoleDialog role={role} onDeleted={onDeleted} />
+          )}
+        </div>
       </div>
+      {selectedIds.size === 0 && (
+        <p className="rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+          This role has no permissions yet — people with it can only see the
+          Legend. Turn on what they need, then save.
+        </p>
+      )}
       <DataTable
         columns={columns}
         data={rows}
@@ -183,18 +210,24 @@ function RoleSidebar({
   onSelect: (roleId: string) => void;
 }) {
   return (
-    <nav className="flex gap-2 overflow-x-auto md:w-48 md:shrink-0 md:flex-col md:gap-1 md:overflow-visible">
+    <nav className="flex gap-2 overflow-x-auto md:w-52 md:shrink-0 md:flex-col md:gap-1 md:overflow-visible">
       {roles.map((role) => (
         <Button
           key={role.id}
           type="button"
           variant={role.id === selectedRoleId ? "default" : "ghost"}
-          className="shrink-0 justify-start md:w-full"
+          className="shrink-0 justify-between gap-2 md:w-full"
           onClick={() => onSelect(role.id)}
         >
-          {HumanizeRoleName(role.name)}
+          <span className="truncate">{HumanizeRoleName(role.name)}</span>
+          <span className="text-xs tabular-nums opacity-70">
+            {role.userCount}
+          </span>
         </Button>
       ))}
+      <div className="md:pt-2">
+        <CreateRoleDialog roles={roles} onCreated={onSelect} />
+      </div>
     </nav>
   );
 }
@@ -251,6 +284,7 @@ export function RoleManager({
           role={activeRole}
           modules={data.modules}
           isOwnRole={activeRole.name === currentRoleName}
+          onDeleted={() => setSelectedRoleId(null)}
         />
       </div>
     </div>
