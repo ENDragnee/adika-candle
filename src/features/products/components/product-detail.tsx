@@ -140,6 +140,7 @@ function EditProductForm({
       </div>
       <div className="flex gap-2">
         <Button
+          loading={updateProduct.isPending}
           size="sm"
           onClick={handleSave}
           disabled={updateProduct.isPending}
@@ -234,6 +235,7 @@ function ProductOverview({
                 </Button>
               ) : (
                 <Button
+                  loading={updateProduct.isPending}
                   size="sm"
                   variant="secondary"
                   onClick={handleActivate}

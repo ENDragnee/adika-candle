@@ -6,7 +6,6 @@ import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BuildLinearScale, XLabelIndices } from "./chart-scale";
 
-
 const CHART_HEIGHT_PX = 160;
 const Y_AXIS_WIDTH_PX = 48;
 

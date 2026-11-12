@@ -8,7 +8,6 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { customerQueryKey } from "@/features/customers/hooks/use-customers";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import { InvalidateLedgerQueries } from "@/lib/query-invalidation";
 import {
@@ -62,8 +61,6 @@ export function useCreateLoanTransaction(
       });
       toast.success("Saved to the customer's account");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't record loan activity"));
-    },
+    meta: { errorTitle: "Couldn't record loan activity" },
   });
 }

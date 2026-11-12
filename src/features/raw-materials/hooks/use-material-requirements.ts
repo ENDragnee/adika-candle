@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import {
   CreateMaterialRequirement,
   FetchMaterialRequirements,
@@ -36,9 +35,7 @@ export function useCreateMaterialRequirement(productId: string) {
       });
       toast.success("Recipe ingredient added");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't add ingredient"));
-    },
+    meta: { errorTitle: "Couldn't add ingredient" },
   });
 }
 
@@ -54,8 +51,6 @@ export function useUpdateMaterialRequirement(productId: string) {
       });
       toast.success("Recipe updated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't update recipe"));
-    },
+    meta: { errorTitle: "Couldn't update recipe" },
   });
 }

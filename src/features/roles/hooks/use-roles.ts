@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import { FetchRoles, UpdateRolePermissions } from "../services/role.service";
 
 export const ROLES_QUERY_KEY = ["roles"] as const;
@@ -21,8 +20,6 @@ export function useUpdateRolePermissions(roleId: string) {
       queryClient.invalidateQueries({ queryKey: ROLES_QUERY_KEY });
       toast.success("Permissions updated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't save permissions"));
-    },
+    meta: { errorTitle: "Couldn't save permissions" },
   });
 }

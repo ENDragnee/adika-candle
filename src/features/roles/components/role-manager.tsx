@@ -153,6 +153,7 @@ function RolePermissionMatrix({
       />
       <div className="flex items-center gap-2">
         <Button
+          loading={updatePermissions.isPending}
           size="sm"
           onClick={handleSave}
           disabled={!isDirty || updatePermissions.isPending}

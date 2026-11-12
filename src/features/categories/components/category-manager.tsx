@@ -95,7 +95,11 @@ function CreateCategoryForm({ onSuccess }: { onSuccess: () => void }) {
           onChange={(event) => setDescription(event.target.value)}
         />
       </div>
-      <Button type="submit" disabled={createCategory.isPending}>
+      <Button
+        loading={createCategory.isPending}
+        type="submit"
+        disabled={createCategory.isPending}
+      >
         {createCategory.isPending ? "Adding…" : "Add category"}
       </Button>
     </form>
@@ -149,7 +153,11 @@ function EditCategoryForm({
           onChange={(event) => setDescription(event.target.value)}
         />
       </div>
-      <Button type="submit" disabled={updateCategory.isPending}>
+      <Button
+        loading={updateCategory.isPending}
+        type="submit"
+        disabled={updateCategory.isPending}
+      >
         {updateCategory.isPending ? "Saving…" : "Save"}
       </Button>
     </form>

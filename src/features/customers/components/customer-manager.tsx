@@ -113,7 +113,11 @@ function CreateCustomerForm({ onSuccess }: { onSuccess: () => void }) {
           onChange={(event) => setLocation(event.target.value)}
         />
       </div>
-      <Button type="submit" disabled={createCustomer.isPending}>
+      <Button
+        loading={createCustomer.isPending}
+        type="submit"
+        disabled={createCustomer.isPending}
+      >
         {createCustomer.isPending ? "Adding…" : "Add customer"}
       </Button>
     </form>
@@ -176,7 +180,11 @@ function EditCustomerForm({
           onChange={(event) => setLocation(event.target.value)}
         />
       </div>
-      <Button type="submit" disabled={updateCustomer.isPending}>
+      <Button
+        loading={updateCustomer.isPending}
+        type="submit"
+        disabled={updateCustomer.isPending}
+      >
         {updateCustomer.isPending ? "Saving…" : "Save"}
       </Button>
     </form>

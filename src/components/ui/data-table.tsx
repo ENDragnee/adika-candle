@@ -1,8 +1,10 @@
+// /ssr entry: no React context, so TableSkeleton stays importable from
+// Server Components (the route loading.tsx files).
 import {
   CaretDownIcon,
   CaretUpDownIcon,
   CaretUpIcon,
-} from "@phosphor-icons/react";
+} from "@phosphor-icons/react/ssr";
 import type * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";

@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import { FetchProductCosts, SetNewProductCost } from "../services/cost.service";
 import type { SetNewCostInput } from "../validators/cost.schema";
@@ -41,8 +40,6 @@ export function useSetNewProductCost(productId: string) {
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
       toast.success("New cost set");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't set new cost"));
-    },
+    meta: { errorTitle: "Couldn't set new cost" },
   });
 }

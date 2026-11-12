@@ -4,6 +4,11 @@ import { z } from "zod";
 import { DomainError } from "../../server/domain-error";
 import { CreateApiRoute } from "../rest.handler";
 
+vi.mock("@/lib/activity/record-activity", () => ({
+  RecordActivity: vi.fn(),
+  RequestContext: () => ({ ipAddress: null, userAgent: null }),
+}));
+
 vi.mock("@/lib/session", () => ({
   GetApiSession: vi.fn(),
   CheckPermission: vi.fn(),
@@ -153,10 +158,51 @@ describe("CreateApiRoute", () => {
 
     const response = await route(makeRequest("POST", {}), emptyContext);
     expect(response.status).toBe(409);
-    expect(await response.json()).toEqual({
+    const body = await response.json();
+    expect(body).toMatchObject({
       error: "Not enough stock",
       code: "INSUFFICIENT_STOCK",
       availableKg: "5",
     });
+    expect(body.requestId).toBe(response.headers.get("x-request-id"));
+  });
+
+  it("records an activity for a successful change, using the route's description", async () => {
+    const { RecordActivity } = await import("@/lib/activity/record-activity");
+    vi.mocked(GetApiSession).mockResolvedValue({
+      user: { id: "user_1" },
+    } as never);
+    vi.mocked(CheckPermission).mockResolvedValue(true);
+
+    const route = CreateApiRoute({
+      moduleName: "stub",
+      requiresAuth: { status: true, permission: "stub:write" },
+      handler: async () => ({ id: "rec_1" }),
+      activity: ({ result }) => ({
+        type: "stub",
+        action: "stub.create",
+        message: "Created a stub",
+        entityId: result.id,
+      }),
+    });
+
+    await route(makeRequest("POST", {}), emptyContext);
+    expect(RecordActivity).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "stub.create", entityId: "rec_1" }),
+      expect.objectContaining({ userId: "user_1" }),
+    );
+  });
+
+  it("never records an activity for GET requests", async () => {
+    const { RecordActivity } = await import("@/lib/activity/record-activity");
+    vi.mocked(RecordActivity).mockClear();
+    const route = CreateApiRoute({
+      moduleName: "stub",
+      requiresAuth: { status: false, permission: "" },
+      handler: async () => ({ ok: true }),
+    });
+
+    await route(makeRequest("GET"), emptyContext);
+    expect(RecordActivity).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import {
   CreateCustomer,
   type CustomersQueryParams,
@@ -44,9 +43,7 @@ export function useCreateCustomer() {
       queryClient.invalidateQueries({ queryKey: CUSTOMERS_QUERY_KEY });
       toast.success("Customer added");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't add customer"));
-    },
+    meta: { errorTitle: "Couldn't add customer" },
   });
 }
 
@@ -60,8 +57,6 @@ export function useUpdateCustomer(id: string) {
       queryClient.invalidateQueries({ queryKey: customerQueryKey(id) });
       toast.success("Customer updated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't save customer"));
-    },
+    meta: { errorTitle: "Couldn't save customer" },
   });
 }

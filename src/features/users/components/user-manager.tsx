@@ -173,7 +173,11 @@ function CreateUserForm({
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={createUser.isPending}>
+      <Button
+        loading={createUser.isPending}
+        type="submit"
+        disabled={createUser.isPending}
+      >
         {createUser.isPending ? "Creating…" : "Create user"}
       </Button>
     </form>
@@ -217,7 +221,11 @@ function SetPasswordForm({
           At least 8 characters. Takes effect immediately.
         </p>
       </div>
-      <Button type="submit" disabled={setUserPassword.isPending}>
+      <Button
+        loading={setUserPassword.isPending}
+        type="submit"
+        disabled={setUserPassword.isPending}
+      >
         {setUserPassword.isPending ? "Saving…" : "Set password"}
       </Button>
     </form>
@@ -268,7 +276,11 @@ function EditUserForm({
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={updateUser.isPending}>
+      <Button
+        loading={updateUser.isPending}
+        type="submit"
+        disabled={updateUser.isPending}
+      >
         {updateUser.isPending ? "Saving…" : "Save"}
       </Button>
     </form>

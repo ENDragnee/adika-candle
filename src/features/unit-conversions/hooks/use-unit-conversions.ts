@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateUnitConversion,
@@ -36,9 +35,7 @@ export function useCreateUnitConversion() {
       queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY });
       toast.success("Unit added");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't add unit"));
-    },
+    meta: { errorTitle: "Couldn't add unit" },
   });
 }
 
@@ -57,9 +54,7 @@ export function useUpdateUnitConversion() {
       queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY });
       toast.success("Unit updated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't save unit"));
-    },
+    meta: { errorTitle: "Couldn't save unit" },
   });
 }
 
@@ -72,8 +67,6 @@ export function useDeactivateUnitConversion() {
       queryClient.invalidateQueries({ queryKey: UNIT_CONVERSIONS_QUERY_KEY });
       toast.success("Unit deactivated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't deactivate unit"));
-    },
+    meta: { errorTitle: "Couldn't deactivate unit" },
   });
 }

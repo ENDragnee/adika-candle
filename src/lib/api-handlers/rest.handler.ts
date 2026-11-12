@@ -7,6 +7,11 @@ import {
   CheckPermission,
   GetApiSession,
 } from "@/lib/session";
+import {
+  type ActivityInput,
+  RecordActivity,
+  RequestContext,
+} from "../activity/record-activity";
 import { logger as baseLogger } from "../logger";
 import { ToDomainErrorResponse } from "../server/domain-error";
 
@@ -31,6 +36,17 @@ interface IApiHandlerConfig<T, P = Record<string, string>, R = any> {
     params?: P,
     logger?: Logger,
   ) => Promise<R | NextResponse>;
+  // Describes this request for the activity log (Epic 22). Called only
+  // after a successful non-GET request. Routes that leave it out still
+  // get a generic entry (method, path, redacted input), so a new
+  // mutating route can never silently skip the log; return null to opt a
+  // request out deliberately.
+  activity?: (event: {
+    body: T;
+    result: R;
+    params?: P;
+    session?: AppUser;
+  }) => ActivityInput | null;
 }
 
 export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
@@ -38,6 +54,19 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
 ) {
   return async (req: NextRequest, context: { params: Promise<P> }) => {
     const reqId = crypto.randomUUID();
+    const response = await Run(req, context, reqId);
+    // Every response carries its request id; error bodies repeat it as
+    // `requestId`, which the UI's error dialog shows as a reference to
+    // quote when reporting a problem (Epic 22).
+    response.headers.set("x-request-id", reqId);
+    return response;
+  };
+
+  async function Run(
+    req: NextRequest,
+    context: { params: Promise<P> },
+    reqId: string,
+  ): Promise<NextResponse> {
     const method = req.method;
     const url = req.nextUrl.pathname;
     const startTime = performance.now();
@@ -61,7 +90,14 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
 
         if (!session?.id) {
           reqLogger.warn("Unauthorized: No session found");
-          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+          return NextResponse.json(
+            {
+              error: "Your session has ended. Please sign in again.",
+              code: "UNAUTHENTICATED",
+              requestId: reqId,
+            },
+            { status: 401 },
+          );
         }
 
         const hasPermission = Array.isArray(config.requiresAuth.permission)
@@ -73,7 +109,14 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
             { userId: session.id },
             "Forbidden: Missing permissions",
           );
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          return NextResponse.json(
+            {
+              error: "You don't have permission to do this.",
+              code: "FORBIDDEN",
+              requestId: reqId,
+            },
+            { status: 403 },
+          );
         }
       }
 
@@ -101,7 +144,8 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
           );
           return NextResponse.json(
             {
-              error: "Invalid payload",
+              error: "Some of the information sent isn't valid",
+              requestId: reqId,
               ...(environment !== "production" && {
                 details: validation.error.issues,
               }),
@@ -120,6 +164,32 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
         reqLogger,
       );
       const durationMs = Math.round(performance.now() - startTime);
+
+      if (method !== "GET") {
+        const succeeded = !(result instanceof NextResponse) || result.ok;
+        if (succeeded) {
+          const described =
+            config.activity && !(result instanceof NextResponse)
+              ? config.activity({
+                  body: parsedBody,
+                  result: result as R,
+                  params,
+                  session,
+                })
+              : undefined;
+          if (described !== null) {
+            await RecordActivity(
+              described ?? {
+                type: config.moduleName.split(".")[0],
+                action: `${config.moduleName}.${method.toLowerCase()}`,
+                message: `${method} ${url}`,
+                changes: { input: parsedBody as unknown },
+              },
+              { userId: session?.id, ...RequestContext(req.headers) },
+            );
+          }
+        }
+      }
 
       if (result instanceof NextResponse) {
         reqLogger.info(
@@ -151,7 +221,11 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
             "Handler response does not match responseSchema",
           );
           return NextResponse.json(
-            { error: "Internal Server Error" },
+            {
+              error: "Something went wrong on our side",
+              code: "INTERNAL",
+              requestId: reqId,
+            },
             { status: 500 },
           );
         }
@@ -169,7 +243,7 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
 
       // Business-rule rejections thrown from a service (see
       // src/lib/server/domain-error.ts) are expected outcomes, not crashes.
-      const domainResponse = ToDomainErrorResponse(err);
+      const domainResponse = ToDomainErrorResponse(err, reqId);
       if (domainResponse) {
         reqLogger.info(
           { status: domainResponse.status, code: err.code, durationMs },
@@ -183,9 +257,13 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
         "Internal Server Error Exception",
       );
       return NextResponse.json(
-        { error: "Internal Server Error" },
+        {
+          error: "Something went wrong on our side",
+          code: "INTERNAL",
+          requestId: reqId,
+        },
         { status: 500 },
       );
     }
-  };
+  }
 }

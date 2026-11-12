@@ -103,7 +103,11 @@ function CreateUnitConversionForm({ onSuccess }: { onSuccess: () => void }) {
           {unitName || "unit"} weighs 12.5 kg, enter 12.5.
         </p>
       </div>
-      <Button type="submit" disabled={createUnitConversion.isPending}>
+      <Button
+        loading={createUnitConversion.isPending}
+        type="submit"
+        disabled={createUnitConversion.isPending}
+      >
         {createUnitConversion.isPending ? "Adding…" : "Add unit"}
       </Button>
     </form>
@@ -155,7 +159,11 @@ function EditUnitConversionForm({
           How many kilograms is one {unit.unitName}?
         </p>
       </div>
-      <Button type="submit" disabled={updateUnitConversion.isPending}>
+      <Button
+        loading={updateUnitConversion.isPending}
+        type="submit"
+        disabled={updateUnitConversion.isPending}
+      >
         {updateUnitConversion.isPending ? "Saving…" : "Save"}
       </Button>
     </form>

@@ -79,7 +79,11 @@ function CreateMaterialForm({ onSuccess }: { onSuccess: () => void }) {
           required
         />
       </div>
-      <Button type="submit" disabled={createMaterial.isPending}>
+      <Button
+        loading={createMaterial.isPending}
+        type="submit"
+        disabled={createMaterial.isPending}
+      >
         {createMaterial.isPending ? "Adding…" : "Add material"}
       </Button>
     </form>
@@ -119,7 +123,11 @@ function EditMaterialForm({
           required
         />
       </div>
-      <Button type="submit" disabled={updateMaterial.isPending}>
+      <Button
+        loading={updateMaterial.isPending}
+        type="submit"
+        disabled={updateMaterial.isPending}
+      >
         {updateMaterial.isPending ? "Saving…" : "Save"}
       </Button>
     </form>
