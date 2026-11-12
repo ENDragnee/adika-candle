@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { usePageHeader } from "@/components/shell/use-page-header";
 import {
@@ -470,7 +470,6 @@ export function ProductDetail({
   canManage: boolean;
 }) {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const requested = searchParams.get("tab");
   // The tab lives in ?tab= so the Dashboard can link straight to e.g.
@@ -493,7 +492,8 @@ export function ProductDetail({
       <Tabs
         value={tab}
         onValueChange={(value) =>
-          router.replace(`${pathname}?tab=${value}`, { scroll: false })
+          // Not a navigation — see AnalyticsHub for why replaceState.
+          window.history.replaceState(null, "", `${pathname}?tab=${value}`)
         }
         className="gap-4"
       >

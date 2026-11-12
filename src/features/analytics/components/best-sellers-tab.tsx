@@ -3,27 +3,21 @@
 import { TrendDownIcon, TrendUpIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   DataTable,
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ExportMenu } from "@/components/ui/export-menu";
-import { Input } from "@/components/ui/input";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import { type DateRangeValue, ResolveDateRange } from "@/lib/date-range";
 import type { ExportColumn } from "@/lib/export/export-column";
 import { FormatKg, FormatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBestSellers } from "../hooks/use-analytics";
 import type { BestSellerRowDTO } from "../validators/analytics.schema";
 import { RankedBarChart, type RankedBarDatum } from "./ranked-bar-chart";
-
-const PERIOD_PRESETS = [
-  { label: "Day", days: 1 },
-  { label: "Week", days: 7 },
-  { label: "Month", days: 30 },
-] as const;
 
 function TrendIndicator({
   current,
@@ -135,9 +129,8 @@ const revenueExportColumns = BuildExportColumns(
 );
 
 export function BestSellersTab() {
-  const [days, setDays] = useState<number>(7);
-  const [customDays, setCustomDays] = useState("");
-  const { data, isLoading } = useBestSellers(days, true);
+  const [range, setRange] = useState<DateRangeValue>({ preset: "7d" });
+  const { data, isLoading } = useBestSellers(ResolveDateRange(range), true);
 
   const quantityChartData: RankedBarDatum[] = (data?.byQuantity ?? []).map(
     (row) => ({
@@ -159,43 +152,16 @@ export function BestSellersTab() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-medium">Best Sellers</h2>
-          <p className="text-xs text-muted-foreground">
-            Last {days} day{days === 1 ? "" : "s"}, vs. the equivalent prior
-            period.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {PERIOD_PRESETS.map((preset) => (
-            <Button
-              key={preset.label}
-              size="sm"
-              variant={days === preset.days ? "default" : "outline"}
-              onClick={() => {
-                setDays(preset.days);
-                setCustomDays("");
-              }}
-            >
-              {preset.label}
-            </Button>
-          ))}
-          <Input
-            type="number"
-            min="1"
-            max="366"
-            placeholder="Custom days"
-            className="w-28"
-            value={customDays}
-            onChange={(event) => {
-              const next = event.target.value;
-              setCustomDays(next);
-              const parsed = Number(next);
-              // The API caps report windows at a year.
-              if (parsed > 0) setDays(Math.min(Math.floor(parsed), 366));
-            }}
-          />
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Top products for the period, compared with the same number of days
+          just before it.
+        </p>
+        <DateRangeFilter
+          value={range}
+          onChange={setRange}
+          presets={["7d", "30d", "month", "last-month", "90d", "year"]}
+          className="w-56"
+        />
       </div>
 
       <div className="flex flex-col gap-2">

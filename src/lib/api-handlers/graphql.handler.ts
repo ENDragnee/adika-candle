@@ -67,7 +67,12 @@ export function CreateGraphqlRoute<T = any>(config: IGraphqlHandlerConfig<T>) {
             { issues: validation.error.issues, args },
             "Invalid GraphQL payload",
           );
-          throw new GraphQLError("Invalid payload", {
+          // A custom refinement (e.g. "The start date is after the end
+          // date") is written for people — surface it; otherwise generic.
+          const custom = validation.error.issues.find(
+            (issue) => issue.code === "custom",
+          );
+          throw new GraphQLError(custom?.message ?? "Invalid payload", {
             extensions: { code: "BAD REQUEST", http: { status: 400 } },
           });
         }

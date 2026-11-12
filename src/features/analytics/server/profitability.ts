@@ -1,8 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { BusinessDateKey } from "@/lib/business-time";
 import { prisma } from "@/lib/prisma";
 import { MarginPercent, ZERO } from "./decimal";
-import { BuildDailyWindow } from "./periods";
+import { BuildRangeBuckets, type PeriodBounds } from "./periods";
 
 export const DEFAULT_PROFITABILITY_WINDOW_DAYS = 30;
 
@@ -49,14 +48,14 @@ function ProfitOf(bucket: Bucket): string | null {
 
 export function ComputeProfitability(input: {
   sales: ProfitSale[];
-  now: Date;
-  days: number;
+  // Trend buckets covering the range, oldest first (BuildRangeBuckets).
+  buckets: PeriodBounds[];
   currentPrices: Map<string, Prisma.Decimal>;
   currentCosts: Map<string, Prisma.Decimal>;
 }) {
-  const { sales, now, days, currentPrices, currentCosts } = input;
+  const { sales, buckets, currentPrices, currentCosts } = input;
   const total = EmptyBucket();
-  const byDay = new Map<string, Bucket>();
+  const byBucket = buckets.map(() => EmptyBucket());
   const byProduct = new Map<
     string,
     Bucket & {
@@ -72,10 +71,10 @@ export function ComputeProfitability(input: {
   for (const sale of sales) {
     AddSale(total, sale);
 
-    const dayKey = BusinessDateKey(sale.createdAt);
-    const day = byDay.get(dayKey) ?? EmptyBucket();
-    AddSale(day, sale);
-    byDay.set(dayKey, day);
+    const bucketIndex = buckets.findIndex(
+      (bucket) => sale.createdAt >= bucket.start && sale.createdAt < bucket.end,
+    );
+    if (bucketIndex >= 0) AddSale(byBucket[bucketIndex], sale);
 
     const product = byProduct.get(sale.productId) ?? {
       ...EmptyBucket(),
@@ -96,10 +95,11 @@ export function ComputeProfitability(input: {
     }
   }
 
-  const trend = BuildDailyWindow(now, days).map((period) => {
-    const bucket = byDay.get(period.key) ?? EmptyBucket();
+  const trend = buckets.map((period, index) => {
+    const bucket = byBucket[index];
     return {
       date: period.key,
+      label: period.label,
       revenue: bucket.revenue.toString(),
       profit: ProfitOf(bucket),
       marginPercent: MarginPercent(bucket.costedRevenue, bucket.cost),
@@ -128,8 +128,13 @@ export function ComputeProfitability(input: {
       };
     });
 
+  const first = buckets[0];
+  const last = buckets[buckets.length - 1];
   return {
-    periodDays: days,
+    periodDays:
+      first && last
+        ? Math.round((last.end.getTime() - first.start.getTime()) / 86_400_000)
+        : 0,
     stats: {
       totalRevenue: total.revenue.toString(),
       costedRevenue: total.costedRevenue.toString(),
@@ -144,10 +149,13 @@ export function ComputeProfitability(input: {
   };
 }
 
-export async function BuildProfitability(days: number, now = new Date()) {
-  const windowStart = BuildDailyWindow(now, days)[0].start;
+export async function BuildProfitability(range: { from: string; to: string }) {
+  const buckets = BuildRangeBuckets(range.from, range.to);
   const sales = await prisma.sale.findMany({
-    where: { createdAt: { gte: windowStart }, voidedAt: null },
+    where: {
+      createdAt: { gte: buckets[0].start, lt: buckets[buckets.length - 1].end },
+      voidedAt: null,
+    },
     include: { product: true },
   });
 
@@ -162,8 +170,7 @@ export async function BuildProfitability(days: number, now = new Date()) {
   ]);
 
   return ComputeProfitability({
-    now,
-    days,
+    buckets,
     sales: sales.map((sale) => ({
       createdAt: sale.createdAt,
       productId: sale.productId,

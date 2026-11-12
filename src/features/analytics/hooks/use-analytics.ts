@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  type DateRangeArgs,
   FetchBestSellers,
   FetchManagerDashboard,
   FetchProductionReport,
@@ -30,10 +31,17 @@ export function useProductionReport(
   granularity: ReportGranularity,
   offset: number,
   enabled: boolean,
+  range: DateRangeArgs = {},
 ) {
   return useQuery({
-    queryKey: ["analytics", "production-report", granularity, offset] as const,
-    queryFn: () => FetchProductionReport(granularity, offset),
+    queryKey: [
+      "analytics",
+      "production-report",
+      granularity,
+      offset,
+      range,
+    ] as const,
+    queryFn: () => FetchProductionReport(granularity, offset, range),
     enabled,
     // Keep the previous period on screen while the next one loads, so
     // stepping through periods doesn't flash a skeleton.
@@ -41,11 +49,12 @@ export function useProductionReport(
   });
 }
 
-export function useProfitability(days: number, enabled: boolean) {
+export function useProfitability(range: DateRangeArgs, enabled: boolean) {
   return useQuery({
-    queryKey: ["analytics", "profitability", days] as const,
-    queryFn: () => FetchProfitability(days),
+    queryKey: ["analytics", "profitability", range] as const,
+    queryFn: () => FetchProfitability(range),
     enabled,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -57,10 +66,11 @@ export function useStockHealth(enabled: boolean) {
   });
 }
 
-export function useBestSellers(days: number, enabled: boolean) {
+export function useBestSellers(range: DateRangeArgs, enabled: boolean) {
   return useQuery({
-    queryKey: ["analytics", "best-sellers", days] as const,
-    queryFn: () => FetchBestSellers(days),
+    queryKey: ["analytics", "best-sellers", range] as const,
+    queryFn: () => FetchBestSellers(range),
     enabled,
+    placeholderData: (previous) => previous,
   });
 }
