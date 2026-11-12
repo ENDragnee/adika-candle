@@ -47,6 +47,7 @@ import {
 } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useDebounce } from "@/lib/use-debounce";
+import { usePagination } from "@/lib/use-pagination";
 import { cn } from "@/lib/utils";
 import { useSales } from "../hooks/use-sales";
 import { PAYMENT_TYPE_META } from "../labels";
@@ -299,7 +300,8 @@ export function SaleList({
   initialRange?: SaleRange;
   linkBase?: string;
 }) {
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
+  const { setPage } = pager;
   const [range, setRange] = useState<SaleRange>(initialRange);
   const [productFilter, setProductFilter] = useState(ALL);
   const [customerFilter, setCustomerFilter] = useState(ALL);
@@ -330,7 +332,11 @@ export function SaleList({
     ...(debouncedSearch && { search: debouncedSearch }),
     status,
   };
-  const { data: result, isLoading, isFetching } = useSales({ ...query, page });
+  const {
+    data: result,
+    isLoading,
+    isFetching,
+  } = useSales({ ...query, ...pager.params });
 
   const columns = BuildColumns({
     showProduct: !productId,
@@ -500,11 +506,7 @@ export function SaleList({
           data={result?.data ?? []}
           getRowKey={(sale) => sale.id}
           emptyMessage="No sales match these filters."
-          pagination={{
-            page,
-            totalPages: result?.pagination.totalPages ?? 1,
-            onPageChange: setPage,
-          }}
+          pagination={pager.Bind(result?.pagination)}
         />
       )}
     </div>

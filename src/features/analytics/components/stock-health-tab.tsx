@@ -257,6 +257,7 @@ export function StockHealthTab() {
           <TableSkeleton columns={columns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={columns}
             data={filteredRows}
             getRowKey={(row) => row.productId}

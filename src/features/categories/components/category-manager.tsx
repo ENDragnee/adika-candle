@@ -43,6 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePagination } from "@/lib/use-pagination";
 import {
   useCategories,
   useCreateCategory,
@@ -251,9 +252,9 @@ function CategoryRow({ category }: { category: CategoryDTO }) {
 }
 
 export function CategoryManager() {
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data: result, isLoading } = useCategories({ page });
+  const { data: result, isLoading } = useCategories(pager.params);
   const categories = result?.data;
 
   return (
@@ -306,11 +307,7 @@ export function CategoryManager() {
               </TableBody>
             </Table>
           </TableContainer>
-          <Pagination
-            page={page}
-            totalPages={result?.pagination.totalPages ?? 1}
-            onPageChange={setPage}
-          />
+          <Pagination {...pager.Bind(result?.pagination)} />
         </>
       )}
     </div>

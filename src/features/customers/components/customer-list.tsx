@@ -13,6 +13,7 @@ import { LoanBalance } from "@/features/loans/components/loan-balance-badge";
 import type { ExportColumn } from "@/lib/export/export-column";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useDebounce } from "@/lib/use-debounce";
+import { usePagination } from "@/lib/use-pagination";
 import { useCustomers } from "../hooks/use-customers";
 import { FetchCustomers } from "../services/customer.service";
 import type { CustomerDTO } from "../validators/customer.schema";
@@ -26,7 +27,8 @@ export function CustomerList({
   detailHrefBase: string;
 }) {
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
+  const { setPage } = pager;
   // Searched server-side (see docs/DECISIONS.md) — debounced so typing
   // doesn't fire a request per keystroke.
   const debouncedSearch = useDebounce(search.trim(), 400);
@@ -39,7 +41,7 @@ export function CustomerList({
   }
 
   const { data: result, isLoading } = useCustomers({
-    page,
+    ...pager.params,
     search: debouncedSearch || undefined,
   });
 
@@ -125,11 +127,7 @@ export function CustomerList({
         data={result?.data ?? []}
         getRowKey={(customer) => customer.id}
         emptyMessage="No customers found."
-        pagination={{
-          page,
-          totalPages: result?.pagination.totalPages ?? 1,
-          onPageChange: setPage,
-        }}
+        pagination={pager.Bind(result?.pagination)}
       />
     </div>
   );

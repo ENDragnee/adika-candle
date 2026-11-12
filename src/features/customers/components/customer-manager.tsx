@@ -292,7 +292,6 @@ function CustomerRow({ customer }: { customer: CustomerDTO }) {
 
 export function CustomerManager() {
   const list = useListParams<"name" | "balance">("name");
-  const { page, setPage } = list;
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: result, isLoading } = useCustomers(list.params);
   const customers = result?.data;
@@ -366,11 +365,7 @@ export function CustomerManager() {
               </TableBody>
             </Table>
           </TableContainer>
-          <Pagination
-            page={page}
-            totalPages={result?.pagination.totalPages ?? 1}
-            onPageChange={setPage}
-          />
+          <Pagination {...list.Bind(result?.pagination)} />
         </>
       )}
     </div>

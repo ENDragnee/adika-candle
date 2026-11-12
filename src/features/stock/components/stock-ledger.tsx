@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -16,6 +15,7 @@ import {
   FormatSignedKg,
 } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { cn } from "@/lib/utils";
 import { useProductLedger } from "../hooks/use-stock";
 import { STOCK_ENTRY_META } from "../labels";
@@ -102,8 +102,8 @@ const exportColumns: ExportColumn<StockLedgerEntryDTO>[] = [
 ];
 
 export function StockLedger({ productId }: { productId: string }) {
-  const [page, setPage] = useState(1);
-  const { data: result, isLoading } = useProductLedger(productId, { page });
+  const pager = usePagination();
+  const { data: result, isLoading } = useProductLedger(productId, pager.params);
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -128,11 +128,7 @@ export function StockLedger({ productId }: { productId: string }) {
         data={result?.data ?? []}
         getRowKey={(entry) => entry.id}
         emptyMessage="No stock movements yet."
-        pagination={{
-          page,
-          totalPages: result?.pagination.totalPages ?? 1,
-          onPageChange: setPage,
-        }}
+        pagination={pager.Bind(result?.pagination)}
       />
     </div>
   );

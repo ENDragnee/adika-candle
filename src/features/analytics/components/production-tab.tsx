@@ -353,6 +353,7 @@ export function ProductionTab() {
           <TableSkeleton columns={materialColumns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={materialColumns}
             data={data.materials}
             getRowKey={(row) => row.materialId}
@@ -379,6 +380,7 @@ export function ProductionTab() {
           <TableSkeleton columns={productColumns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={productColumns}
             data={data.products}
             getRowKey={(row) => row.productId}

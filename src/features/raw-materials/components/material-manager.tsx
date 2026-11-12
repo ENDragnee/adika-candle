@@ -44,6 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePagination } from "@/lib/use-pagination";
 import {
   useCreateRawMaterial,
   useDeactivateRawMaterial,
@@ -223,9 +224,9 @@ export function MaterialManager() {
     description:
       "The catalog of production inputs (wax, color dye) tracked separately from finished-goods stock. Deactivating a material hides it from new activity entries and recipe rows without deleting its history.",
   });
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data: result, isLoading } = useRawMaterials({ page });
+  const { data: result, isLoading } = useRawMaterials(pager.params);
   const materials = result?.data;
 
   return (
@@ -277,11 +278,7 @@ export function MaterialManager() {
               </TableBody>
             </Table>
           </TableContainer>
-          <Pagination
-            page={page}
-            totalPages={result?.pagination.totalPages ?? 1}
-            onPageChange={setPage}
-          />
+          <Pagination {...pager.Bind(result?.pagination)} />
         </>
       )}
     </div>

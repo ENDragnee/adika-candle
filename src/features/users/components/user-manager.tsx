@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/table";
 import { useRoles } from "@/features/roles/hooks/use-roles";
 import { HumanizeRoleName } from "@/features/roles/permission-labels";
+import { usePagination } from "@/lib/use-pagination";
 import {
   useCreateUser,
   useSetUserPassword,
@@ -411,9 +412,9 @@ function UserRow({
 }
 
 export function UserManager({ currentUserId }: { currentUserId: string }) {
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data: result, isLoading } = useUsers({ page });
+  const { data: result, isLoading } = useUsers(pager.params);
   const users = result?.data;
   const { data: rolesData } = useRoles();
   const roles = rolesData?.roles ?? [];
@@ -478,11 +479,7 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
               </TableBody>
             </Table>
           </TableContainer>
-          <Pagination
-            page={page}
-            totalPages={result?.pagination.totalPages ?? 1}
-            onPageChange={setPage}
-          />
+          <Pagination {...pager.Bind(result?.pagination)} />
         </>
       )}
     </div>

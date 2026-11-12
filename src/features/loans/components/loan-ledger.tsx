@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -16,6 +15,7 @@ import {
   FormatSignedMoney,
 } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { useLoanTransactions } from "../hooks/use-loans";
 import { LOAN_TRANSACTION_META } from "../labels";
 import { FetchLoanTransactions } from "../services/loan.service";
@@ -111,9 +111,9 @@ const exportColumns: ExportColumn<LoanTransactionDTO>[] = [
 ];
 
 export function LoanLedger({ accountId }: { accountId: string }) {
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
   const { data: result, isLoading } = useLoanTransactions(accountId, {
-    page,
+    ...pager.params,
   });
 
   if (isLoading) {
@@ -139,11 +139,7 @@ export function LoanLedger({ accountId }: { accountId: string }) {
         data={result?.data ?? []}
         getRowKey={(transaction) => transaction.id}
         emptyMessage="No account activity yet."
-        pagination={{
-          page,
-          totalPages: result?.pagination.totalPages ?? 1,
-          onPageChange: setPage,
-        }}
+        pagination={pager.Bind(result?.pagination)}
       />
     </div>
   );

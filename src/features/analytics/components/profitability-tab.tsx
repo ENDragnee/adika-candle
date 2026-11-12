@@ -368,6 +368,7 @@ export function ProfitabilityTab() {
           <TableSkeleton columns={columns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={columns}
             data={sortedProducts}
             getRowKey={(row) => row.productId}

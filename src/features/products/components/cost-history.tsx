@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
 import { FormatDateTime, FormatMoney } from "@/lib/format";
+import { usePagination } from "@/lib/use-pagination";
 import { useProductCosts } from "../hooks/use-costs";
 import type { CostDTO } from "../validators/cost.schema";
 
@@ -31,8 +31,8 @@ const columns: DataTableColumn<CostDTO>[] = [
 ];
 
 export function CostHistory({ productId }: { productId: string }) {
-  const [page, setPage] = useState(1);
-  const { data: result, isLoading } = useProductCosts(productId, { page });
+  const pager = usePagination();
+  const { data: result, isLoading } = useProductCosts(productId, pager.params);
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -44,11 +44,7 @@ export function CostHistory({ productId }: { productId: string }) {
       data={result?.data ?? []}
       getRowKey={(cost) => cost.id}
       emptyMessage="No cost has been set yet."
-      pagination={{
-        page,
-        totalPages: result?.pagination.totalPages ?? 1,
-        onPageChange: setPage,
-      }}
+      pagination={pager.Bind(result?.pagination)}
     />
   );
 }

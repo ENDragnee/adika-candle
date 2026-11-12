@@ -219,6 +219,7 @@ export function BestSellersTab() {
           <TableSkeleton columns={quantityColumns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={quantityColumns}
             data={data.byQuantity}
             getRowKey={(row) => row.productId}
@@ -251,6 +252,7 @@ export function BestSellersTab() {
           <TableSkeleton columns={revenueColumns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={revenueColumns}
             data={data.byRevenue}
             getRowKey={(row) => row.productId}
