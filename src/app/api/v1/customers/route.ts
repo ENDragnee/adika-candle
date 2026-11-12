@@ -56,6 +56,14 @@ export const POST = CreateApiRoute({
   schema: CreateCustomerInputSchema,
   requiresAuth: { status: true, permission: "customer:manage" },
   responseSchema: CustomerSchema,
+  activity: ({ result }) => ({
+    type: "customers",
+    action: "customer.create",
+    message: `Added customer ${result.name}`,
+    entityType: "customer",
+    entityId: result.id,
+    entityLabel: result.name,
+  }),
   handler: async (body) => {
     // A Customer always gets a LoanAccount at creation time (balance 0)
     // rather than lazily on first transaction — see docs/DECISIONS.md.

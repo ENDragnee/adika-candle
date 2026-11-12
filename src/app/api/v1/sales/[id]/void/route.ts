@@ -16,6 +16,16 @@ export const POST = CreateApiRoute<VoidSaleInput, Params, SaleDTO>({
   schema: VoidSaleInputSchema,
   requiresAuth: { status: true, permission: "sale:void" },
   responseSchema: SaleSchema,
+  activity: ({ body, result }) => ({
+    type: "sales",
+    action: "sale.void",
+    message: `Voided sale ${result.referenceCode} (ETB ${result.totalAmount})`,
+    severity: "WARN",
+    entityType: "sale",
+    entityId: result.id,
+    entityLabel: result.referenceCode,
+    changes: { reason: body.reason, totalAmount: result.totalAmount },
+  }),
   handler: async (body, session, params) => {
     const sale = await VoidSale(
       params?.id ?? "",

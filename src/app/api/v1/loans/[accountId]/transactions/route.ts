@@ -6,6 +6,7 @@ import {
   ToLoanTransactionDTO,
 } from "@/features/loans/validators/loan.schema";
 import { Prisma } from "@/generated/prisma/client";
+import { CustomerNameForAccount } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { ApplyLoanDelta } from "@/lib/ledger-balance";
 import {
@@ -66,6 +67,31 @@ export const POST = CreateApiRoute<CreateLoanTransactionInput, Params>({
   schema: CreateLoanTransactionInputSchema,
   requiresAuth: { status: true, permission: ["loan:manage", "loan:record"] },
   responseSchema: LoanTransactionSchema,
+  activity: async ({ body, result, params }) => {
+    const customer = await CustomerNameForAccount(params?.accountId);
+    const verb =
+      body.type === "REPAYMENT_RECEIVED"
+        ? "Recorded a payment of"
+        : body.type === "ADVANCE_FROM_CUSTOMER"
+          ? "Recorded an advance of"
+          : "Corrected the balance by";
+    return {
+      type: "loans",
+      action: `loan.${body.type.toLowerCase()}`,
+      message: `${verb} ETB ${body.amount} for ${customer.name}`,
+      severity: body.type === "MANUAL_ADJUSTMENT" ? "WARN" : "INFO",
+      entityType: "customer",
+      entityId: customer.id,
+      entityLabel: customer.name,
+      changes: {
+        type: body.type,
+        amount: body.amount,
+        change: result.change,
+        balanceAfter: result.balanceAfter,
+        note: body.note,
+      },
+    };
+  },
   handler: async (body, session, params) => {
     // Route-level auth above only confirms loan:record OR loan:manage —
     // MANUAL_ADJUSTMENT is a Manager-only correction and needs the

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SetUserPasswordInput } from "@/features/users/validators/user.schema";
 import { SetUserPasswordInputSchema } from "@/features/users/validators/user.schema";
+import { UserName } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
 import { SetUserPassword } from "@/lib/set-user-password";
@@ -11,6 +12,18 @@ export const PATCH = CreateApiRoute<SetUserPasswordInput, Params>({
   moduleName: "users.password",
   schema: SetUserPasswordInputSchema,
   requiresAuth: { status: true, permission: "user:manage" },
+  activity: async ({ params }) => {
+    const name = await UserName(params?.id);
+    return {
+      type: "access",
+      action: "user.password",
+      message: `Set a new password for ${name}`,
+      severity: "WARN",
+      entityType: "user",
+      entityId: params?.id,
+      entityLabel: name,
+    };
+  },
   handler: async (body, _session, params) => {
     const userId = params?.id;
 

@@ -1,6 +1,7 @@
 import {
   ArchiveIcon,
   ChartLineUpIcon,
+  ClockCounterClockwiseIcon,
   FlaskIcon,
   GearSixIcon,
   HandCoinsIcon,
@@ -29,6 +30,7 @@ export interface ModuleLabel {
 
 export const MODULE_LABELS: Record<string, ModuleLabel> = {
   analytics: { label: "Analytics", icon: ChartLineUpIcon },
+  activity: { label: "Activity log", icon: ClockCounterClockwiseIcon },
   product: { label: "Products", icon: PackageIcon },
   category: { label: "Categories", icon: TagIcon },
   stock: { label: "Stock", icon: ArchiveIcon },
@@ -51,6 +53,11 @@ export const PERMISSION_LABELS: Record<string, PermissionLabel> = {
     label: "View analytics",
     description:
       "See production, profitability, stock health, and best-seller reports.",
+  },
+  "activity:read": {
+    label: "View activity log",
+    description:
+      "See everything anyone has changed in the system, and every sign-in.",
   },
   "stock:adjust": {
     label: "Correct stock counts",

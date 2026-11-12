@@ -1,5 +1,4 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 // One activity-log entry (Epic 22). See the Log model in schema.prisma.
@@ -76,6 +75,9 @@ export async function RecordActivity(
       },
     });
   } catch (err) {
-    logger.error({ err, action: input.action }, "Failed to record activity");
+    // console, not the pino logger: this module is also loaded by
+    // better-auth's hooks inside page renders, where pino's pretty-print
+    // transport can't start (it spawns a worker thread).
+    console.error("Failed to record activity", input.action, err);
   }
 }

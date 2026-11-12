@@ -46,7 +46,7 @@ interface IApiHandlerConfig<T, P = Record<string, string>, R = any> {
     result: R;
     params?: P;
     session?: AppUser;
-  }) => ActivityInput | null;
+  }) => ActivityInput | null | Promise<ActivityInput | null>;
 }
 
 export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
@@ -170,7 +170,7 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
         if (succeeded) {
           const described =
             config.activity && !(result instanceof NextResponse)
-              ? config.activity({
+              ? await config.activity({
                   body: parsedBody,
                   result: result as R,
                   params,

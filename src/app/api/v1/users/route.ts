@@ -42,6 +42,15 @@ export const POST = CreateApiRoute({
   schema: CreateUserInputSchema,
   requiresAuth: { status: true, permission: "user:manage" },
   responseSchema: UserSchema,
+  activity: ({ result }) => ({
+    type: "access",
+    action: "user.create",
+    message: `Created user ${result.name} (${result.username})`,
+    entityType: "user",
+    entityId: result.id,
+    entityLabel: result.name,
+    changes: { role: result.roleName },
+  }),
   handler: async (body) => {
     try {
       // Same auth.api.signUpEmail call shape as prisma/seed.ts's

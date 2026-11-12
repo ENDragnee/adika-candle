@@ -7,6 +7,7 @@ import { ROLES } from "@/lib/redirector";
 // — later epics reference these same names rather than inventing new ones.
 const MODULE_PERMISSIONS: Record<string, string[]> = {
   analytics: ["analytics:read"],
+  activity: ["activity:read"],
   product: ["product:read", "product:manage"],
   category: ["category:manage"],
   stock: ["stock:read", "stock:accept", "stock:adjust"],

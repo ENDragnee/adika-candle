@@ -31,6 +31,16 @@ export const PATCH = CreateApiRoute<
   schema: UpdateRolePermissionsInputSchema,
   requiresAuth: { status: true, permission: "role:manage" },
   responseSchema: RoleSchema,
+  activity: ({ result }) => ({
+    type: "access",
+    action: "role.permissions",
+    message: `Changed what the ${result.name} role can do`,
+    severity: "WARN",
+    entityType: "role",
+    entityId: result.id,
+    entityLabel: result.name,
+    changes: { permissionCount: result.permissionIds.length },
+  }),
   handler: async (body, session, params) => {
     // Self-lockout guard (Epic 21): taking "role:manage" off your *own*
     // role would lock you out of this page with no way to undo it. The

@@ -9,6 +9,7 @@ import {
   UpdateCategoryInputSchema,
 } from "@/features/categories/validators/category.schema";
 import { Prisma } from "@/generated/prisma/client";
+import { ChangedFields } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
 
@@ -19,6 +20,25 @@ export const PATCH = CreateApiRoute<UpdateCategoryInput, Params, CategoryDTO>({
   schema: UpdateCategoryInputSchema,
   requiresAuth: { status: true, permission: "category:manage" },
   responseSchema: CategorySchema,
+  activity: ({ body, result }) => ({
+    type: "catalog",
+    action:
+      body.isActive === false
+        ? "category.deactivate"
+        : body.isActive === true
+          ? "category.activate"
+          : "category.update",
+    message:
+      body.isActive === false
+        ? `Deactivated category ${result.name}`
+        : body.isActive === true
+          ? `Reactivated category ${result.name}`
+          : `Edited category ${result.name} (${ChangedFields(body).join(", ")})`,
+    entityType: "category",
+    entityId: result.id,
+    entityLabel: result.name,
+    changes: { ...body },
+  }),
   handler: async (body, _session, params) => {
     try {
       const category = await prisma.category.update({
@@ -50,6 +70,14 @@ export const DELETE = CreateApiRoute<unknown, Params, CategoryDTO>({
   moduleName: "categories",
   requiresAuth: { status: true, permission: "category:manage" },
   responseSchema: CategorySchema,
+  activity: ({ result }) => ({
+    type: "catalog",
+    action: "category.deactivate",
+    message: `Deactivated category ${result.name}`,
+    entityType: "category",
+    entityId: result.id,
+    entityLabel: result.name,
+  }),
   handler: async (_body, _session, params) => {
     try {
       const category = await prisma.category.update({

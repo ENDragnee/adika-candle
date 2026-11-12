@@ -5,6 +5,7 @@ import {
   SetNewPriceInputSchema,
   ToPriceDTO,
 } from "@/features/products/validators/price.schema";
+import { ProductName } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import {
   BuildPaginationMeta,
@@ -45,6 +46,18 @@ export const POST = CreateApiRoute<SetNewPriceInput, Params>({
   schema: SetNewPriceInputSchema,
   requiresAuth: { status: true, permission: "product:manage" },
   responseSchema: PriceSchema,
+  activity: async ({ body, params }) => {
+    const name = await ProductName(params?.id);
+    return {
+      type: "pricing",
+      action: "price.set",
+      message: `Set the price of ${name} to ETB ${body.amountPerKg}/kg`,
+      entityType: "product",
+      entityId: params?.id,
+      entityLabel: name,
+      changes: { amountPerKg: body.amountPerKg },
+    };
+  },
   handler: async (body, session, params) => {
     const productId = params?.id;
 
