@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MOTION } from "@/components/motion/motion-tokens";
 import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 import { BuildLinearScale, XLabelIndices } from "./chart-scale";
 
@@ -25,7 +26,6 @@ export interface TrendPoint {
 const CHART_HEIGHT = 160;
 const CHART_WIDTH = 600;
 const Y_AXIS_WIDTH_PX = 48;
-const PATH_DRAW_DURATION_MS = 500;
 
 function BuildPath(
   points: TrendPoint[],
@@ -222,7 +222,7 @@ export function TrendLineChart({
                 style={{
                   strokeDasharray: 1,
                   strokeDashoffset: hasEntered ? 0 : 1,
-                  transition: `stroke-dashoffset ${PATH_DRAW_DURATION_MS}ms cubic-bezier(0.23, 1, 0.32, 1)`,
+                  transition: `stroke-dashoffset ${MOTION.lineDrawMs}ms ${MOTION.easeOut}`,
                 }}
               />
             ))}

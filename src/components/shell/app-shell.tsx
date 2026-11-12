@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { AppUser } from "@/lib/auth";
+import { HumanizeRoleName } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./bottom-nav";
 import { BuildNavItems, type NavItem } from "./nav-config";
@@ -178,7 +179,7 @@ export function AppShell({ user, children }: AppShellProps) {
                 {user.name}
               </span>
               <span className="truncate text-xs text-muted-foreground">
-                {user.role}
+                {user.role ? HumanizeRoleName(user.role) : "No role"}
               </span>
             </div>
             {!collapsed && (
@@ -189,7 +190,7 @@ export function AppShell({ user, children }: AppShellProps) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={user} navItems={navItems} />
-        <main className="min-w-0 flex-1 p-4 pb-20 md:p-8 md:pb-8">
+        <main className="min-w-0 flex-1 p-4 pb-20 md:p-6 md:pb-8 lg:p-8">
           {children}
         </main>
         <BottomNav user={user} navItems={navItems} />

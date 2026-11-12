@@ -108,8 +108,8 @@ interface DataTableProps<T> {
 // same <table>/border/bg-muted markup. See docs/DECISIONS.md, "Epic 9
 // decisions".
 //
-// Below `md`, renders as a stacked list of per-row Cards instead of a
-// table — the structured `columns` array (header + cell per field) gives
+// Below `lg` (Epic 22; was `md`), renders as per-row Cards instead of a
+// table — one column on phones, two on tablets — the structured `columns` array (header + cell per field) gives
 // us everything needed to do this centrally, so no call site needs to
 // change. The first column becomes each card's title; the rest render as
 // a label/value list matching the existing ProductOverview/CustomerHeader
@@ -122,11 +122,15 @@ export function DataTable<T>({
   pagination,
   sort,
 }: DataTableProps<T>) {
-  const [titleColumn, ...restColumns] = columns;
+  const [titleColumn, ...otherColumns] = columns;
+  // A column with no header (row actions like the "⋯" menu) goes in the
+  // card's header next to its title instead of an unlabeled row.
+  const actionColumns = otherColumns.filter((column) => !column.header);
+  const restColumns = otherColumns.filter((column) => column.header);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <TableContainer>
           <Table>
             <TableHeader>
@@ -181,12 +185,19 @@ export function DataTable<T>({
           </Table>
         </TableContainer>
       </div>
-      <div className="flex flex-col gap-3 md:hidden">
+      <div className="grid gap-3 md:grid-cols-2 lg:hidden">
         {data.length ? (
           data.map((row) => (
             <Card key={getRowKey(row)}>
-              <CardHeader>
-                <CardTitle>{titleColumn.cell(row)}</CardTitle>
+              <CardHeader className="flex flex-row items-start justify-between gap-2">
+                <CardTitle className="min-w-0">
+                  {titleColumn.cell(row)}
+                </CardTitle>
+                {actionColumns.map((column) => (
+                  <div key={column.key} className="-mt-1 -mr-2 shrink-0">
+                    {column.cell(row)}
+                  </div>
+                ))}
               </CardHeader>
               {restColumns.length > 0 && (
                 <CardContent>
@@ -210,7 +221,7 @@ export function DataTable<T>({
             </Card>
           ))
         ) : (
-          <p className="py-8 text-center text-muted-foreground">
+          <p className="py-8 text-center text-muted-foreground md:col-span-2">
             {emptyMessage}
           </p>
         )}
@@ -251,7 +262,7 @@ export function TableSkeleton({
 }) {
   return (
     <>
-      <div className={mobileCard ? "hidden md:block" : undefined}>
+      <div className={mobileCard ? "hidden lg:block" : undefined}>
         <TableContainer>
           <Table>
             <TableHeader>
@@ -281,7 +292,7 @@ export function TableSkeleton({
         </TableContainer>
       </div>
       {mobileCard && (
-        <div className="flex flex-col gap-3 md:hidden">
+        <div className="grid gap-3 md:grid-cols-2 lg:hidden">
           {Array.from({ length: rows }, (_, rowIndex) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static row count, never reordered
             <Card key={rowIndex}>

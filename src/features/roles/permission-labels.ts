@@ -151,10 +151,4 @@ export function DescribePermission(permissionName: string): PermissionLabel {
 // "MANAGER" -> "Manager", "INVENTORY_MANAGER" -> "Inventory Manager" — role
 // names are plain uppercase-snake identifiers (see prisma/seed.ts's
 // ROLES constant), not meant to be read as-is.
-export function HumanizeRoleName(roleName: string): string {
-  return roleName
-    .toLowerCase()
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+export { HumanizeRoleName } from "@/lib/roles";
