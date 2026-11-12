@@ -142,9 +142,16 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
             { issues: validation.error.issues, rawData },
             "Invalid payload",
           );
+          // A custom rule (e.g. "The two passwords don't match") is
+          // written for people — lead with it; otherwise stay generic.
+          const custom = validation.error.issues.find(
+            (issue) => issue.code === "custom",
+          );
           return NextResponse.json(
             {
-              error: "Some of the information sent isn't valid",
+              error:
+                custom?.message ?? "Some of the information sent isn't valid",
+              code: "INVALID_INPUT",
               requestId: reqId,
               ...(environment !== "production" && {
                 details: validation.error.issues,

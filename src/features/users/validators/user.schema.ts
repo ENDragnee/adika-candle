@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Role, User } from "@/generated/prisma/client";
+import { FailedPasswordRules } from "@/lib/password-policy";
 
 export const UserSchema = z.object({
   id: z.string(),
@@ -17,13 +18,14 @@ export type UserDTO = z.infer<typeof UserSchema>;
 
 export const UserListResponseSchema = z.array(UserSchema);
 
-// Password bounds mirror better-auth's own emailAndPassword defaults
-// (minPasswordLength 8 / maxPasswordLength 128) so this schema never
-// accepts something signUpEmail would then reject.
-const PasswordSchema = z
-  .string()
-  .min(8, "Password must be at least 8 characters")
-  .max(128, "Password must be at most 128 characters");
+// The shared password policy (src/lib/password-policy.ts, Epic 22) — the
+// same rules the form's live checklist shows. Rules about the person's
+// own name/username are checked where the account is known (the routes).
+const PasswordSchema = z.string().superRefine((password, ctx) => {
+  for (const rule of FailedPasswordRules(password)) {
+    ctx.addIssue({ code: "custom", message: `Password: ${rule.label}` });
+  }
+});
 
 export const CreateUserInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(160),
@@ -45,11 +47,20 @@ export const UpdateUserInputSchema = z.object({
 
 export type UpdateUserInput = z.infer<typeof UpdateUserInputSchema>;
 
-export const SetUserPasswordInputSchema = z.object({
-  password: PasswordSchema,
-});
+export const SetUserPasswordInputSchema = z
+  .object({
+    password: PasswordSchema,
+    confirmPassword: z.string(),
+    // Ends every existing session for the account, so whoever knew the
+    // old password (or holds a stolen session) is signed out now.
+    signOutEverywhere: z.boolean().default(true),
+  })
+  .refine((input) => input.password === input.confirmPassword, {
+    message: "The two passwords don't match",
+    path: ["confirmPassword"],
+  });
 
-export type SetUserPasswordInput = z.infer<typeof SetUserPasswordInputSchema>;
+export type SetUserPasswordInput = z.input<typeof SetUserPasswordInputSchema>;
 
 type UserWithRole = User & { role: Role | null };
 
