@@ -5,7 +5,7 @@ import {
   CaretDownIcon,
   CheckIcon,
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,6 +51,8 @@ export function DateRangeFilter({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const fromId = useId();
+  const toId = useId();
   const resolved = ResolveDateRange(value);
   const [from, setFrom] = useState(resolved.from ?? "");
   const [to, setTo] = useState(resolved.to ?? "");
@@ -123,18 +125,20 @@ export function DateRangeFilter({
             Custom range
           </span>
           <div className="grid grid-cols-2 gap-2">
-            <label className="flex flex-col gap-1 text-xs">
+            <label htmlFor={fromId} className="flex flex-col gap-1 text-xs">
               From
               <Input
+                id={fromId}
                 type="date"
                 value={from}
                 max={to || today}
                 onChange={(event) => setFrom(event.target.value)}
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs">
+            <label htmlFor={toId} className="flex flex-col gap-1 text-xs">
               To
               <Input
+                id={toId}
                 type="date"
                 value={to}
                 min={from || undefined}

@@ -48,14 +48,9 @@ export function PasswordField({
       />
       {value.length > 0 && (
         <>
-          <div
-            className="flex gap-1"
-            role="meter"
-            aria-label="Password strength"
-            aria-valuemin={0}
-            aria-valuemax={PASSWORD_RULES.length}
-            aria-valuenow={passed}
-          >
+          {/* Decorative strength bar; the checklist below carries the
+              same information for screen readers. */}
+          <div className="flex gap-1" aria-hidden="true">
             {PASSWORD_RULES.map((rule, index) => (
               <span
                 key={rule.id}
@@ -73,6 +68,9 @@ export function PasswordField({
               />
             ))}
           </div>
+          <p className="sr-only" aria-live="polite">
+            {passed} of {PASSWORD_RULES.length} password rules met
+          </p>
           <ul id={`${id}-rules`} className="flex flex-col gap-0.5 text-xs">
             {PASSWORD_RULES.map((rule) => {
               const ok = !failed.has(rule.id);

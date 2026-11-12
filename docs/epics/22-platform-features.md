@@ -1,7 +1,7 @@
 # Epic 22 — Platform Features (activity log, date ranges, roles, pagination, resilience)
 
 **Depends on:** 21 (Manager UX & Logic Audit Fixes)
-**Status:** in-progress
+**Status:** done
 
 ## Goal
 

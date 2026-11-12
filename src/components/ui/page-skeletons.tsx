@@ -1,3 +1,4 @@
+import type * as React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableSkeleton } from "@/components/ui/data-table";
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
@@ -6,6 +7,22 @@ import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 // loading.tsx while the server checks the session and renders the page.
 // Before, navigation showed nothing at all for that moment. Each matches
 // the shape of the page it stands in for, so nothing jumps when it swaps.
+
+// <output> is the native live region for status content, so assistive
+// tech hears "Loading" once rather than every placeholder bar.
+function LoadingRegion({
+  className,
+  children,
+}: {
+  className: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <output aria-busy="true" aria-label="Loading" className={className}>
+      {children}
+    </output>
+  );
+}
 
 function Toolbar({ actions = 1 }: { actions?: number }) {
   return (
@@ -46,27 +63,27 @@ function ChartBlock({ height = 200 }: { height?: number }) {
 // A list page: search/filter toolbar + table.
 export function ListPageSkeleton({ columns = 5 }: { columns?: number }) {
   return (
-    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading">
+    <LoadingRegion className="flex flex-col gap-4">
       <Toolbar />
       <TableSkeleton columns={columns} rows={8} />
-    </div>
+    </LoadingRegion>
   );
 }
 
 // A list with a totals/summary row on top (Sales, Loans).
 export function SummaryListPageSkeleton({ columns = 6 }: { columns?: number }) {
   return (
-    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading">
+    <LoadingRegion className="flex flex-col gap-4">
       <Tiles count={3} />
       <Toolbar actions={2} />
       <TableSkeleton columns={columns} rows={8} />
-    </div>
+    </LoadingRegion>
   );
 }
 
 export function DashboardPageSkeleton() {
   return (
-    <div className="flex flex-col gap-8" aria-busy="true" aria-label="Loading">
+    <LoadingRegion className="flex flex-col gap-8">
       <Tiles count={4} />
       <div className="grid gap-8 lg:grid-cols-5">
         <div className="lg:col-span-3">
@@ -79,39 +96,39 @@ export function DashboardPageSkeleton() {
           <Skeleton className="h-16 w-full" />
         </div>
       </div>
-    </div>
+    </LoadingRegion>
   );
 }
 
 export function AnalyticsPageSkeleton() {
   return (
-    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Loading">
+    <LoadingRegion className="flex flex-col gap-6">
       <Skeleton className="h-9 w-full max-w-md" />
       <Tiles count={4} />
       <ChartBlock />
       <TableSkeleton columns={6} />
-    </div>
+    </LoadingRegion>
   );
 }
 
 // A record's page: summary cards, tab strip, history table.
 export function DetailPageSkeleton() {
   return (
-    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Loading">
+    <LoadingRegion className="flex flex-col gap-6">
       <Tiles count={4} />
       <Skeleton className="h-9 w-full max-w-sm" />
       <TableSkeleton columns={5} rows={6} />
-    </div>
+    </LoadingRegion>
   );
 }
 
 // Settings/roles-style pages: a short list of panels.
 export function PanelsPageSkeleton() {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading">
+    <LoadingRegion className="flex flex-col gap-3">
       <Skeleton className="h-24 w-full" />
       <Skeleton className="h-24 w-full" />
       <Skeleton className="h-24 w-full" />
-    </div>
+    </LoadingRegion>
   );
 }

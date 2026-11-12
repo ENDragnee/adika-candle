@@ -246,8 +246,12 @@ function SetPasswordForm({
           </p>
         )}
       </div>
-      <label className="flex items-start gap-3 rounded-lg border border-border p-3 text-sm">
+      <label
+        htmlFor="sign-out-everywhere"
+        className="flex items-start gap-3 rounded-lg border border-border p-3 text-sm"
+      >
         <Switch
+          id="sign-out-everywhere"
           checked={signOutEverywhere}
           onCheckedChange={setSignOutEverywhere}
           aria-label="Sign out everywhere"

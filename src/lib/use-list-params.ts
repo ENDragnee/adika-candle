@@ -15,10 +15,13 @@ export function useListParams<K extends string>(defaultSort: K) {
   const [sortKey, setSortKey] = useState<K>(defaultSort);
   const [dir, setDir] = useState<SortDirection>("asc");
 
-  const setSearch = useCallback((value: string | undefined) => {
-    setSearchState(value);
-    setPage(1);
-  }, []);
+  const setSearch = useCallback(
+    (value: string | undefined) => {
+      setSearchState(value);
+      setPage(1);
+    },
+    [setPage],
+  );
 
   return {
     page,
