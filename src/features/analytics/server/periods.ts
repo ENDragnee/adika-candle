@@ -3,6 +3,7 @@ import {
   AddBusinessDays,
   AddBusinessMonths,
   BusinessDateKey,
+  StartOfBusinessDate,
   StartOfBusinessDay,
   StartOfBusinessMonth,
   StartOfBusinessWeek,
@@ -98,4 +99,47 @@ export function BuildPeriodWindow(
 // One bucket per local calendar day, `days` long, ending today.
 export function BuildDailyWindow(now: Date, days: number): PeriodBounds[] {
   return BuildPeriodWindow("DAY", now, 0, days);
+}
+
+// One bucket per local day from `fromKey` to `toKey` inclusive (Epic 22
+// custom ranges). Long ranges are bucketed by week so a chart never has
+// hundreds of slivers.
+export function BuildRangeBuckets(
+  fromKey: string,
+  toKey: string,
+): PeriodBounds[] {
+  const start = StartOfBusinessDate(fromKey);
+  const end = AddBusinessDays(StartOfBusinessDate(toKey), 1);
+  const dayCount = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  const step = dayCount > 92 ? 7 : 1;
+  const buckets: PeriodBounds[] = [];
+  for (let cursor = start; cursor < end; ) {
+    const next = AddBusinessDays(cursor, step);
+    buckets.push({
+      start: cursor,
+      end: next < end ? next : end,
+      key: BusinessDateKey(cursor),
+      label:
+        step === 7
+          ? `Week of ${shortDayLabel.format(cursor)}`
+          : dayLabel.format(cursor),
+    });
+    cursor = next;
+  }
+  return buckets;
+}
+
+// The whole custom range as a single period.
+export function BuildRangePeriod(fromKey: string, toKey: string): PeriodBounds {
+  const start = StartOfBusinessDate(fromKey);
+  const end = AddBusinessDays(StartOfBusinessDate(toKey), 1);
+  return {
+    start,
+    end,
+    key: fromKey,
+    label:
+      fromKey === toKey
+        ? dayLabel.format(start)
+        : `${shortDayLabel.format(start)} – ${shortDayLabel.format(AddBusinessDays(end, -1))}`,
+  };
 }

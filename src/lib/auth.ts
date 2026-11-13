@@ -2,6 +2,10 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { customSession, username } from "better-auth/plugins";
 import { SESSION_MAX_AGE } from "@/configs/global-vars";
+import {
+  AuthActivityAfterHook,
+  AuthActivityBeforeHook,
+} from "./activity/auth-activity";
 import { prisma } from "./prisma";
 
 export const auth = betterAuth({
@@ -16,6 +20,13 @@ export const auth = betterAuth({
 
   session: {
     expiresIn: SESSION_MAX_AGE,
+  },
+
+  // Activity log entries for sign-in, failed sign-in and sign-out
+  // (Epic 22).
+  hooks: {
+    before: AuthActivityBeforeHook,
+    after: AuthActivityAfterHook,
   },
 
   plugins: [

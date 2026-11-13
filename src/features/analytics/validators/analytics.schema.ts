@@ -96,6 +96,8 @@ export type ManagerDashboardDTO = z.infer<typeof ManagerDashboardSchema>;
 // ---------------------------------------------------------------------------
 
 export const ReportGranularitySchema = z.enum(["DAY", "WEEK", "MONTH"]);
+// The report itself also says CUSTOM when it was asked for a from/to range.
+export const ReportKindSchema = z.enum(["DAY", "WEEK", "MONTH", "CUSTOM"]);
 export type ReportGranularity = z.infer<typeof ReportGranularitySchema>;
 
 export const MaterialProductionRowSchema = z.object({
@@ -138,7 +140,7 @@ export type ProductionTrendPointDTO = z.infer<
 >;
 
 export const ProductionReportSchema = z.object({
-  granularity: ReportGranularitySchema,
+  granularity: ReportKindSchema,
   periodLabel: z.string(),
   periodStart: z.string(),
   periodEnd: z.string(),
@@ -164,6 +166,7 @@ export const ProfitabilityStatsSchema = z.object({
 
 export const MarginTrendPointSchema = z.object({
   date: z.string(),
+  label: z.string(),
   revenue: z.string(),
   profit: z.string().nullable(),
   marginPercent: z.string().nullable(),

@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
+import { PasswordField, PasswordIsValid } from "@/components/ui/password-field";
 import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
@@ -44,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -54,6 +56,7 @@ import {
 } from "@/components/ui/table";
 import { useRoles } from "@/features/roles/hooks/use-roles";
 import { HumanizeRoleName } from "@/features/roles/permission-labels";
+import { usePagination } from "@/lib/use-pagination";
 import {
   useCreateUser,
   useSetUserPassword,
@@ -139,23 +142,13 @@ function CreateUserForm({
           required
         />
       </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="new-user-password" className="text-sm font-medium">
-          Password
-        </label>
-        <PasswordInput
-          id="new-user-password"
-          autoComplete="new-password"
-          minLength={8}
-          maxLength={128}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          At least 8 characters. Share it with the new user yourself.
-        </p>
-      </div>
+      <PasswordField
+        id="new-user-password"
+        label="Password"
+        value={password}
+        onChange={setPassword}
+        context={{ personal: [name, username, email] }}
+      />
       <div className="flex flex-col gap-1">
         <label htmlFor="new-user-role" className="text-sm font-medium">
           Role
@@ -173,52 +166,111 @@ function CreateUserForm({
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={createUser.isPending}>
+      <Button
+        loading={createUser.isPending}
+        type="submit"
+        disabled={
+          createUser.isPending ||
+          !PasswordIsValid(password, { personal: [name, username, email] })
+        }
+      >
         {createUser.isPending ? "Creating…" : "Create user"}
       </Button>
     </form>
   );
 }
 
+// Manager-only reset (Epic 22): the new password twice, the same rules
+// the API enforces (live checklist), and — on by default — signing the
+// person out of every device, so the old password or a lost phone can't
+// keep a session open.
 function SetPasswordForm({
-  userId,
+  user,
+  isSelf,
   onSuccess,
 }: {
-  userId: string;
+  user: UserDTO;
+  isSelf: boolean;
   onSuccess: () => void;
 }) {
   const [password, setPassword] = useState("");
-  const setUserPassword = useSetUserPassword(userId);
+  const [confirm, setConfirm] = useState("");
+  const [signOutEverywhere, setSignOutEverywhere] = useState(true);
+  const setUserPassword = useSetUserPassword(user.id);
+  const context = { personal: [user.name, user.username, user.email] };
+  const mismatch = confirm.length > 0 && confirm !== password;
+  const canSubmit = PasswordIsValid(password, context) && confirm === password;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    await setUserPassword.mutateAsync({ password });
+    if (!canSubmit) return;
+    await setUserPassword.mutateAsync({
+      password,
+      confirmPassword: confirm,
+      signOutEverywhere,
+    });
     setPassword("");
+    setConfirm("");
     onSuccess();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="set-user-password" className="text-sm font-medium">
-          New password
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <PasswordField
+        id="set-user-password"
+        label="New password"
+        value={password}
+        onChange={setPassword}
+        context={context}
+      />
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="confirm-user-password" className="text-sm font-medium">
+          Type it again
         </label>
         <PasswordInput
-          id="set-user-password"
+          id="confirm-user-password"
           autoComplete="new-password"
-          minLength={8}
-          maxLength={128}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          value={confirm}
+          onChange={(event) => setConfirm(event.target.value)}
+          aria-invalid={mismatch}
+          aria-describedby="confirm-user-password-hint"
           required
         />
-        <p className="text-xs text-muted-foreground">
-          At least 8 characters. Takes effect immediately.
-        </p>
+        {mismatch && (
+          <p
+            id="confirm-user-password-hint"
+            className="text-xs text-destructive"
+            role="alert"
+          >
+            The two passwords don't match.
+          </p>
+        )}
       </div>
-      <Button type="submit" disabled={setUserPassword.isPending}>
-        {setUserPassword.isPending ? "Saving…" : "Set password"}
+      <label
+        htmlFor="sign-out-everywhere"
+        className="flex items-start gap-3 rounded-lg border border-border p-3 text-sm"
+      >
+        <Switch
+          id="sign-out-everywhere"
+          checked={signOutEverywhere}
+          onCheckedChange={setSignOutEverywhere}
+          aria-label="Sign out everywhere"
+        />
+        <span className="flex flex-col gap-0.5">
+          <span className="font-medium">Sign out everywhere</span>
+          <span className="text-xs text-muted-foreground">
+            {isSelf
+              ? "Ends your sessions on other devices. You stay signed in here."
+              : `${user.name} will need to sign in again with the new password on every device.`}
+          </span>
+        </span>
+      </label>
+      <Button
+        loading={setUserPassword.isPending}
+        type="submit"
+        disabled={!canSubmit}
+      >
+        Set password
       </Button>
     </form>
   );
@@ -268,7 +320,11 @@ function EditUserForm({
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={updateUser.isPending}>
+      <Button
+        loading={updateUser.isPending}
+        type="submit"
+        disabled={updateUser.isPending}
+      >
         {updateUser.isPending ? "Saving…" : "Save"}
       </Button>
     </form>
@@ -362,7 +418,8 @@ function UserRow({
                   <DialogTitle>Set password for {user.name}</DialogTitle>
                 </DialogHeader>
                 <SetPasswordForm
-                  userId={user.id}
+                  user={user}
+                  isSelf={isSelf}
                   onSuccess={() => setIsPasswordOpen(false)}
                 />
               </DialogContent>
@@ -399,9 +456,9 @@ function UserRow({
 }
 
 export function UserManager({ currentUserId }: { currentUserId: string }) {
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data: result, isLoading } = useUsers({ page });
+  const { data: result, isLoading } = useUsers(pager.params);
   const users = result?.data;
   const { data: rolesData } = useRoles();
   const roles = rolesData?.roles ?? [];
@@ -466,11 +523,7 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
               </TableBody>
             </Table>
           </TableContainer>
-          <Pagination
-            page={page}
-            totalPages={result?.pagination.totalPages ?? 1}
-            onPageChange={setPage}
-          />
+          <Pagination {...pager.Bind(result?.pagination)} />
         </>
       )}
     </div>

@@ -17,10 +17,13 @@ export class DomainError extends Error {
   }
 }
 
-export function ToDomainErrorResponse(err: unknown): NextResponse | null {
+export function ToDomainErrorResponse(
+  err: unknown,
+  requestId?: string,
+): NextResponse | null {
   if (!(err instanceof DomainError)) return null;
   return NextResponse.json(
-    { error: err.message, code: err.code, ...err.details },
+    { error: err.message, code: err.code, requestId, ...err.details },
     { status: err.status },
   );
 }

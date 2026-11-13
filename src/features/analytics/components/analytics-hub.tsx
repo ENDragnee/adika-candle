@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BestSellersTab } from "./best-sellers-tab";
 import { ProductionTab } from "./production-tab";
@@ -22,7 +22,6 @@ type AnalyticsTab = (typeof TABS)[number];
 // refresh or shared link keeps the tab.
 export function AnalyticsHub() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const requested = searchParams.get("tab");
   const tab: AnalyticsTab = TABS.includes(requested as AnalyticsTab)
@@ -30,8 +29,12 @@ export function AnalyticsHub() {
     : "production";
 
   function HandleChange(value: string) {
-    // Tab-specific params (e.g. ?status=) don't carry across tabs.
-    router.replace(`${pathname}?tab=${value}`, { scroll: false });
+    // Native replaceState, not router.replace: a tab switch isn't a
+    // navigation, so it shouldn't re-run the route's page crossfade (which
+    // also threw "Transition was aborted" on quick clicks). Next keeps
+    // useSearchParams in sync with it. Tab-specific params (e.g. ?status=)
+    // don't carry across tabs.
+    window.history.replaceState(null, "", `${pathname}?tab=${value}`);
   }
 
   return (

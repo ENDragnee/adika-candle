@@ -29,6 +29,7 @@ conventions.
 | 19 | [Legend & Walkthrough Reference Page](./19-legend-walkthrough-reference.md) | 3, 4, 5, 14, 17 | done |
 | 20 | [Interactive Product Tutorial](./20-interactive-product-tutorial.md) | 9, 16 | done |
 | 21 | [Manager UX & Logic Audit Fixes](./21-manager-ux-logic-audit-fixes.md) | 8, 13, 15, 17 | done |
+| 22 | [Platform Features](./22-platform-features.md) | 21 | done |
 
 Update the Status column as epics move through
 not-started → in-progress → done.

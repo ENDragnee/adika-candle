@@ -89,6 +89,7 @@ export function VoidSaleDialog({
               Cancel
             </Button>
             <Button
+              loading={voidSale.isPending}
               type="submit"
               variant="destructive"
               disabled={trimmed.length < 3 || voidSale.isPending}

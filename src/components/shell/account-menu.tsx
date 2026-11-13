@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { AppUser } from "@/lib/auth";
 import { authClient } from "@/lib/auth-client";
+import { HumanizeRoleName } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 const THEME_OPTIONS = [
@@ -120,7 +121,9 @@ export function AccountMenu({
         <DropdownMenuLabel>
           <div className="flex flex-col">
             <span className="font-medium text-foreground">{user.name}</span>
-            <span className="text-muted-foreground">{user.role}</span>
+            <span className="text-muted-foreground">
+              {user.role ? HumanizeRoleName(user.role) : "No role"}
+            </span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

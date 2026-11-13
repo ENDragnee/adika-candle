@@ -13,6 +13,7 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,11 +33,10 @@ import { ToneBadge } from "@/components/ui/tone-badge";
 import { useCustomers } from "@/features/customers/hooks/use-customers";
 import { useProducts } from "@/features/products/hooks/use-products";
 import {
-  AddBusinessDays,
-  BusinessDateKey,
-  StartOfBusinessDay,
-  StartOfBusinessMonth,
-} from "@/lib/business-time";
+  type DateRangePreset,
+  type DateRangeValue,
+  ResolveDateRange,
+} from "@/lib/date-range";
 import type { ExportColumn } from "@/lib/export/export-column";
 import {
   FormatDateTime,
@@ -47,6 +47,7 @@ import {
 } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useDebounce } from "@/lib/use-debounce";
+import { usePagination } from "@/lib/use-pagination";
 import { cn } from "@/lib/utils";
 import { useSales } from "../hooks/use-sales";
 import { PAYMENT_TYPE_META } from "../labels";
@@ -55,36 +56,11 @@ import type { SaleDTO } from "../validators/sale.schema";
 import { SaleDetailsDialog } from "./sale-details-dialog";
 import { VoidSaleDialog } from "./void-sale-dialog";
 
-export type SaleRange = "today" | "7d" | "30d" | "month" | "all";
-
-const RANGE_OPTIONS: { value: SaleRange; label: string }[] = [
-  { value: "today", label: "Today" },
-  { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "month", label: "This month" },
-  { value: "all", label: "All time" },
-];
+// Any preset the shared date filter knows (Epic 22) — the page can
+// start on one, e.g. ?range=today from the Dashboard.
+export type SaleRange = Exclude<DateRangePreset, "custom">;
 
 const ALL = "__all__";
-
-// Business-local calendar dates for a preset, matching how the API and the
-// analytics bucket days (see src/lib/business-time.ts).
-function RangeDates(range: SaleRange): { from?: string; to?: string } {
-  const now = new Date();
-  const today = StartOfBusinessDay(now);
-  switch (range) {
-    case "today":
-      return { from: BusinessDateKey(today) };
-    case "7d":
-      return { from: BusinessDateKey(AddBusinessDays(today, -6)) };
-    case "30d":
-      return { from: BusinessDateKey(AddBusinessDays(today, -29)) };
-    case "month":
-      return { from: BusinessDateKey(StartOfBusinessMonth(now)) };
-    default:
-      return {};
-  }
-}
 
 function SaleActions({
   sale,
@@ -299,8 +275,11 @@ export function SaleList({
   initialRange?: SaleRange;
   linkBase?: string;
 }) {
-  const [page, setPage] = useState(1);
-  const [range, setRange] = useState<SaleRange>(initialRange);
+  const pager = usePagination();
+  const { setPage } = pager;
+  const [range, setRange] = useState<DateRangeValue>({
+    preset: initialRange,
+  });
   const [productFilter, setProductFilter] = useState(ALL);
   const [customerFilter, setCustomerFilter] = useState(ALL);
   const [paymentFilter, setPaymentFilter] = useState(ALL);
@@ -316,7 +295,7 @@ export function SaleList({
   );
 
   const query: SalesQueryParams = {
-    ...RangeDates(range),
+    ...ResolveDateRange(range),
     ...(createdById && { createdById }),
     ...((productId || productFilter !== ALL) && {
       productId: productId ?? productFilter,
@@ -330,7 +309,11 @@ export function SaleList({
     ...(debouncedSearch && { search: debouncedSearch }),
     status,
   };
-  const { data: result, isLoading, isFetching } = useSales({ ...query, page });
+  const {
+    data: result,
+    isLoading,
+    isFetching,
+  } = useSales({ ...query, ...pager.params });
 
   const columns = BuildColumns({
     showProduct: !productId,
@@ -352,21 +335,22 @@ export function SaleList({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Select
+        <DateRangeFilter
           value={range}
-          onValueChange={Filter((v) => setRange(v as SaleRange))}
-        >
-          <SelectTrigger className="w-36" aria-label="Date range">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {RANGE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={Filter(setRange)}
+          presets={[
+            "today",
+            "yesterday",
+            "7d",
+            "30d",
+            "month",
+            "last-month",
+            "all",
+          ]}
+          // Browsing sales history has no upper bound.
+          maxDays={null}
+          className="w-52"
+        />
         {showFilters && !productId && (
           <Select
             value={productFilter}
@@ -500,11 +484,7 @@ export function SaleList({
           data={result?.data ?? []}
           getRowKey={(sale) => sale.id}
           emptyMessage="No sales match these filters."
-          pagination={{
-            page,
-            totalPages: result?.pagination.totalPages ?? 1,
-            onPageChange: setPage,
-          }}
+          pagination={pager.Bind(result?.pagination)}
         />
       )}
     </div>

@@ -105,8 +105,18 @@ async function RunGraphqlQuery<T>(
 }
 
 const PRODUCTION_REPORT_QUERY = /* GraphQL */ `
-  query ProductionReport($granularity: ReportGranularity!, $offset: Int) {
-    productionReport(granularity: $granularity, offset: $offset) {
+  query ProductionReport(
+    $granularity: ReportGranularity!
+    $offset: Int
+    $from: String
+    $to: String
+  ) {
+    productionReport(
+      granularity: $granularity
+      offset: $offset
+      from: $from
+      to: $to
+    ) {
       granularity
       periodLabel
       periodStart
@@ -144,20 +154,26 @@ const PRODUCTION_REPORT_QUERY = /* GraphQL */ `
   }
 `;
 
+export interface DateRangeArgs {
+  from?: string;
+  to?: string;
+}
+
 export async function FetchProductionReport(
   granularity: ReportGranularity,
   offset = 0,
+  range: DateRangeArgs = {},
 ): Promise<ProductionReportDTO> {
   const result = await RunGraphqlQuery<{ productionReport: unknown }>(
     PRODUCTION_REPORT_QUERY,
-    { granularity, offset },
+    { granularity, offset, ...range },
   );
   return ProductionReportSchema.parse(result.productionReport);
 }
 
 const PROFITABILITY_QUERY = /* GraphQL */ `
-  query Profitability($days: Int) {
-    profitability(days: $days) {
+  query Profitability($from: String, $to: String) {
+    profitability(from: $from, to: $to) {
       periodDays
       stats {
         totalRevenue
@@ -170,6 +186,7 @@ const PROFITABILITY_QUERY = /* GraphQL */ `
       }
       trend {
         date
+        label
         revenue
         profit
         marginPercent
@@ -192,11 +209,11 @@ const PROFITABILITY_QUERY = /* GraphQL */ `
 `;
 
 export async function FetchProfitability(
-  days?: number,
+  range: DateRangeArgs,
 ): Promise<ProfitabilityDTO> {
   const result = await RunGraphqlQuery<{ profitability: unknown }>(
     PROFITABILITY_QUERY,
-    { days },
+    { ...range },
   );
   return ProfitabilitySchema.parse(result.profitability);
 }
@@ -232,8 +249,8 @@ export async function FetchStockHealth(): Promise<StockHealthDTO> {
 }
 
 const BEST_SELLERS_QUERY = /* GraphQL */ `
-  query BestSellers($days: Int) {
-    bestSellers(days: $days) {
+  query BestSellers($from: String, $to: String) {
+    bestSellers(from: $from, to: $to) {
       periodDays
       byQuantity {
         productId
@@ -259,10 +276,12 @@ const BEST_SELLERS_QUERY = /* GraphQL */ `
   }
 `;
 
-export async function FetchBestSellers(days?: number): Promise<BestSellersDTO> {
+export async function FetchBestSellers(
+  range: DateRangeArgs,
+): Promise<BestSellersDTO> {
   const result = await RunGraphqlQuery<{ bestSellers: unknown }>(
     BEST_SELLERS_QUERY,
-    { days },
+    { ...range },
   );
   return BestSellersSchema.parse(result.bestSellers);
 }

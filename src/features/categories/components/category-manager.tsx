@@ -43,6 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePagination } from "@/lib/use-pagination";
 import {
   useCategories,
   useCreateCategory,
@@ -95,7 +96,11 @@ function CreateCategoryForm({ onSuccess }: { onSuccess: () => void }) {
           onChange={(event) => setDescription(event.target.value)}
         />
       </div>
-      <Button type="submit" disabled={createCategory.isPending}>
+      <Button
+        loading={createCategory.isPending}
+        type="submit"
+        disabled={createCategory.isPending}
+      >
         {createCategory.isPending ? "Adding…" : "Add category"}
       </Button>
     </form>
@@ -149,7 +154,11 @@ function EditCategoryForm({
           onChange={(event) => setDescription(event.target.value)}
         />
       </div>
-      <Button type="submit" disabled={updateCategory.isPending}>
+      <Button
+        loading={updateCategory.isPending}
+        type="submit"
+        disabled={updateCategory.isPending}
+      >
         {updateCategory.isPending ? "Saving…" : "Save"}
       </Button>
     </form>
@@ -243,9 +252,9 @@ function CategoryRow({ category }: { category: CategoryDTO }) {
 }
 
 export function CategoryManager() {
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data: result, isLoading } = useCategories({ page });
+  const { data: result, isLoading } = useCategories(pager.params);
   const categories = result?.data;
 
   return (
@@ -298,11 +307,7 @@ export function CategoryManager() {
               </TableBody>
             </Table>
           </TableContainer>
-          <Pagination
-            page={page}
-            totalPages={result?.pagination.totalPages ?? 1}
-            onPageChange={setPage}
-          />
+          <Pagination {...pager.Bind(result?.pagination)} />
         </>
       )}
     </div>

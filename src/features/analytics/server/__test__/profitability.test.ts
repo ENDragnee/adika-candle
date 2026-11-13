@@ -3,10 +3,12 @@ import { Prisma } from "@/generated/prisma/client";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
+import { BuildRangeBuckets } from "../periods";
 import { ComputeProfitability, type ProfitSale } from "../profitability";
 
 const D = (value: number) => new Prisma.Decimal(value);
-const NOW = new Date("2026-11-11T09:00:00Z");
+// The 7 local days ending 2026-11-11.
+const BUCKETS = BuildRangeBuckets("2026-11-05", "2026-11-11");
 
 function Sale(overrides: Partial<ProfitSale>): ProfitSale {
   return {
@@ -24,8 +26,7 @@ function Sale(overrides: Partial<ProfitSale>): ProfitSale {
 function Compute(sales: ProfitSale[]) {
   return ComputeProfitability({
     sales,
-    now: NOW,
-    days: 7,
+    buckets: BUCKETS,
     currentPrices: new Map([["p1", D(100)]]),
     currentCosts: new Map([["p1", D(70)]]),
   });

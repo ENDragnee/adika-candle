@@ -1,16 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { MOTION } from "@/components/motion/motion-tokens";
 import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BuildLinearScale, XLabelIndices } from "./chart-scale";
-
-// Capped per-bar stagger (animation-performance skill: 30-80ms stagger
-// band, capped so a 30-bar chart doesn't stretch the whole reveal past
-// ~1s) — see docs/DECISIONS.md for the Epic 16 entrance-pattern writeup.
-const BAR_ENTRANCE_DURATION_MS = 320;
-const BAR_STAGGER_STEP_MS = 6;
-const BAR_STAGGER_CAP_MS = 220;
 
 const CHART_HEIGHT_PX = 160;
 const Y_AXIS_WIDTH_PX = 48;
@@ -185,15 +179,15 @@ export function StackedBarChart({
                         height: `${Math.max(heightPercent, 0)}%`,
                         minHeight: total > 0 ? 2 : 0,
                         opacity: hoveredIndex === null || isHovered ? 1 : 0.55,
-                        // Composite-only entrance: scaleY from the baseline
-                        // (see docs/DECISIONS.md, Epic 16 writeup).
+                        // Entrance: composite-only scaleY from the baseline
+                        // (Epic 16). After that, a refetch eases the bar's
+                        // height to its new value instead of jumping.
                         transform: hasEntered ? "scaleY(1)" : "scaleY(0)",
                         transformOrigin: "bottom",
-                        transitionProperty: "opacity, transform",
-                        transitionDuration: `150ms, ${BAR_ENTRANCE_DURATION_MS}ms`,
-                        transitionTimingFunction:
-                          "ease, cubic-bezier(0.23, 1, 0.32, 1)",
-                        transitionDelay: `0ms, ${Math.min(index * BAR_STAGGER_STEP_MS, BAR_STAGGER_CAP_MS)}ms`,
+                        transitionProperty: "opacity, transform, height",
+                        transitionDuration: `150ms, ${MOTION.barEnterMs}ms, ${MOTION.updateMs}ms`,
+                        transitionTimingFunction: `ease, ${MOTION.easeOut}, ${MOTION.easeOut}`,
+                        transitionDelay: `0ms, ${Math.min(index * MOTION.barStaggerMs, MOTION.barStaggerCapMs)}ms, 0ms`,
                       }}
                     >
                       {nonZero.map((item) => (

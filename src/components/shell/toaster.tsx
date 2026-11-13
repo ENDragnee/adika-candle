@@ -13,7 +13,11 @@ export function Toaster() {
   return (
     <SonnerToaster
       theme={resolvedTheme === "dark" ? "dark" : "light"}
-      position="top-center"
+      // Bottom-right keeps toasts off the TopBar's title and breadcrumb
+      // (Epic 22); on phones they sit above the bottom tab bar.
+      position="bottom-right"
+      mobileOffset={{ bottom: 80 }}
+      visibleToasts={4}
       richColors
       closeButton
     />

@@ -5,3 +5,14 @@ export const ROLES = {
   MANAGER: "MANAGER",
   INVENTORY_MANAGER: "INVENTORY_MANAGER",
 } as const;
+
+// "INVENTORY_MANAGER" → "Inventory Manager". Lives here (not in the roles
+// feature) because the app shell shows it too.
+export function HumanizeRoleName(roleName: string): string {
+  return roleName
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}

@@ -111,6 +111,7 @@ export function ManualAdjustmentForm({
         />
       )}
       <Button
+        loading={createTransaction.isPending}
         type="submit"
         variant="secondary"
         disabled={createTransaction.isPending}

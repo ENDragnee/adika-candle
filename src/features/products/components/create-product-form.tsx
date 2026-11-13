@@ -75,6 +75,7 @@ export function CreateProductForm({ onSuccess }: { onSuccess: () => void }) {
         )}
       </div>
       <Button
+        loading={createProduct.isPending}
         type="submit"
         disabled={createProduct.isPending || activeCategories.length === 0}
         className="mt-1"

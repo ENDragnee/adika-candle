@@ -126,6 +126,7 @@ export function AcceptStockForm({ onSuccess }: { onSuccess: () => void }) {
         </p>
       )}
       <Button
+        loading={acceptStock.isPending}
         type="submit"
         disabled={
           acceptStock.isPending ||

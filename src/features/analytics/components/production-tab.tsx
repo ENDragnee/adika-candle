@@ -9,6 +9,7 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { Section } from "@/components/ui/section";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { ToneBadge } from "@/components/ui/tone-badge";
+import { type DateRangeValue, ResolveDateRange } from "@/lib/date-range";
 import type { ExportColumn } from "@/lib/export/export-column";
 import {
   FormatKg,
@@ -35,10 +37,14 @@ import type {
 } from "../validators/analytics.schema";
 import { TrendLineChart } from "./trend-line-chart";
 
-const GRANULARITY_OPTIONS: { value: ReportGranularity; label: string }[] = [
+const GRANULARITY_OPTIONS: {
+  value: ReportGranularity | "CUSTOM";
+  label: string;
+}[] = [
   { value: "DAY", label: "Daily" },
   { value: "WEEK", label: "Weekly" },
   { value: "MONTH", label: "Monthly" },
+  { value: "CUSTOM", label: "Custom range" },
 ];
 
 const CURRENT_LABEL: Record<ReportGranularity, string> = {
@@ -213,13 +219,20 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
   );
 }
 
+type Mode = ReportGranularity | "CUSTOM";
+
 export function ProductionTab() {
-  const [granularity, setGranularity] = useState<ReportGranularity>("DAY");
+  const [mode, setMode] = useState<Mode>("DAY");
   const [offset, setOffset] = useState(0);
+  // Custom range mode (Epic 22): one report for the whole range, with a
+  // daily (or weekly, for long ranges) trend.
+  const [range, setRange] = useState<DateRangeValue>({ preset: "30d" });
+  const granularity: ReportGranularity = mode === "CUSTOM" ? "DAY" : mode;
   const { data, isLoading, isFetching } = useProductionReport(
     granularity,
     offset,
     true,
+    mode === "CUSTOM" ? ResolveDateRange(range) : {},
   );
 
   const showMaterialAdjusted =
@@ -239,50 +252,59 @@ export function ProductionTab() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Previous period"
-            onClick={() => setOffset((value) => value - 1)}
-          >
-            <CaretLeftIcon />
-          </Button>
-          <div className="min-w-40 px-2 text-center">
-            <div className="text-sm font-semibold">
-              {data?.periodLabel ?? "…"}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {offset === 0
-                ? CURRENT_LABEL[granularity]
-                : isFetching
-                  ? "Loading…"
-                  : "Past period"}
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Next period"
-            disabled={!data?.hasNext}
-            onClick={() => setOffset((value) => Math.min(0, value + 1))}
-          >
-            <CaretRightIcon />
-          </Button>
-          {offset !== 0 && (
-            <Button variant="ghost" size="sm" onClick={() => setOffset(0)}>
-              {CURRENT_LABEL[granularity]}
+        {mode === "CUSTOM" ? (
+          <DateRangeFilter
+            value={range}
+            onChange={setRange}
+            presets={["7d", "30d", "month", "last-month", "90d", "year"]}
+            className="w-60"
+          />
+        ) : (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Previous period"
+              onClick={() => setOffset((value) => value - 1)}
+            >
+              <CaretLeftIcon />
             </Button>
-          )}
-        </div>
+            <div className="min-w-40 px-2 text-center">
+              <div className="text-sm font-semibold">
+                {data?.periodLabel ?? "…"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {offset === 0
+                  ? CURRENT_LABEL[granularity]
+                  : isFetching
+                    ? "Loading…"
+                    : "Past period"}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Next period"
+              disabled={!data?.hasNext}
+              onClick={() => setOffset((value) => Math.min(0, value + 1))}
+            >
+              <CaretRightIcon />
+            </Button>
+            {offset !== 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setOffset(0)}>
+                {CURRENT_LABEL[granularity]}
+              </Button>
+            )}
+          </div>
+        )}
         <Select
-          value={granularity}
+          value={mode}
           onValueChange={(value) => {
-            setGranularity(value as ReportGranularity);
+            setMode(value as Mode);
             setOffset(0);
           }}
         >
-          <SelectTrigger className="w-32" aria-label="Report period">
+          <SelectTrigger className="w-40" aria-label="Report period">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -353,6 +375,7 @@ export function ProductionTab() {
           <TableSkeleton columns={materialColumns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={materialColumns}
             data={data.materials}
             getRowKey={(row) => row.materialId}
@@ -379,6 +402,7 @@ export function ProductionTab() {
           <TableSkeleton columns={productColumns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={productColumns}
             data={data.products}
             getRowKey={(row) => row.productId}

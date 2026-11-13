@@ -9,7 +9,17 @@ import { GetSession } from "@/lib/session";
 // Reads the session directly — not a candidate for instant navigation.
 export const instant = false;
 
-const RANGES: SaleRange[] = ["today", "7d", "30d", "month", "all"];
+const RANGES: SaleRange[] = [
+  "today",
+  "yesterday",
+  "7d",
+  "30d",
+  "90d",
+  "month",
+  "last-month",
+  "year",
+  "all",
+];
 
 export default async function ManagerSalesPage({
   searchParams,

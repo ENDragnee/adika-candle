@@ -1,11 +1,16 @@
+"use client";
+
+// /ssr entry: no React context, so TableSkeleton stays importable from
+// Server Components (the route loading.tsx files).
 import {
   CaretDownIcon,
   CaretUpDownIcon,
   CaretUpIcon,
-} from "@phosphor-icons/react";
+} from "@phosphor-icons/react/ssr";
 import type * as React from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pagination } from "@/components/ui/pagination";
+import { Pagination, type PaginationProps } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -87,19 +92,17 @@ export function SortableHeaderButton({
   );
 }
 
-interface DataTablePagination {
-  page: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-}
-
 interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   data: T[];
   getRowKey: (row: T) => string;
   emptyMessage: string;
-  pagination?: DataTablePagination;
+  pagination?: PaginationProps;
   sort?: DataTableSort;
+  // Page an already-loaded array in the browser (Epic 22) — for tables
+  // computed in memory, like the Analytics reports, that have no server
+  // pagination to drive. Ignored when `pagination` is given.
+  clientPageSize?: number;
 }
 
 // Shared table shell every list component in src/features uses — gives a
@@ -108,25 +111,36 @@ interface DataTableProps<T> {
 // same <table>/border/bg-muted markup. See docs/DECISIONS.md, "Epic 9
 // decisions".
 //
-// Below `md`, renders as a stacked list of per-row Cards instead of a
-// table — the structured `columns` array (header + cell per field) gives
+// Below `lg` (Epic 22; was `md`), renders as per-row Cards instead of a
+// table — one column on phones, two on tablets — the structured `columns` array (header + cell per field) gives
 // us everything needed to do this centrally, so no call site needs to
 // change. The first column becomes each card's title; the rest render as
 // a label/value list matching the existing ProductOverview/CustomerHeader
 // "dl" convention. See docs/DECISIONS.md, "mobile shell" decisions.
 export function DataTable<T>({
   columns,
-  data,
+  data: allData,
   getRowKey,
   emptyMessage,
   pagination,
   sort,
+  clientPageSize,
 }: DataTableProps<T>) {
-  const [titleColumn, ...restColumns] = columns;
+  const client = useClientPaging(
+    pagination ? undefined : clientPageSize,
+    allData,
+  );
+  const data = client.rows;
+  const paginationProps = pagination ?? client.pagination;
+  const [titleColumn, ...otherColumns] = columns;
+  // A column with no header (row actions like the "⋯" menu) goes in the
+  // card's header next to its title instead of an unlabeled row.
+  const actionColumns = otherColumns.filter((column) => !column.header);
+  const restColumns = otherColumns.filter((column) => column.header);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <TableContainer>
           <Table>
             <TableHeader>
@@ -181,12 +195,19 @@ export function DataTable<T>({
           </Table>
         </TableContainer>
       </div>
-      <div className="flex flex-col gap-3 md:hidden">
+      <div className="grid gap-3 md:grid-cols-2 lg:hidden">
         {data.length ? (
           data.map((row) => (
             <Card key={getRowKey(row)}>
-              <CardHeader>
-                <CardTitle>{titleColumn.cell(row)}</CardTitle>
+              <CardHeader className="flex flex-row items-start justify-between gap-2">
+                <CardTitle className="min-w-0">
+                  {titleColumn.cell(row)}
+                </CardTitle>
+                {actionColumns.map((column) => (
+                  <div key={column.key} className="-mt-1 -mr-2 shrink-0">
+                    {column.cell(row)}
+                  </div>
+                ))}
               </CardHeader>
               {restColumns.length > 0 && (
                 <CardContent>
@@ -210,20 +231,43 @@ export function DataTable<T>({
             </Card>
           ))
         ) : (
-          <p className="py-8 text-center text-muted-foreground">
+          <p className="py-8 text-center text-muted-foreground md:col-span-2">
             {emptyMessage}
           </p>
         )}
       </div>
-      {pagination && (
-        <Pagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          onPageChange={pagination.onPageChange}
-        />
-      )}
+      {paginationProps && <Pagination {...paginationProps} />}
     </div>
   );
+}
+
+function useClientPaging<T>(initialPageSize: number | undefined, data: T[]) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPageSize ?? 0);
+  // A new filter/sort upstream can shrink the list below the current
+  // page; fall back to the last page that exists.
+  const totalPages = pageSize
+    ? Math.max(1, Math.ceil(data.length / pageSize))
+    : 1;
+  const current = Math.min(page, totalPages);
+
+  if (!initialPageSize) {
+    return { rows: data, pagination: undefined };
+  }
+  return {
+    rows: data.slice((current - 1) * pageSize, current * pageSize),
+    pagination: {
+      page: current,
+      totalPages,
+      total: data.length,
+      pageSize,
+      onPageChange: setPage,
+      onPageSizeChange: (next: number) => {
+        setPageSize(next);
+        setPage(1);
+      },
+    } satisfies PaginationProps,
+  };
 }
 
 const DEFAULT_SKELETON_ROWS = 5;
@@ -251,7 +295,7 @@ export function TableSkeleton({
 }) {
   return (
     <>
-      <div className={mobileCard ? "hidden md:block" : undefined}>
+      <div className={mobileCard ? "hidden lg:block" : undefined}>
         <TableContainer>
           <Table>
             <TableHeader>
@@ -281,7 +325,7 @@ export function TableSkeleton({
         </TableContainer>
       </div>
       {mobileCard && (
-        <div className="flex flex-col gap-3 md:hidden">
+        <div className="grid gap-3 md:grid-cols-2 lg:hidden">
           {Array.from({ length: rows }, (_, rowIndex) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static row count, never reordered
             <Card key={rowIndex}>

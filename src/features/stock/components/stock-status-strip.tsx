@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MOTION } from "@/components/motion/motion-tokens";
 import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 import { ToneColor } from "@/components/ui/tone-badge";
 import { cn } from "@/lib/utils";
@@ -68,8 +69,7 @@ export function StockStatusStrip({
                   ),
                   transform: hasEntered ? "scaleX(1)" : "scaleX(0)",
                   transformOrigin: "left",
-                  transition:
-                    "transform 420ms cubic-bezier(0.23, 1, 0.32, 1), opacity 150ms ease",
+                  transition: `transform ${MOTION.barEnterMs}ms ${MOTION.easeOut}, opacity 150ms ease, flex-grow ${MOTION.updateMs}ms ${MOTION.easeOut}`,
                 }}
               />
             ))}

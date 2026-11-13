@@ -3,7 +3,7 @@
 import { InfoIcon, WarningIcon } from "@phosphor-icons/react";
 import { isAxiosError } from "axios";
 import { type FormEvent, useState } from "react";
-import { toast } from "sonner";
+import { NotifyError } from "@/components/feedback/notify-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,7 +23,6 @@ import {
   FormatMoney,
   FormatNumber,
 } from "@/lib/format";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 import { useCreateSale } from "../hooks/use-sales";
@@ -165,7 +164,7 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
         setOversell(prompt);
         return;
       }
-      toast.error(GetErrorMessage(error, "Couldn't record sale"));
+      NotifyError(error, "Couldn't record sale");
     }
   }
 
@@ -423,6 +422,7 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
       )}
       {!oversell && (
         <Button
+          loading={createSale.isPending}
           type="submit"
           disabled={
             createSale.isPending ||

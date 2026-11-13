@@ -105,6 +105,21 @@ export const POST = CreateApiRoute({
   schema: CreateSaleInputSchema,
   requiresAuth: { status: true, permission: "sale:create" },
   responseSchema: SaleSchema,
+  activity: ({ result }) => ({
+    type: "sales",
+    action: "sale.create",
+    message: `Sold ${result.quantityKg} kg of ${result.productName} for ETB ${result.totalAmount}${result.customerName ? ` to ${result.customerName}` : ""}${result.paymentType === "LOAN" ? " on account" : ""}`,
+    entityType: "sale",
+    entityId: result.id,
+    entityLabel: result.referenceCode,
+    changes: {
+      product: result.productName,
+      quantityKg: result.quantityKg,
+      totalAmount: result.totalAmount,
+      paymentType: result.paymentType,
+      customer: result.customerName,
+    },
+  }),
   handler: async (body, session) => {
     // requiresAuth.status guarantees a session id here.
     const createdById = session?.id ?? "";

@@ -127,11 +127,7 @@ export function MaterialBalanceList({
             getRowKey={(balance) => balance.materialId}
             emptyMessage="No raw materials match."
             sort={list.sort}
-            pagination={{
-              page: list.page,
-              totalPages: result?.pagination.totalPages ?? 1,
-              onPageChange: list.setPage,
-            }}
+            pagination={list.Bind(result?.pagination)}
           />
         </div>
       )}

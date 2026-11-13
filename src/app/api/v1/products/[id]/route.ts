@@ -10,6 +10,7 @@ import {
   UpdateProductInputSchema,
 } from "@/features/products/validators/product.schema";
 import { Prisma } from "@/generated/prisma/client";
+import { ChangedFields } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
 
@@ -38,6 +39,25 @@ export const PATCH = CreateApiRoute<UpdateProductInput, Params, ProductDTO>({
   schema: UpdateProductInputSchema,
   requiresAuth: { status: true, permission: "product:manage" },
   responseSchema: ProductSchema,
+  activity: ({ body, result }) => ({
+    type: "catalog",
+    action:
+      body.isActive === false
+        ? "product.deactivate"
+        : body.isActive === true
+          ? "product.activate"
+          : "product.update",
+    message:
+      body.isActive === false
+        ? `Deactivated product ${result.name}`
+        : body.isActive === true
+          ? `Reactivated product ${result.name}`
+          : `Edited product ${result.name} (${ChangedFields(body).join(", ")})`,
+    entityType: "product",
+    entityId: result.id,
+    entityLabel: result.name,
+    changes: { ...body },
+  }),
   handler: async (body, _session, params) => {
     if (body.categoryId) {
       const category = await prisma.category.findUnique({

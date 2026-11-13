@@ -44,6 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePagination } from "@/lib/use-pagination";
 import {
   useCreateUnitConversion,
   useDeactivateUnitConversion,
@@ -103,7 +104,11 @@ function CreateUnitConversionForm({ onSuccess }: { onSuccess: () => void }) {
           {unitName || "unit"} weighs 12.5 kg, enter 12.5.
         </p>
       </div>
-      <Button type="submit" disabled={createUnitConversion.isPending}>
+      <Button
+        loading={createUnitConversion.isPending}
+        type="submit"
+        disabled={createUnitConversion.isPending}
+      >
         {createUnitConversion.isPending ? "Adding…" : "Add unit"}
       </Button>
     </form>
@@ -155,7 +160,11 @@ function EditUnitConversionForm({
           How many kilograms is one {unit.unitName}?
         </p>
       </div>
-      <Button type="submit" disabled={updateUnitConversion.isPending}>
+      <Button
+        loading={updateUnitConversion.isPending}
+        type="submit"
+        disabled={updateUnitConversion.isPending}
+      >
         {updateUnitConversion.isPending ? "Saving…" : "Save"}
       </Button>
     </form>
@@ -254,9 +263,9 @@ export function UnitConversionManager() {
     description:
       "How many kilograms are in each unit you sell by — Carton, Packet, Wax, Kir. Deactivating a unit hides it from new stock and sales entries without deleting its history.",
   });
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data: result, isLoading } = useUnitConversions({ page });
+  const { data: result, isLoading } = useUnitConversions(pager.params);
   const units = result?.data;
 
   return (
@@ -311,11 +320,7 @@ export function UnitConversionManager() {
               </TableBody>
             </Table>
           </TableContainer>
-          <Pagination
-            page={page}
-            totalPages={result?.pagination.totalPages ?? 1}
-            onPageChange={setPage}
-          />
+          <Pagination {...pager.Bind(result?.pagination)} />
         </>
       )}
     </div>

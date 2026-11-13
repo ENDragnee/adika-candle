@@ -7,7 +7,6 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import { InvalidateLedgerQueries } from "@/lib/query-invalidation";
 import {
   CreateSale,
@@ -47,6 +46,9 @@ export function useCreateSale() {
 
   return useMutation({
     mutationFn: (input: CreateSaleInput) => CreateSale(input),
+    // RecordSaleForm turns INSUFFICIENT_STOCK into its own confirm prompt
+    // and reports every other failure through NotifyError itself.
+    meta: { silentError: true },
     onSuccess: () => {
       InvalidateLedgerQueries(queryClient);
       toast.success("Sale recorded");
@@ -63,8 +65,6 @@ export function useVoidSale(id: string) {
       InvalidateLedgerQueries(queryClient);
       toast.success(`Sale ${sale.referenceCode} voided`);
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't void sale"));
-    },
+    meta: { errorTitle: "Couldn't void sale" },
   });
 }

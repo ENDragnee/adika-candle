@@ -39,6 +39,14 @@ export const POST = CreateApiRoute({
   schema: CreateCategoryInputSchema,
   requiresAuth: { status: true, permission: "category:manage" },
   responseSchema: CategorySchema,
+  activity: ({ result }) => ({
+    type: "catalog",
+    action: "category.create",
+    message: `Created category ${result.name}`,
+    entityType: "category",
+    entityId: result.id,
+    entityLabel: result.name,
+  }),
   handler: async (body) => {
     try {
       const category = await prisma.category.create({ data: body });
