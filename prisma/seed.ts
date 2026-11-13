@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { GenerateCode } from "@/lib/generate-code";
 import { prisma } from "@/lib/prisma";
 import { ROLES } from "@/lib/redirector";
 
@@ -95,6 +96,79 @@ async function seedRoles(allPermissionNames: string[]) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Catalog reference data. KG is the base (SI) unit for every quantity;
+// each selling unit converts to kg by its ratio.
+// ---------------------------------------------------------------------------
+
+// Carton = 30 kg is confirmed. Packet, Kir and Cola are known selling units
+// whose kg ratio isn't confirmed yet: they're seeded *inactive* with a
+// placeholder ratio of 1 so they never appear in Record Sale / Accept Stock
+// until a Manager sets the real ratio and activates them under Settings →
+// Unit conversions.
+const UNIT_CONVERSIONS: {
+  unitName: string;
+  ratioToKg: number;
+  isActive: boolean;
+}[] = [
+  { unitName: "CARTON", ratioToKg: 30, isActive: true },
+  { unitName: "PACKET", ratioToKg: 1, isActive: false },
+  { unitName: "KIR", ratioToKg: 1, isActive: false },
+  { unitName: "COLA", ratioToKg: 1, isActive: false },
+];
+
+const CANDLE_CATEGORY = "Candles";
+
+// The factory's candle lines. No prices or costs are seeded — those are
+// set per product by a Manager (pricing is variable over time).
+const CANDLE_PRODUCTS = [
+  "No. 6",
+  "Maral No. 7",
+  "Plus No. 8",
+  "Small",
+  "Medium",
+  "Big",
+  "Color",
+];
+
+// Idempotent: creates missing units only. An existing unit is left as is,
+// so re-seeding never overwrites a ratio or status a Manager has changed.
+async function seedUnitConversions() {
+  for (const unit of UNIT_CONVERSIONS) {
+    await prisma.unitConversion.upsert({
+      where: { unitName: unit.unitName },
+      update: {},
+      create: unit,
+    });
+  }
+}
+
+async function seedCandleCatalog() {
+  const category = await prisma.category.upsert({
+    where: { name: CANDLE_CATEGORY },
+    update: {},
+    create: {
+      name: CANDLE_CATEGORY,
+      description: "Finished candles sold by the factory.",
+    },
+  });
+
+  for (const name of CANDLE_PRODUCTS) {
+    // Product.name isn't unique (only sku is), so match on name within the
+    // category to stay idempotent.
+    const existing = await prisma.product.findFirst({
+      where: { name, categoryId: category.id },
+    });
+    if (existing) continue;
+
+    const sku = GenerateCode();
+    if (!sku) throw new Error(`Couldn't generate a SKU for ${name}`);
+    await prisma.product.create({
+      data: { name, sku, categoryId: category.id },
+    });
+  }
+}
+
 async function ensureDevUser({
   email,
   username,
@@ -129,26 +203,55 @@ async function ensureDevUser({
   });
 }
 
+const DEV_PASSWORD = "ChangeMe123!";
+
+function SeedAccount(
+  prefix: "MANAGER" | "INVENTORY",
+  defaults: { email: string; username: string; name: string; roleName: string },
+) {
+  const env = (key: string) => process.env[`SEED_${prefix}_${key}`];
+  const password = env("PASSWORD");
+  if (!password && process.env.NODE_ENV === "production") {
+    throw new Error(
+      `SEED_${prefix}_PASSWORD must be set when seeding outside development`,
+    );
+  }
+  return {
+    email: env("EMAIL") ?? defaults.email,
+    username: env("USERNAME") ?? defaults.username,
+    name: env("NAME") ?? defaults.name,
+    password: password ?? DEV_PASSWORD,
+    roleName: defaults.roleName,
+  };
+}
+
 async function main() {
   const allPermissionNames = await seedModulesAndPermissions();
   await seedRoles(allPermissionNames);
+  await seedUnitConversions();
+  await seedCandleCatalog();
 
-  // Dev-only seed users — never run this against a production database.
-  await ensureDevUser({
-    email: "manager@adika.local",
-    username: "manager",
-    password: "ChangeMe123!",
-    name: "Dev Manager",
-    roleName: ROLES.MANAGER,
-  });
+  // One Manager and one Inventory Manager account. The defaults are dev
+  // credentials; set SEED_MANAGER_* / SEED_INVENTORY_* to create real
+  // accounts. Outside development the passwords must be provided — the
+  // seed refuses to create accounts with the well-known dev password.
+  await ensureDevUser(
+    SeedAccount("MANAGER", {
+      email: "manager@adika.local",
+      username: "manager",
+      name: "Manager",
+      roleName: ROLES.MANAGER,
+    }),
+  );
 
-  await ensureDevUser({
-    email: "inventory@adika.local",
-    username: "inventory",
-    password: "ChangeMe123!",
-    name: "Dev Inventory Manager",
-    roleName: ROLES.INVENTORY_MANAGER,
-  });
+  await ensureDevUser(
+    SeedAccount("INVENTORY", {
+      email: "inventory@adika.local",
+      username: "inventory",
+      name: "Inventory Manager",
+      roleName: ROLES.INVENTORY_MANAGER,
+    }),
+  );
 
   console.log("Seed complete.");
 }
