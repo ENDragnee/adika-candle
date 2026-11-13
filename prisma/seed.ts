@@ -161,6 +161,25 @@ async function seedUnitConversions() {
   }
 }
 
+// The factory's standing customers (they can buy on account or pay in
+// advance — see Customer/LoanAccount in schema.prisma).
+const CUSTOMERS = ["Merkato", "Mekele", "Moges", "Gondor"];
+
+// Every customer gets a LoanAccount at creation, same as
+// POST /api/v1/customers (docs/DECISIONS.md, Epic 5). Customer.name isn't
+// unique, so match case-insensitively to stay idempotent.
+async function seedCustomers() {
+  for (const name of CUSTOMERS) {
+    const existing = await prisma.customer.findFirst({
+      where: { name: { equals: name, mode: "insensitive" } },
+    });
+    if (existing) continue;
+    await prisma.customer.create({
+      data: { name, loanAccount: { create: {} } },
+    });
+  }
+}
+
 async function seedRawMaterials() {
   for (const name of RAW_MATERIALS) {
     await prisma.rawMaterial.upsert({
@@ -258,6 +277,7 @@ async function main() {
   await seedRoles(allPermissionNames);
   await seedUnitConversions();
   await seedRawMaterials();
+  await seedCustomers();
   await seedCandleCatalog();
 
   // One Manager and one Inventory Manager account. The defaults are dev
