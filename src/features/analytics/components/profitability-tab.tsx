@@ -14,6 +14,7 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { Section } from "@/components/ui/section";
 import {
@@ -24,10 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import { type DateRangeValue, ResolveDateRange } from "@/lib/date-range";
 import type { ExportColumn } from "@/lib/export/export-column";
 import {
   FormatCompactNumber,
-  FormatDateKey,
   FormatKg,
   FormatMoney,
   FormatPercent,
@@ -37,12 +38,6 @@ import { useProfitability } from "../hooks/use-analytics";
 import type { ProductMarginRowDTO } from "../validators/analytics.schema";
 import { StatTile } from "./stat-tile";
 import { TrendLineChart } from "./trend-line-chart";
-
-const WINDOW_OPTIONS = [
-  { value: 7, label: "Last 7 days" },
-  { value: 30, label: "Last 30 days" },
-  { value: 90, label: "Last 90 days" },
-];
 
 type SortKey = "totalProfit" | "realizedMarginPercent" | "revenue";
 
@@ -172,8 +167,8 @@ function NullableNumber(value: string | null) {
 }
 
 export function ProfitabilityTab() {
-  const [days, setDays] = useState(30);
-  const { data, isLoading } = useProfitability(days, true);
+  const [range, setRange] = useState<DateRangeValue>({ preset: "30d" });
+  const { data, isLoading } = useProfitability(ResolveDateRange(range), true);
   const [sortKey, setSortKey] = useState<SortKey>("totalProfit");
 
   const sortedProducts = useMemo(() => {
@@ -201,21 +196,12 @@ export function ProfitabilityTab() {
           Profit = what customers paid − what the goods cost to make, using the
           cost on record when each sale happened.
         </p>
-        <Select
-          value={String(days)}
-          onValueChange={(value) => setDays(Number(value))}
-        >
-          <SelectTrigger className="w-40" aria-label="Period">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {WINDOW_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={String(option.value)}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <DateRangeFilter
+          value={range}
+          onChange={setRange}
+          presets={["7d", "30d", "month", "last-month", "90d", "year"]}
+          className="w-56"
+        />
       </div>
 
       {isLoading || !data ? (
@@ -307,8 +293,8 @@ export function ProfitabilityTab() {
       )}
 
       <Section
-        title="Daily margin"
-        description="Gaps are days with no sales that had a cost on record."
+        title="Margin over time"
+        description="Gaps are days (or weeks, for long ranges) with no sales that had a cost on record."
       >
         {isLoading || !data ? (
           <CardSkeleton />
@@ -316,7 +302,7 @@ export function ProfitabilityTab() {
           <TrendLineChart
             points={data.trend.map((point) => ({
               key: point.date,
-              label: FormatDateKey(point.date),
+              label: point.label,
               values: { margin: NullableNumber(point.marginPercent) },
             }))}
             series={[
@@ -341,7 +327,7 @@ export function ProfitabilityTab() {
             {data && (
               <ExportMenu
                 filename="profitability"
-                title={`Profitability — last ${days} days`}
+                title={`Profitability — ${data?.periodDays ?? ""} days`}
                 columns={exportColumns}
                 rows={sortedProducts}
               />
@@ -368,6 +354,7 @@ export function ProfitabilityTab() {
           <TableSkeleton columns={columns.length} />
         ) : (
           <DataTable
+            clientPageSize={20}
             columns={columns}
             data={sortedProducts}
             getRowKey={(row) => row.productId}

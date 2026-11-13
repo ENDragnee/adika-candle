@@ -108,7 +108,11 @@ export function RepaymentForm({
           delta={Number(amount) > 0 ? -Number(amount) : null}
         />
       )}
-      <Button type="submit" disabled={createTransaction.isPending}>
+      <Button
+        loading={createTransaction.isPending}
+        type="submit"
+        disabled={createTransaction.isPending}
+      >
         {createTransaction.isPending ? "Recording…" : "Record"}
       </Button>
     </form>

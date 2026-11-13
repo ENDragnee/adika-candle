@@ -47,6 +47,14 @@ export const POST = CreateApiRoute({
   schema: CreateUnitConversionInputSchema,
   requiresAuth: { status: true, permission: "unit-conversion:manage" },
   responseSchema: UnitConversionSchema,
+  activity: ({ result }) => ({
+    type: "settings",
+    action: "unit.create",
+    message: `Added unit ${result.unitName} (${result.ratioToKg} kg)`,
+    entityType: "unit",
+    entityId: result.id,
+    entityLabel: result.unitName,
+  }),
   handler: async (body) => {
     try {
       const unit = await prisma.unitConversion.create({ data: body });

@@ -458,7 +458,11 @@ model Sale {
 }
 
 // ---------------------------------------------------------------------------
-// Audit log — written from auth and domain events.
+// Activity log (Epic 22) — one row per change anyone makes, plus sign-ins.
+// Written by the API layer (CreateApiRoute, src/lib/activity/) after every
+// successful mutating request and by better-auth hooks for sign-in/out.
+// Append-only; read by /manager/activities with cursor pagination on
+// (createdAt, id).
 // ---------------------------------------------------------------------------
 
 enum LogSeverity {
@@ -469,14 +473,33 @@ enum LogSeverity {
 
 model Log {
   id       String      @id @default(cuid())
+  // Area of the app, e.g. "sales", "stock", "auth" — the filterable group.
   type     String
+  // What happened, e.g. "sale.void", "price.set", "auth.sign_in_failed".
+  action   String      @default("unknown")
   severity LogSeverity
+  // One-line human summary shown in the list.
   message  String
+
+  // The record acted on, when there is one. entityLabel is a snapshot of
+  // its display name, so the log stays readable after renames/deletes.
+  entityType  String?
+  entityId    String?
+  entityLabel String?
+  // Structured detail: changed fields, amounts, reasons. Never secrets.
+  changes     Json?
+
+  ipAddress String?
+  userAgent String?
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
+  @@index([createdAt, id])
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+  @@index([entityType, entityId])
   @@map("log")
 }

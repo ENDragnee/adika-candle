@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
@@ -11,6 +10,7 @@ import { ToneBadge } from "@/components/ui/tone-badge";
 import type { ExportColumn } from "@/lib/export/export-column";
 import { FormatDateTime, FormatKg, FormatSignedKg } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { useMaterialLedger } from "../hooks/use-material-activity";
 import { MATERIAL_ENTRY_META, MaterialEntryDelta } from "../labels";
 import { FetchMaterialLedger } from "../services/raw-material.service";
@@ -77,8 +77,11 @@ const exportColumns: ExportColumn<RawMaterialLedgerEntryDTO>[] = [
 ];
 
 export function MaterialLedger({ materialId }: { materialId: string }) {
-  const [page, setPage] = useState(1);
-  const { data: result, isLoading } = useMaterialLedger(materialId, { page });
+  const pager = usePagination();
+  const { data: result, isLoading } = useMaterialLedger(
+    materialId,
+    pager.params,
+  );
 
   if (isLoading) {
     return <TableSkeleton columns={columns.length} />;
@@ -103,11 +106,7 @@ export function MaterialLedger({ materialId }: { materialId: string }) {
         data={result?.data ?? []}
         getRowKey={(entry) => entry.id}
         emptyMessage="No activity recorded yet."
-        pagination={{
-          page,
-          totalPages: result?.pagination.totalPages ?? 1,
-          onPageChange: setPage,
-        }}
+        pagination={pager.Bind(result?.pagination)}
       />
     </div>
   );

@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateUser,
@@ -36,9 +35,7 @@ export function useCreateUser() {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
       toast.success("User created");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't create user"));
-    },
+    meta: { errorTitle: "Couldn't create user" },
   });
 }
 
@@ -51,9 +48,7 @@ export function useUpdateUser(id: string) {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
       toast.success("User updated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't save user"));
-    },
+    meta: { errorTitle: "Couldn't save user" },
   });
 }
 
@@ -63,8 +58,6 @@ export function useSetUserPassword(id: string) {
     onSuccess: () => {
       toast.success("Password updated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't set password"));
-    },
+    meta: { errorTitle: "Couldn't set password" },
   });
 }

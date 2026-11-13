@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import {
   Card,
   CardContent,
@@ -19,7 +20,10 @@ export default function SignInPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <SignInForm />
+        {/* SignInForm reads ?next= via useSearchParams. */}
+        <Suspense>
+          <SignInForm />
+        </Suspense>
       </CardContent>
     </Card>
   );

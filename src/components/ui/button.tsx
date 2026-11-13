@@ -1,3 +1,6 @@
+// The /ssr entry has no React context, so Button stays usable from Server
+// Components (the landing page, the public navbar).
+import { SpinnerGapIcon } from "@phosphor-icons/react/ssr";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import { Slot } from "radix-ui";
@@ -38,15 +41,22 @@ const buttonVariants = cva(
   },
 );
 
+// `loading` (Epic 22): shows a spinner in front of the label, disables the
+// button and marks it aria-busy — the one way every submit shows it's
+// working, instead of each form swapping its own "Saving…" text.
 function Button({
   className,
   variant = "default",
   size = "default",
   asChild = false,
+  loading = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    loading?: boolean;
   }) {
   const Comp = asChild ? Slot.Root : "button";
 
@@ -55,9 +65,25 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      data-loading={loading || undefined}
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {loading && !asChild ? (
+        <>
+          <SpinnerGapIcon
+            data-icon="inline-start"
+            className="animate-spin motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+          {children}
+        </>
+      ) : (
+        children
+      )}
+    </Comp>
   );
 }
 

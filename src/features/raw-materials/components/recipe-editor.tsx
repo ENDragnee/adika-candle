@@ -120,6 +120,7 @@ function AddRequirementForm({
         </p>
       )}
       <Button
+        loading={createRequirement.isPending}
         type="submit"
         disabled={
           createRequirement.isPending ||
@@ -181,7 +182,11 @@ function EditRequirementForm({
           required
         />
       </div>
-      <Button type="submit" disabled={updateRequirement.isPending}>
+      <Button
+        loading={updateRequirement.isPending}
+        type="submit"
+        disabled={updateRequirement.isPending}
+      >
         {updateRequirement.isPending ? "Saving…" : "Save"}
       </Button>
     </form>

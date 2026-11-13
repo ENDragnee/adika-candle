@@ -1,15 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
+import { SafeNextPath } from "@/lib/nav-routes";
 
 export function SignInForm() {
   const router = useRouter();
+  // Set when a session expired mid-task (QueryProvider) — sign back in
+  // and return to the same page.
+  const next = SafeNextPath(useSearchParams().get("next"));
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +36,7 @@ export function SignInForm() {
       return;
     }
 
-    router.push("/");
+    router.push(next ?? "/");
     router.refresh();
   }
 

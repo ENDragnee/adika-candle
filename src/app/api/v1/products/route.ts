@@ -68,6 +68,14 @@ export const POST = CreateApiRoute({
   schema: CreateProductInputSchema,
   requiresAuth: { status: true, permission: "product:manage" },
   responseSchema: ProductSchema,
+  activity: ({ result }) => ({
+    type: "catalog",
+    action: "product.create",
+    message: `Created product ${result.name}`,
+    entityType: "product",
+    entityId: result.id,
+    entityLabel: result.name,
+  }),
   handler: async (body) => {
     const category = await prisma.category.findUnique({
       where: { id: body.categoryId },

@@ -1,5 +1,6 @@
 "use client";
 
+import { MOTION } from "@/components/motion/motion-tokens";
 import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 
 export interface RankedBarDatum {
@@ -9,9 +10,9 @@ export interface RankedBarDatum {
   color: string;
 }
 
-const BAR_ENTRANCE_DURATION_MS = 320;
-const BAR_STAGGER_STEP_MS = 30;
-const BAR_STAGGER_CAP_MS = 240;
+// Ranked lists have few bars, so a longer per-bar stagger reads as a
+// gentle cascade rather than a flicker.
+const RANKED_STAGGER_MS = 40;
 
 // Hand-built horizontal bar chart — used for Stock Health's status
 // distribution and Best Sellers' two rankings. Final width is set directly
@@ -54,10 +55,10 @@ export function RankedBarChart({
                   backgroundColor: datum.color,
                   transform: hasEntered ? "scaleX(1)" : "scaleX(0)",
                   transformOrigin: "left",
-                  transitionProperty: "transform",
-                  transitionDuration: `${BAR_ENTRANCE_DURATION_MS}ms`,
-                  transitionTimingFunction: "cubic-bezier(0.23, 1, 0.32, 1)",
-                  transitionDelay: `${Math.min(index * BAR_STAGGER_STEP_MS, BAR_STAGGER_CAP_MS)}ms`,
+                  transitionProperty: "transform, width",
+                  transitionDuration: `${MOTION.barEnterMs}ms, ${MOTION.updateMs}ms`,
+                  transitionTimingFunction: `${MOTION.easeOut}, ${MOTION.easeOut}`,
+                  transitionDelay: `${Math.min(index * RANKED_STAGGER_MS, MOTION.barStaggerCapMs)}ms, 0ms`,
                 }}
               />
             </div>

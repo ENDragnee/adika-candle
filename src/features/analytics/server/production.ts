@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { InPeriod, Sum, ZERO } from "./decimal";
 import {
   BuildPeriodWindow,
+  BuildRangeBuckets,
+  BuildRangePeriod,
   type PeriodBounds,
   type ReportGranularity,
 } from "./periods";
@@ -57,8 +59,12 @@ function OpeningClosing<T>(
 }
 
 export function ComputeProductionReport(input: {
-  granularity: ReportGranularity;
+  granularity: ReportGranularity | "CUSTOM";
+  // Trend buckets, oldest first.
   periods: PeriodBounds[];
+  // The period the tables describe; defaults to the last trend bucket.
+  // A custom range passes the whole range here (Epic 22).
+  period?: PeriodBounds;
   materials: { id: string; name: string; balanceKg: Prisma.Decimal }[];
   products: {
     id: string;
@@ -76,7 +82,7 @@ export function ComputeProductionReport(input: {
   offset: number;
 }) {
   const { periods, materialEntries, stockEntries } = input;
-  const period = periods[periods.length - 1];
+  const period = input.period ?? periods[periods.length - 1];
   const materialConsumed = new Map<string, Prisma.Decimal>();
 
   const materials = input.materials.map((material) => {
@@ -215,7 +221,7 @@ export function ComputeProductionReport(input: {
     periodStart: period.start.toISOString(),
     periodEnd: period.end.toISOString(),
     offset: input.offset,
-    hasNext: input.offset < 0,
+    hasNext: input.granularity !== "CUSTOM" && input.offset < 0,
     materials,
     products,
     trend,
@@ -225,9 +231,13 @@ export function ComputeProductionReport(input: {
 export async function BuildProductionReport(
   granularity: ReportGranularity,
   offset = 0,
+  range: { from: string; to: string } | null = null,
   now = new Date(),
 ) {
-  const periods = BuildPeriodWindow(granularity, now, offset);
+  const periods = range
+    ? BuildRangeBuckets(range.from, range.to)
+    : BuildPeriodWindow(granularity, now, offset);
+  const period = range ? BuildRangePeriod(range.from, range.to) : undefined;
   // Everything from the first trend period up to now: the trend needs the
   // window, and reconstructing a past period's closing needs every
   // movement after it.
@@ -255,9 +265,10 @@ export async function BuildProductionReport(
     ]);
 
   return ComputeProductionReport({
-    granularity,
+    granularity: range ? "CUSTOM" : granularity,
     periods,
-    offset: Math.min(0, offset),
+    period,
+    offset: range ? 0 : Math.min(0, offset),
     materials: materials.map((material) => ({
       id: material.id,
       name: material.name,

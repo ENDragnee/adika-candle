@@ -1,6 +1,7 @@
 import {
   ArchiveIcon,
   ChartLineUpIcon,
+  ClockCounterClockwiseIcon,
   FlaskIcon,
   GearSixIcon,
   HandCoinsIcon,
@@ -29,6 +30,7 @@ export interface ModuleLabel {
 
 export const MODULE_LABELS: Record<string, ModuleLabel> = {
   analytics: { label: "Analytics", icon: ChartLineUpIcon },
+  activity: { label: "Activity log", icon: ClockCounterClockwiseIcon },
   product: { label: "Products", icon: PackageIcon },
   category: { label: "Categories", icon: TagIcon },
   stock: { label: "Stock", icon: ArchiveIcon },
@@ -51,6 +53,11 @@ export const PERMISSION_LABELS: Record<string, PermissionLabel> = {
     label: "View analytics",
     description:
       "See production, profitability, stock health, and best-seller reports.",
+  },
+  "activity:read": {
+    label: "View activity log",
+    description:
+      "See everything anyone has changed in the system, and every sign-in.",
   },
   "stock:adjust": {
     label: "Correct stock counts",
@@ -151,10 +158,4 @@ export function DescribePermission(permissionName: string): PermissionLabel {
 // "MANAGER" -> "Manager", "INVENTORY_MANAGER" -> "Inventory Manager" — role
 // names are plain uppercase-snake identifiers (see prisma/seed.ts's
 // ROLES constant), not meant to be read as-is.
-export function HumanizeRoleName(roleName: string): string {
-  return roleName
-    .toLowerCase()
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+export { HumanizeRoleName } from "@/lib/roles";

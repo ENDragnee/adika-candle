@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateCategory,
@@ -35,9 +34,7 @@ export function useCreateCategory() {
       queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       toast.success("Category added");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't add category"));
-    },
+    meta: { errorTitle: "Couldn't add category" },
   });
 }
 
@@ -51,9 +48,7 @@ export function useUpdateCategory() {
       queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       toast.success("Category updated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't save category"));
-    },
+    meta: { errorTitle: "Couldn't save category" },
   });
 }
 
@@ -66,8 +61,6 @@ export function useDeactivateCategory() {
       queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       toast.success("Category deactivated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't deactivate category"));
-    },
+    meta: { errorTitle: "Couldn't deactivate category" },
   });
 }

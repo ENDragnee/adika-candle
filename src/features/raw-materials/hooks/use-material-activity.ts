@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import { InvalidateLedgerQueries } from "@/lib/query-invalidation";
 import type { StockCountInput } from "@/lib/schemas/stock-count.schema";
@@ -44,9 +43,7 @@ export function useRecordMaterialActivity() {
       InvalidateLedgerQueries(queryClient);
       toast.success("Material activity recorded");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't record activity"));
-    },
+    meta: { errorTitle: "Couldn't record activity" },
   });
 }
 
@@ -60,8 +57,6 @@ export function useRecordMaterialCount(materialId: string) {
       InvalidateLedgerQueries(queryClient);
       toast.success("Stock count recorded");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't record the stock count"));
-    },
+    meta: { errorTitle: "Couldn't record the stock count" },
   });
 }

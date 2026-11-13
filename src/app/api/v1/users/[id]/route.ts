@@ -20,6 +20,26 @@ export const PATCH = CreateApiRoute<UpdateUserInput, Params, UserDTO>({
   schema: UpdateUserInputSchema,
   requiresAuth: { status: true, permission: "user:manage" },
   responseSchema: UserSchema,
+  activity: ({ body, result }) => ({
+    type: "access",
+    action:
+      body.isActive === false
+        ? "user.deactivate"
+        : body.isActive === true
+          ? "user.activate"
+          : "user.role",
+    message:
+      body.isActive === false
+        ? `Deactivated user ${result.name}`
+        : body.isActive === true
+          ? `Reactivated user ${result.name}`
+          : `Changed ${result.name}'s role to ${result.roleName ?? "none"}`,
+    severity: "WARN",
+    entityType: "user",
+    entityId: result.id,
+    entityLabel: result.name,
+    changes: { ...body },
+  }),
   handler: async (body, session, params) => {
     // Self-lockout guard: nothing else stops a Manager from deactivating
     // their own account or reassigning their own role away from

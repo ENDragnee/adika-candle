@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Module, Permission, Role } from "@/generated/prisma/client";
+import { ROLES } from "@/lib/roles";
 
 export const PermissionSchema = z.object({
   id: z.string(),
@@ -21,6 +22,10 @@ export const RoleSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   permissionIds: z.array(z.string()),
+  // Manager / Inventory Manager — referenced by name in code, so they
+  // can't be renamed or deleted (Epic 22).
+  isBuiltIn: z.boolean(),
+  userCount: z.number().int(),
 });
 
 export type RoleDTO = z.infer<typeof RoleSchema>;
@@ -46,7 +51,12 @@ export type UpdateRolePermissionsInput = z.infer<
   typeof UpdateRolePermissionsInputSchema
 >;
 
-type RoleWithPermissions = Role & { permissions: Pick<Permission, "id">[] };
+type RoleWithPermissions = Role & {
+  permissions: Pick<Permission, "id">[];
+  _count?: { users: number };
+};
+
+export const BUILT_IN_ROLE_NAMES: readonly string[] = Object.values(ROLES);
 
 export function ToRoleDTO(role: RoleWithPermissions): RoleDTO {
   return {
@@ -54,8 +64,36 @@ export function ToRoleDTO(role: RoleWithPermissions): RoleDTO {
     name: role.name,
     description: role.description,
     permissionIds: role.permissions.map((permission) => permission.id),
+    isBuiltIn: BUILT_IN_ROLE_NAMES.includes(role.name),
+    userCount: role._count?.users ?? 0,
   };
 }
+
+// Everything a role query needs for ToRoleDTO.
+export const ROLE_DTO_INCLUDE = {
+  permissions: { select: { id: true } },
+  _count: { select: { users: true } },
+} as const;
+
+const RoleNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Give the role a name of at least 2 characters")
+  .max(60, "Keep the name under 60 characters");
+
+export const CreateRoleInputSchema = z.object({
+  name: RoleNameSchema,
+  description: z.string().trim().max(200).optional(),
+  // Start from an existing role's permissions instead of none.
+  copyFromRoleId: z.string().min(1).optional(),
+});
+export type CreateRoleInput = z.infer<typeof CreateRoleInputSchema>;
+
+export const UpdateRoleInputSchema = z.object({
+  name: RoleNameSchema.optional(),
+  description: z.string().trim().max(200).nullable().optional(),
+});
+export type UpdateRoleInput = z.infer<typeof UpdateRoleInputSchema>;
 
 type ModuleWithPermissions = Module & { permissions: Permission[] };
 

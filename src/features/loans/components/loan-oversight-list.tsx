@@ -42,6 +42,7 @@ import {
   Pluralize,
 } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { cn } from "@/lib/utils";
 import { useLoanAccounts } from "../hooks/use-loans";
 import { FetchLoanAccounts } from "../services/loan.service";
@@ -213,10 +214,11 @@ const FILTERS: { value: LoanBalanceFilter; label: string }[] = [
 // book, filter by who owes whom, last-payment aging, and payment /
 // correction actions on each row without leaving the page.
 export function LoanOversightList() {
-  const [page, setPage] = useState(1);
+  const pager = usePagination();
+  const { setPage } = pager;
   const [filter, setFilter] = useState<LoanBalanceFilter>("OWES");
   const [search, setSearch] = useState<string | undefined>(undefined);
-  const params = { page, balance: filter, search };
+  const params = { ...pager.params, balance: filter, search };
   const { data: result, isLoading, isFetching } = useLoanAccounts(params);
   const summary = result?.summary;
 
@@ -311,11 +313,7 @@ export function LoanOversightList() {
                   ? "No customer owes you anything."
                   : "No accounts match."
               }
-              pagination={{
-                page,
-                totalPages: result?.pagination.totalPages ?? 1,
-                onPageChange: setPage,
-              }}
+              pagination={pager.Bind(result?.pagination)}
             />
           </div>
         )}

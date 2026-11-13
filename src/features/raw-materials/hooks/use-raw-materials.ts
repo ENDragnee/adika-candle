@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateRawMaterial,
@@ -66,9 +65,7 @@ export function useCreateRawMaterial() {
       });
       toast.success("Material added");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't add material"));
-    },
+    meta: { errorTitle: "Couldn't add material" },
   });
 }
 
@@ -90,9 +87,7 @@ export function useUpdateRawMaterial() {
       });
       toast.success("Material updated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't save material"));
-    },
+    meta: { errorTitle: "Couldn't save material" },
   });
 }
 
@@ -108,8 +103,6 @@ export function useDeactivateRawMaterial() {
       });
       toast.success("Material deactivated");
     },
-    onError: (error) => {
-      toast.error(GetErrorMessage(error, "Couldn't deactivate material"));
-    },
+    meta: { errorTitle: "Couldn't deactivate material" },
   });
 }

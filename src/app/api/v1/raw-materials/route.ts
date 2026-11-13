@@ -46,6 +46,14 @@ export const POST = CreateApiRoute({
   schema: CreateRawMaterialInputSchema,
   requiresAuth: { status: true, permission: "raw-material:manage" },
   responseSchema: RawMaterialSchema,
+  activity: ({ result }) => ({
+    type: "materials",
+    action: "material.create",
+    message: `Added raw material ${result.name}`,
+    entityType: "material",
+    entityId: result.id,
+    entityLabel: result.name,
+  }),
   handler: async (body) => {
     try {
       const material = await prisma.rawMaterial.create({ data: body });

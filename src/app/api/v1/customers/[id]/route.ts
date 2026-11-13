@@ -10,6 +10,7 @@ import {
   WITH_LOAN_ACCOUNT_INCLUDE,
 } from "@/features/customers/validators/customer.schema";
 import { Prisma } from "@/generated/prisma/client";
+import { ChangedFields } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
 
@@ -44,6 +45,25 @@ export const PATCH = CreateApiRoute<UpdateCustomerInput, Params, CustomerDTO>({
   schema: UpdateCustomerInputSchema,
   requiresAuth: { status: true, permission: "customer:manage" },
   responseSchema: CustomerSchema,
+  activity: ({ body, result }) => ({
+    type: "customers",
+    action:
+      body.isActive === false
+        ? "customer.deactivate"
+        : body.isActive === true
+          ? "customer.activate"
+          : "customer.update",
+    message:
+      body.isActive === false
+        ? `Deactivated customer ${result.name}`
+        : body.isActive === true
+          ? `Reactivated customer ${result.name}`
+          : `Edited customer ${result.name} (${ChangedFields(body).join(", ")})`,
+    entityType: "customer",
+    entityId: result.id,
+    entityLabel: result.name,
+    changes: { ...body },
+  }),
   handler: async (body, _session, params) => {
     try {
       const customer = await prisma.customer.update({

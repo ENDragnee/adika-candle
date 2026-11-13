@@ -14,6 +14,12 @@ import {
 } from "@/features/analytics/server/profitability";
 import { BuildStockHealth } from "@/features/analytics/server/stock-health";
 import { CreateGraphqlRoute } from "@/lib/api-handlers/graphql.handler";
+import {
+  AddBusinessDays,
+  BusinessDateKey,
+  StartOfBusinessDay,
+} from "@/lib/business-time";
+import { MAX_RANGE_DAYS, ValidateCustomRange } from "@/lib/date-range";
 
 // Schema + resolver wiring only. The calculations live in
 // src/features/analytics/server/*, where they're unit-tested without a
@@ -117,6 +123,7 @@ const typeDefs = /* GraphQL */ `
     DAY
     WEEK
     MONTH
+    CUSTOM
   }
 
   type MaterialProductionRow {
@@ -174,6 +181,7 @@ const typeDefs = /* GraphQL */ `
 
   type MarginTrendPoint {
     date: String!
+    label: String!
     revenue: String!
     profit: String
     marginPercent: String
@@ -237,16 +245,44 @@ const typeDefs = /* GraphQL */ `
   type Query {
     health: HealthStatus!
     dashboard: ManagerDashboard!
-    productionReport(granularity: ReportGranularity!, offset: Int): ProductionReport!
-    profitability(days: Int): Profitability!
+    productionReport(
+      granularity: ReportGranularity!
+      offset: Int
+      from: String
+      to: String
+    ): ProductionReport!
+    profitability(from: String, to: String): Profitability!
     stockHealth: StockHealth!
-    bestSellers(days: Int): BestSellers!
+    bestSellers(from: String, to: String): BestSellers!
   }
 `;
 
-// Upper bound on report windows — keeps a crafted query from scanning
-// years of sales in one request.
-const MAX_WINDOW_DAYS = 366;
+// Report windows (Epic 22): an explicit from/to (business-local dates,
+// inclusive) or, when both are omitted, the trailing default window.
+// Bounded so a crafted query can't scan years of sales in one request.
+const RangeArgsSchema = z.object({
+  from: z.iso.date().nullish(),
+  to: z.iso.date().nullish(),
+});
+type RangeArgs = z.infer<typeof RangeArgsSchema>;
+
+function CheckRange(args: RangeArgs, ctx: z.RefinementCtx) {
+  if (!args.from && !args.to) return;
+  const problem = ValidateCustomRange(
+    { from: args.from ?? undefined, to: args.to ?? undefined },
+    MAX_RANGE_DAYS,
+  );
+  if (problem) ctx.addIssue({ code: "custom", message: problem });
+}
+
+function ResolveRangeArgs(args: RangeArgs, defaultDays: number) {
+  if (args.from && args.to) return { from: args.from, to: args.to };
+  const today = StartOfBusinessDay(new Date());
+  return {
+    from: BusinessDateKey(AddBusinessDays(today, -(defaultDays - 1))),
+    to: BusinessDateKey(today),
+  };
+}
 
 const resolvers = {
   Query: {
@@ -266,24 +302,37 @@ const resolvers = {
     }),
     productionReport: CreateGraphqlRoute({
       moduleName: "analytics.productionReport",
-      schema: z.object({
-        granularity: z.enum(["DAY", "WEEK", "MONTH"]),
-        offset: z.number().int().max(0).min(-120).nullish(),
-      }),
+      schema: z
+        .object({
+          granularity: z.enum(["DAY", "WEEK", "MONTH"]),
+          offset: z.number().int().max(0).min(-120).nullish(),
+        })
+        .extend(RangeArgsSchema.shape)
+        .superRefine(CheckRange),
       requiresAuth: { status: true, permission: "analytics:read" },
       handler: async (
         _parent,
-        args: { granularity: ReportGranularity; offset?: number | null },
-      ) => BuildProductionReport(args.granularity, args.offset ?? 0),
+        args: {
+          granularity: ReportGranularity;
+          offset?: number | null;
+          from?: string | null;
+          to?: string | null;
+        },
+      ) =>
+        BuildProductionReport(
+          args.granularity,
+          args.offset ?? 0,
+          args.from && args.to ? { from: args.from, to: args.to } : null,
+        ),
     }),
     profitability: CreateGraphqlRoute({
       moduleName: "analytics.profitability",
-      schema: z.object({
-        days: z.number().int().positive().max(MAX_WINDOW_DAYS).nullish(),
-      }),
+      schema: RangeArgsSchema.superRefine(CheckRange),
       requiresAuth: { status: true, permission: "analytics:read" },
-      handler: async (_parent, args: { days?: number | null }) =>
-        BuildProfitability(args.days ?? DEFAULT_PROFITABILITY_WINDOW_DAYS),
+      handler: async (_parent, args: RangeArgs) =>
+        BuildProfitability(
+          ResolveRangeArgs(args, DEFAULT_PROFITABILITY_WINDOW_DAYS),
+        ),
     }),
     stockHealth: CreateGraphqlRoute({
       moduleName: "analytics.stockHealth",
@@ -292,12 +341,12 @@ const resolvers = {
     }),
     bestSellers: CreateGraphqlRoute({
       moduleName: "analytics.bestSellers",
-      schema: z.object({
-        days: z.number().int().positive().max(MAX_WINDOW_DAYS).nullish(),
-      }),
+      schema: RangeArgsSchema.superRefine(CheckRange),
       requiresAuth: { status: true, permission: "analytics:read" },
-      handler: async (_parent, args: { days?: number | null }) =>
-        BuildBestSellers(args.days ?? DEFAULT_BEST_SELLERS_WINDOW_DAYS),
+      handler: async (_parent, args: RangeArgs) =>
+        BuildBestSellers(
+          ResolveRangeArgs(args, DEFAULT_BEST_SELLERS_WINDOW_DAYS),
+        ),
     }),
   },
 };

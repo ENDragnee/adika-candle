@@ -79,6 +79,11 @@ export const MANAGER_TOUR_STEPS: TourStepDef[] = [
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
+    "/manager/activities",
+    "Everything anyone changed, and every sign-in, newest first.",
+  ),
+  NavStep(
+    MANAGER_NAV_ITEMS,
     "/manager/categories",
     "Organize products into categories.",
   ),

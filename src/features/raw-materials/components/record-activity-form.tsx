@@ -123,6 +123,7 @@ export function RecordActivityForm({ onSuccess }: { onSuccess: () => void }) {
         </p>
       )}
       <Button
+        loading={recordActivity.isPending}
         type="submit"
         disabled={
           recordActivity.isPending ||

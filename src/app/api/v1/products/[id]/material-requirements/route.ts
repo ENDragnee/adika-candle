@@ -12,6 +12,7 @@ import {
   UpdateMaterialRequirementInputSchema,
 } from "@/features/raw-materials/validators/material-requirement.schema";
 import { Prisma } from "@/generated/prisma/client";
+import { ProductName } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
 
@@ -44,6 +45,21 @@ export const POST = CreateApiRoute<
   schema: CreateMaterialRequirementInputSchema,
   requiresAuth: { status: true, permission: "raw-material:manage" },
   responseSchema: ProductMaterialRequirementSchema,
+  activity: async ({ result, params }) => {
+    const name = await ProductName(params?.id);
+    return {
+      type: "catalog",
+      action: "recipe.add",
+      message: `Added ${result.materialName} to the recipe of ${name}`,
+      entityType: "product",
+      entityId: params?.id,
+      entityLabel: name,
+      changes: {
+        material: result.materialName,
+        quantityKgPerOutputKg: result.quantityKgPerOutputKg,
+      },
+    };
+  },
   handler: async (body, _session, params) => {
     const productId = params?.id;
 
@@ -85,6 +101,21 @@ export const PATCH = CreateApiRoute<
   schema: UpdateMaterialRequirementInputSchema,
   requiresAuth: { status: true, permission: "raw-material:manage" },
   responseSchema: ProductMaterialRequirementSchema,
+  activity: async ({ result, params }) => {
+    const name = await ProductName(params?.id);
+    return {
+      type: "catalog",
+      action: "recipe.update",
+      message: `Changed ${result.materialName} in the recipe of ${name}`,
+      entityType: "product",
+      entityId: params?.id,
+      entityLabel: name,
+      changes: {
+        material: result.materialName,
+        quantityKgPerOutputKg: result.quantityKgPerOutputKg,
+      },
+    };
+  },
   handler: async (body, _session, params) => {
     const productId = params?.id;
 

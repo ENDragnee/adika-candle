@@ -148,11 +148,7 @@ export function StockBalanceList({
             getRowKey={(balance) => balance.productId}
             emptyMessage="No products match."
             sort={list.sort}
-            pagination={{
-              page: list.page,
-              totalPages: result?.pagination.totalPages ?? 1,
-              onPageChange: list.setPage,
-            }}
+            pagination={list.Bind(result?.pagination)}
           />
         </div>
       )}

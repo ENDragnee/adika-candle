@@ -23,6 +23,15 @@ export const PATCH = CreateApiRoute<
   schema: UpdateUnitConversionInputSchema,
   requiresAuth: { status: true, permission: "unit-conversion:manage" },
   responseSchema: UnitConversionSchema,
+  activity: ({ body, result }) => ({
+    type: "settings",
+    action: "unit.update",
+    message: `Edited unit ${result.unitName}${"ratioToKg" in body && body.ratioToKg !== undefined ? ` (now ${result.ratioToKg} kg)` : ""}`,
+    entityType: "unit",
+    entityId: result.id,
+    entityLabel: result.unitName,
+    changes: { ...body },
+  }),
   handler: async (body, _session, params) => {
     try {
       const unit = await prisma.unitConversion.update({
@@ -49,6 +58,14 @@ export const DELETE = CreateApiRoute<unknown, Params, UnitConversionDTO>({
   moduleName: "unit-conversions",
   requiresAuth: { status: true, permission: "unit-conversion:manage" },
   responseSchema: UnitConversionSchema,
+  activity: ({ result }) => ({
+    type: "settings",
+    action: "unit.deactivate",
+    message: `Deactivated unit ${result.unitName}`,
+    entityType: "unit",
+    entityId: result.id,
+    entityLabel: result.unitName,
+  }),
   handler: async (_body, _session, params) => {
     try {
       const unit = await prisma.unitConversion.update({

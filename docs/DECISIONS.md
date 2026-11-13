@@ -12,6 +12,83 @@ undo.
 
 ---
 
+## 2026-11-12 — Epic 22 (Platform Features) decisions
+
+**The activity log is written by the API layer, not by each feature.**
+`CreateApiRoute` records every successful non-GET request after the
+handler returns. A route describes its event with an optional `activity`
+function (actor, action, record, summary, changes); a route without one
+still gets a generic entry (method, path, redacted input), so a new
+mutating route can't silently skip the log. Sign-in, failed sign-in and
+sign-out come from better-auth `hooks` (`src/lib/activity/auth-activity.ts`)
+because those endpoints bypass `CreateApiRoute`. Logging is best-effort
+after the change commits: a failed log write is reported to the server
+console but never turns a successful request into an error. Writing the
+log inside every service transaction was rejected as far more invasive
+for little gain. Secrets are redacted by key name. `record-activity.ts`
+uses `console.error`, not the pino logger, because better-auth loads it
+inside page renders, where pino's pretty-print worker transport can't start.
+
+**Activities use cursor pagination on (createdAt, id); every other list
+uses offset.** The log only grows at the top, so offset pages would shift
+and repeat rows as new entries arrive. Sortable/filterable lists keep
+offset paging (page numbers and totals are useful there) behind one
+`Pagination` control and the `usePagination`/`useListParams` hooks.
+Analytics tables are computed in memory, so `DataTable` pages them in the
+browser (`clientPageSize`).
+
+**Errors are handled centrally in `QueryProvider`.** Mutations declare
+`meta.errorTitle` instead of hand-writing toasts; failures show one toast
+with a Details action (error dialog with code and the response's
+`x-request-id` as a reference). A 401 anywhere shows one "session ended"
+toast and redirects to sign-in with `?next=` (followed only if it is a
+same-site path). 4xx errors are never retried. A query's *first* load that
+fails throws to the route's `error.tsx` (`ErrorState`); a failed background
+refetch keeps the data on screen and only toasts.
+
+**Route `loading.tsx` skeletons mean page-level permission redirects are
+streamed.** Once the skeleton has been sent, a page's `redirect()` arrives
+as a streamed client redirect (meta refresh + RSC instruction) rather than
+an HTTP 307. Nothing from the protected page is rendered. We accepted this
+so navigation never shows a blank screen. API routes still answer
+401/403 directly.
+
+**Custom roles: the two built-in roles keep their names.** `MANAGER`
+decides which sidebar area a user sees, so built-in roles can't be renamed
+or deleted, and any role with users can't be deleted. The post-sign-in
+redirect now comes from permissions (`HomeRouteFor` in
+`src/lib/nav-routes.ts`), so a custom role lands on the first page it can
+open. The navigation's route/permission list moved to `nav-routes.ts`
+(no icons) so server code can share it.
+
+**Password reset stays Manager-only (owner's choice); the rules are one
+shared policy** (`src/lib/password-policy.ts`) used by the Zod schemas and
+the live checklist. "Doesn't contain the person's name" is checked in the
+route, where the account is known. "Sign out everywhere" deletes the
+user's sessions but keeps the Manager's own current one when they reset
+their own password.
+
+**Motion: the count-up "wonkiness" was a bug, not a timing problem.**
+`useCountUp` listed `format`, which every caller passes inline, as an
+effect dependency, so any re-render reset the number to 0. `format` is now
+read through a ref; the hook counts once on mount and then eases between
+values. Timings live in `motion-tokens.ts`.
+
+**Tablet layout: the sidebar collapses below 1024px by default**, with
+a separate remembered preference for each width class, and `DataTable`
+switches to a two-column card grid below `lg` (it used to switch at `md`).
+
+**Tab state uses `window.history.replaceState`, not `router.replace`.**
+Next syncs native history calls with `useSearchParams`, and a tab switch
+isn't a navigation. `router.replace` re-ran the route crossfade on every
+tab click, and quick clicks threw "Transition was aborted".
+
+**Icons in components that Server Components import come from
+`@phosphor-icons/react/ssr`** (`Button`, `DataTable`). The default entry
+creates React context, which crashes server rendering.
+
+---
+
 ## 2026-11-12 — Epic 21 (Manager UX & Logic Audit Fixes) decisions
 
 **Profit and margin are computed over costed sales only; uncosted sales

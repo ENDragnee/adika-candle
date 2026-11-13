@@ -46,6 +46,25 @@ export const PATCH = CreateApiRoute<
   schema: UpdateRawMaterialInputSchema,
   requiresAuth: { status: true, permission: "raw-material:manage" },
   responseSchema: RawMaterialSchema,
+  activity: ({ body, result }) => ({
+    type: "materials",
+    action:
+      body.isActive === false
+        ? "material.deactivate"
+        : body.isActive === true
+          ? "material.activate"
+          : "material.update",
+    message:
+      body.isActive === false
+        ? `Deactivated raw material ${result.name}`
+        : body.isActive === true
+          ? `Reactivated raw material ${result.name}`
+          : `Edited raw material ${result.name}`,
+    entityType: "material",
+    entityId: result.id,
+    entityLabel: result.name,
+    changes: { ...body },
+  }),
   handler: async (body, _session, params) => {
     try {
       const material = await prisma.rawMaterial.update({

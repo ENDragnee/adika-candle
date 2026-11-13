@@ -1,21 +1,29 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { AddBusinessDays, TrailingWindowStart } from "@/lib/business-time";
+import { AddBusinessDays, StartOfBusinessDate } from "@/lib/business-time";
 import { prisma } from "@/lib/prisma";
 import { ZERO } from "./decimal";
 
 export const DEFAULT_BEST_SELLERS_WINDOW_DAYS = 7;
 const BEST_SELLERS_LIMIT = 10;
 
-// Current window = the last `days` local calendar days (today inclusive),
-// prior window = the `days` before that — the same midnight-aligned
-// windows every other report uses. Before Epic 21 this was a rolling
-// `now − days` window, so its edges moved through the day.
-export async function BuildBestSellers(days: number, now = new Date()) {
-  const currentStart = TrailingWindowStart(now, days);
+// Windows are midnight-aligned local calendar days, like every other
+// report. Before Epic 21 this was a rolling `now − days` window, so its
+// edges moved through the day.
+// Epic 22: any from/to range; "prior" is the same number of days
+// immediately before it.
+export async function BuildBestSellers(range: { from: string; to: string }) {
+  const currentStart = StartOfBusinessDate(range.from);
+  const currentEnd = AddBusinessDays(StartOfBusinessDate(range.to), 1);
+  const days = Math.round(
+    (currentEnd.getTime() - currentStart.getTime()) / 86_400_000,
+  );
   const priorStart = AddBusinessDays(currentStart, -days);
 
   const sales = await prisma.sale.findMany({
-    where: { createdAt: { gte: priorStart }, voidedAt: null },
+    where: {
+      createdAt: { gte: priorStart, lt: currentEnd },
+      voidedAt: null,
+    },
     include: { product: { include: { category: true } } },
   });
 

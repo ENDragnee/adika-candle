@@ -120,6 +120,22 @@ breadcrumb back-links (`usePageHeader({ parent })`), and server-side
 search/sort on lists (`useListParams` + `ListSearch` + `DataTable` `sort`).
 New permissions: `stock:adjust`, `sale:void` (re-run `pnpm db:seed`).
 
+**Platform Features (Epic 22)** is done: an activity log
+(`/manager/activities`, `activity:read`) written automatically by
+`CreateApiRoute` (routes describe events via `activity`) and by
+better-auth hooks for sign-ins, cursor-paginated; a shared
+`DateRangeFilter` (`src/lib/date-range.ts`) on Sales/Analytics/Activities
+with GraphQL `from`/`to`; custom roles (create/rename/delete; home page
+from permissions via `src/lib/nav-routes.ts`); one `Pagination` control
+(`usePagination`/`useListParams`); Manager password reset with a shared
+policy (`src/lib/password-policy.ts`); `loading.tsx` skeletons on every
+route and a `Button` `loading` prop; central error handling in
+`QueryProvider` (use `meta.errorTitle` on mutations, not per-hook toasts),
+`ErrorState` error/404 pages, request ids on API responses; calmer motion
+(`motion-tokens.ts`) and a tablet layout (sidebar collapsed below `lg`).
+Components that Server Components import must take icons from
+`@phosphor-icons/react/ssr`.
+
 ## Tech stack
 
 Next.js (App Router) · React · TanStack Query · Axios · better-auth ·
