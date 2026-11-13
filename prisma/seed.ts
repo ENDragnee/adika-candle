@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { GenerateCode } from "@/lib/generate-code";
 import { prisma } from "@/lib/prisma";
@@ -66,15 +67,21 @@ async function seedModulesAndPermissions() {
   return allPermissionNames;
 }
 
+// There is no separate admin role: the Manager is the administrator (every
+// permission, including users and roles).
+const MANAGER_DESCRIPTION =
+  "Administrator: full access to analytics, stock, sales, pricing, users and roles.";
+
 async function seedRoles(allPermissionNames: string[]) {
   await prisma.role.upsert({
     where: { name: ROLES.MANAGER },
     update: {
+      description: MANAGER_DESCRIPTION,
       permissions: { set: allPermissionNames.map((name) => ({ name })) },
     },
     create: {
       name: ROLES.MANAGER,
-      description: "Full access: analytics, stock, users, pricing, etc.",
+      description: MANAGER_DESCRIPTION,
       permissions: { connect: allPermissionNames.map((name) => ({ name })) },
     },
   });
@@ -101,21 +108,32 @@ async function seedRoles(allPermissionNames: string[]) {
 // each selling unit converts to kg by its ratio.
 // ---------------------------------------------------------------------------
 
-// Carton = 30 kg is confirmed. Packet, Kir and Cola are known selling units
-// whose kg ratio isn't confirmed yet: they're seeded *inactive* with a
-// placeholder ratio of 1 so they never appear in Record Sale / Accept Stock
-// until a Manager sets the real ratio and activates them under Settings →
-// Unit conversions.
-const UNIT_CONVERSIONS: {
-  unitName: string;
-  ratioToKg: number;
-  isActive: boolean;
-}[] = [
-  { unitName: "CARTON", ratioToKg: 30, isActive: true },
-  { unitName: "PACKET", ratioToKg: 1, isActive: false },
-  { unitName: "KIR", ratioToKg: 1, isActive: false },
-  { unitName: "COLA", ratioToKg: 1, isActive: false },
+// Packing: 1 carton = 30 packets, 1 packet = 8 pieces. A standard carton
+// weighs 7 kg; a Plus (No. 8) carton weighs 8.5 kg. Unit ratios are global,
+// not per product, so Plus gets its own carton/packet/piece units.
+// Packet and piece ratios are derived (carton ÷ 30, ÷ 8) with Decimal
+// division, so 30 packets add back up to exactly one carton's weight.
+const PACKETS_PER_CARTON = 30;
+const PIECES_PER_PACKET = 8;
+
+function PackingUnits(prefix: string, cartonKg: string) {
+  const carton = new Prisma.Decimal(cartonKg);
+  const packet = carton.dividedBy(PACKETS_PER_CARTON);
+  const piece = packet.dividedBy(PIECES_PER_PACKET);
+  return [
+    { unitName: `${prefix}CARTON`, ratioToKg: carton },
+    { unitName: `${prefix}PACKET`, ratioToKg: packet },
+    { unitName: `${prefix}PIECE`, ratioToKg: piece },
+  ];
+}
+
+const UNIT_CONVERSIONS: { unitName: string; ratioToKg: Prisma.Decimal }[] = [
+  ...PackingUnits("", "7"),
+  ...PackingUnits("PLUS ", "8.5"),
 ];
+
+// Production inputs, tracked in kg. "Kir" is the candle yarn (wick).
+const RAW_MATERIALS = ["Wax", "Kir (yarn)"];
 
 const CANDLE_CATEGORY = "Candles";
 
@@ -139,6 +157,16 @@ async function seedUnitConversions() {
       where: { unitName: unit.unitName },
       update: {},
       create: unit,
+    });
+  }
+}
+
+async function seedRawMaterials() {
+  for (const name of RAW_MATERIALS) {
+    await prisma.rawMaterial.upsert({
+      where: { name },
+      update: {},
+      create: { name },
     });
   }
 }
@@ -229,6 +257,7 @@ async function main() {
   const allPermissionNames = await seedModulesAndPermissions();
   await seedRoles(allPermissionNames);
   await seedUnitConversions();
+  await seedRawMaterials();
   await seedCandleCatalog();
 
   // One Manager and one Inventory Manager account. The defaults are dev
