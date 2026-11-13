@@ -1,4 +1,6 @@
+import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
+import { GenerateCode } from "@/lib/generate-code";
 import { prisma } from "@/lib/prisma";
 import { ROLES } from "@/lib/redirector";
 
@@ -65,15 +67,21 @@ async function seedModulesAndPermissions() {
   return allPermissionNames;
 }
 
+// There is no separate admin role: the Manager is the administrator (every
+// permission, including users and roles).
+const MANAGER_DESCRIPTION =
+  "Administrator: full access to analytics, stock, sales, pricing, users and roles.";
+
 async function seedRoles(allPermissionNames: string[]) {
   await prisma.role.upsert({
     where: { name: ROLES.MANAGER },
     update: {
+      description: MANAGER_DESCRIPTION,
       permissions: { set: allPermissionNames.map((name) => ({ name })) },
     },
     create: {
       name: ROLES.MANAGER,
-      description: "Full access: analytics, stock, users, pricing, etc.",
+      description: MANAGER_DESCRIPTION,
       permissions: { connect: allPermissionNames.map((name) => ({ name })) },
     },
   });
@@ -93,6 +101,119 @@ async function seedRoles(allPermissionNames: string[]) {
       },
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Catalog reference data. KG is the base (SI) unit for every quantity;
+// each selling unit converts to kg by its ratio.
+// ---------------------------------------------------------------------------
+
+// Packing: 1 carton = 30 packets, 1 packet = 8 pieces. A standard carton
+// weighs 7 kg; a Plus (No. 8) carton weighs 8.5 kg. Unit ratios are global,
+// not per product, so Plus gets its own carton/packet/piece units.
+// Packet and piece ratios are derived (carton ÷ 30, ÷ 8) with Decimal
+// division, so 30 packets add back up to exactly one carton's weight.
+const PACKETS_PER_CARTON = 30;
+const PIECES_PER_PACKET = 8;
+
+function PackingUnits(prefix: string, cartonKg: string) {
+  const carton = new Prisma.Decimal(cartonKg);
+  const packet = carton.dividedBy(PACKETS_PER_CARTON);
+  const piece = packet.dividedBy(PIECES_PER_PACKET);
+  return [
+    { unitName: `${prefix}CARTON`, ratioToKg: carton },
+    { unitName: `${prefix}PACKET`, ratioToKg: packet },
+    { unitName: `${prefix}PIECE`, ratioToKg: piece },
+  ];
+}
+
+const UNIT_CONVERSIONS: { unitName: string; ratioToKg: Prisma.Decimal }[] = [
+  ...PackingUnits("", "7"),
+  ...PackingUnits("PLUS ", "8.5"),
+];
+
+// Production inputs, tracked in kg. "Kir" is the candle yarn (wick).
+const RAW_MATERIALS = ["Wax", "Kir (yarn)"];
+
+const CANDLE_CATEGORY = "Candles";
+
+// The factory's candle lines. No prices or costs are seeded — those are
+// set per product by a Manager (pricing is variable over time).
+const CANDLE_PRODUCTS = [
+  "No. 6",
+  "Maral No. 7",
+  "Plus No. 8",
+  "Small",
+  "Medium",
+  "Big",
+  "Color",
+];
+
+// Idempotent: creates missing units only. An existing unit is left as is,
+// so re-seeding never overwrites a ratio or status a Manager has changed.
+async function seedUnitConversions() {
+  for (const unit of UNIT_CONVERSIONS) {
+    await prisma.unitConversion.upsert({
+      where: { unitName: unit.unitName },
+      update: {},
+      create: unit,
+    });
+  }
+}
+
+// The factory's standing customers (they can buy on account or pay in
+// advance — see Customer/LoanAccount in schema.prisma).
+const CUSTOMERS = ["Merkato", "Mekele", "Moges", "Gondor"];
+
+// Every customer gets a LoanAccount at creation, same as
+// POST /api/v1/customers (docs/DECISIONS.md, Epic 5). Customer.name isn't
+// unique, so match case-insensitively to stay idempotent.
+async function seedCustomers() {
+  for (const name of CUSTOMERS) {
+    const existing = await prisma.customer.findFirst({
+      where: { name: { equals: name, mode: "insensitive" } },
+    });
+    if (existing) continue;
+    await prisma.customer.create({
+      data: { name, loanAccount: { create: {} } },
+    });
+  }
+}
+
+async function seedRawMaterials() {
+  for (const name of RAW_MATERIALS) {
+    await prisma.rawMaterial.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+}
+
+async function seedCandleCatalog() {
+  const category = await prisma.category.upsert({
+    where: { name: CANDLE_CATEGORY },
+    update: {},
+    create: {
+      name: CANDLE_CATEGORY,
+      description: "Finished candles sold by the factory.",
+    },
+  });
+
+  for (const name of CANDLE_PRODUCTS) {
+    // Product.name isn't unique (only sku is), so match on name within the
+    // category to stay idempotent.
+    const existing = await prisma.product.findFirst({
+      where: { name, categoryId: category.id },
+    });
+    if (existing) continue;
+
+    const sku = GenerateCode();
+    if (!sku) throw new Error(`Couldn't generate a SKU for ${name}`);
+    await prisma.product.create({
+      data: { name, sku, categoryId: category.id },
+    });
+  }
 }
 
 async function ensureDevUser({
@@ -129,26 +250,57 @@ async function ensureDevUser({
   });
 }
 
+const DEV_PASSWORD = "ChangeMe123!";
+
+function SeedAccount(
+  prefix: "MANAGER" | "INVENTORY",
+  defaults: { email: string; username: string; name: string; roleName: string },
+) {
+  const env = (key: string) => process.env[`SEED_${prefix}_${key}`];
+  const password = env("PASSWORD");
+  if (!password && process.env.NODE_ENV === "production") {
+    throw new Error(
+      `SEED_${prefix}_PASSWORD must be set when seeding outside development`,
+    );
+  }
+  return {
+    email: env("EMAIL") ?? defaults.email,
+    username: env("USERNAME") ?? defaults.username,
+    name: env("NAME") ?? defaults.name,
+    password: password ?? DEV_PASSWORD,
+    roleName: defaults.roleName,
+  };
+}
+
 async function main() {
   const allPermissionNames = await seedModulesAndPermissions();
   await seedRoles(allPermissionNames);
+  await seedUnitConversions();
+  await seedRawMaterials();
+  await seedCustomers();
+  await seedCandleCatalog();
 
-  // Dev-only seed users — never run this against a production database.
-  await ensureDevUser({
-    email: "manager@adika.local",
-    username: "manager",
-    password: "ChangeMe123!",
-    name: "Dev Manager",
-    roleName: ROLES.MANAGER,
-  });
+  // One Manager and one Inventory Manager account. The defaults are dev
+  // credentials; set SEED_MANAGER_* / SEED_INVENTORY_* to create real
+  // accounts. Outside development the passwords must be provided — the
+  // seed refuses to create accounts with the well-known dev password.
+  await ensureDevUser(
+    SeedAccount("MANAGER", {
+      email: "manager@adika.local",
+      username: "manager",
+      name: "Manager",
+      roleName: ROLES.MANAGER,
+    }),
+  );
 
-  await ensureDevUser({
-    email: "inventory@adika.local",
-    username: "inventory",
-    password: "ChangeMe123!",
-    name: "Dev Inventory Manager",
-    roleName: ROLES.INVENTORY_MANAGER,
-  });
+  await ensureDevUser(
+    SeedAccount("INVENTORY", {
+      email: "inventory@adika.local",
+      username: "inventory",
+      name: "Inventory Manager",
+      roleName: ROLES.INVENTORY_MANAGER,
+    }),
+  );
 
   console.log("Seed complete.");
 }
