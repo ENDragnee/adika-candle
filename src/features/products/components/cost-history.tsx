@@ -6,15 +6,16 @@ import {
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
+import { FormatDateTime, FormatMoney } from "@/lib/format";
 import { useProductCosts } from "../hooks/use-costs";
 import type { CostDTO } from "../validators/cost.schema";
 
-function FormatDateTime(value: string) {
-  return new Date(value).toLocaleString();
-}
-
 const columns: DataTableColumn<CostDTO>[] = [
-  { key: "amount", header: "Amount / kg", cell: (cost) => cost.amountPerKg },
+  {
+    key: "amount",
+    header: "Amount / kg",
+    cell: (cost) => FormatMoney(cost.amountPerKg),
+  },
   {
     key: "from",
     header: "Effective from",

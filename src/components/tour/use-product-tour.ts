@@ -12,6 +12,7 @@ import {
   INVENTORY_TOUR_STEPS,
   MANAGER_TOUR_STEPS,
   type TourStepDef,
+  VisibleTourSteps,
 } from "./tour-steps";
 
 type AppRouter = ReturnType<typeof useRouter>;
@@ -60,7 +61,7 @@ function BuildDriveSteps(defs: TourStepDef[], router: AppRouter): DriveStep[] {
   });
 }
 
-export function useProductTour(role: string | null) {
+export function useProductTour(role: string | null, permissions: string[]) {
   const router = useRouter();
   const driverRef = useRef<Driver | null>(null);
 
@@ -72,6 +73,7 @@ export function useProductTour(role: string | null) {
           ? INVENTORY_TOUR_STEPS
           : null;
     if (!steps) return;
+    const visibleSteps = VisibleTourSteps(steps, permissions);
 
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -79,7 +81,7 @@ export function useProductTour(role: string | null) {
 
     driverRef.current?.destroy();
     driverRef.current = driver({
-      steps: BuildDriveSteps(steps, router),
+      steps: BuildDriveSteps(visibleSteps, router),
       animate: !reducedMotion,
       duration: 250,
       smoothScroll: !reducedMotion,
@@ -91,5 +93,5 @@ export function useProductTour(role: string | null) {
       showProgress: true,
     });
     driverRef.current.drive();
-  }, [role, router]);
+  }, [role, permissions, router]);
 }

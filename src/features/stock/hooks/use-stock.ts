@@ -4,10 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
+import { InvalidateLedgerQueries } from "@/lib/query-invalidation";
+import type { StockCountInput } from "@/lib/schemas/stock-count.schema";
 import {
   AcceptStock,
   FetchProductLedger,
   FetchStockBalances,
+  RecordStockCount,
   type StockBalancesQueryParams,
 } from "../services/stock.service";
 import type { AcceptStockInput } from "../validators/stock.schema";
@@ -43,15 +46,27 @@ export function useAcceptStock() {
 
   return useMutation({
     mutationFn: (input: AcceptStockInput) => AcceptStock(input),
-    onSuccess: (_entry, variables) => {
-      queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
-      queryClient.invalidateQueries({
-        queryKey: stockLedgerQueryKey(variables.productId),
-      });
+    onSuccess: () => {
+      InvalidateLedgerQueries(queryClient);
       toast.success("Stock accepted");
     },
     onError: (error) => {
       toast.error(GetErrorMessage(error, "Couldn't accept stock"));
+    },
+  });
+}
+
+export function useRecordStockCount(productId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: StockCountInput) => RecordStockCount(productId, input),
+    onSuccess: () => {
+      InvalidateLedgerQueries(queryClient);
+      toast.success("Stock count recorded");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't record the stock count"));
     },
   });
 }

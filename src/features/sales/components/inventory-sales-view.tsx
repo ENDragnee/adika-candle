@@ -34,7 +34,7 @@ export function InventorySalesView({ createdById }: { createdById?: string }) {
           </DialogContent>
         </Dialog>
       </div>
-      <SaleList createdById={createdById} />
+      <SaleList createdById={createdById} linkBase="/inventory" />
     </div>
   );
 }

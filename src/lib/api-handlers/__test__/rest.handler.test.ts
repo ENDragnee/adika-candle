@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { DomainError } from "../../server/domain-error";
 import { CreateApiRoute } from "../rest.handler";
 
 vi.mock("@/lib/session", () => ({
@@ -137,5 +138,25 @@ describe("CreateApiRoute", () => {
     ]);
     expect(CheckPermission).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
+  });
+
+  it("maps a thrown DomainError to its status, message, code, and details", async () => {
+    const route = CreateApiRoute({
+      moduleName: "stub",
+      requiresAuth: { status: false, permission: "" },
+      handler: async () => {
+        throw new DomainError("Not enough stock", 409, "INSUFFICIENT_STOCK", {
+          availableKg: "5",
+        });
+      },
+    });
+
+    const response = await route(makeRequest("POST", {}), emptyContext);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Not enough stock",
+      code: "INSUFFICIENT_STOCK",
+      availableKg: "5",
+    });
   });
 });

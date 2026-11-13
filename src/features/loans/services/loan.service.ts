@@ -3,16 +3,25 @@ import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CreateLoanTransactionInput,
   LoanAccountDTO,
+  LoanAccountQuery,
   LoanTransactionDTO,
+  ReceivablesSummaryDTO,
 } from "../validators/loan.schema";
 
+export type LoanAccountsQueryParams = LoanAccountQuery & PaginationParams;
+
+// The list response also carries totals for the whole book — see
+// GET /api/v1/loans.
+export type LoanAccountsPage = Paginated<LoanAccountDTO> & {
+  summary: ReceivablesSummaryDTO;
+};
+
 export async function FetchLoanAccounts(
-  params: PaginationParams = {},
-): Promise<Paginated<LoanAccountDTO>> {
-  const { data } = await axiosInstance.get<Paginated<LoanAccountDTO>>(
-    "/api/v1/loans",
-    { params },
-  );
+  params: LoanAccountsQueryParams = {},
+): Promise<LoanAccountsPage> {
+  const { data } = await axiosInstance.get<LoanAccountsPage>("/api/v1/loans", {
+    params,
+  });
   return data;
 }
 

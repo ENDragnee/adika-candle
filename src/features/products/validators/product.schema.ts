@@ -3,7 +3,8 @@ import {
   CategorySchema,
   ToCategoryDTO,
 } from "@/features/categories/validators/category.schema";
-import type { Category, Price, Product } from "@/generated/prisma/client";
+import type { Category, Cost, Price, Product } from "@/generated/prisma/client";
+import { ListQuerySchema } from "@/lib/list-query";
 
 export const ProductSchema = z.object({
   id: z.string(),
@@ -13,6 +14,9 @@ export const ProductSchema = z.object({
   categoryId: z.string(),
   category: CategorySchema,
   currentPrice: z.string().nullable(),
+  // Active Cost.amountPerKg (Epic 15), so lists and the price form can
+  // show margin without a second request. Null = no cost set.
+  currentCost: z.string().nullable(),
   // Null means no low-stock alert is ever raised for this product — opt-in
   // per product, not a global default. See docs/DECISIONS.md.
   lowStockThresholdKg: z.string().nullable(),
@@ -47,6 +51,7 @@ export type UpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
 type ProductWithRelations = Product & {
   category: Category;
   prices: Pick<Price, "amountPerKg">[];
+  costs: Pick<Cost, "amountPerKg">[];
 };
 
 export function ToProductDTO(product: ProductWithRelations): ProductDTO {
@@ -58,14 +63,15 @@ export function ToProductDTO(product: ProductWithRelations): ProductDTO {
     categoryId: product.categoryId,
     category: ToCategoryDTO(product.category),
     currentPrice: product.prices[0]?.amountPerKg.toString() ?? null,
+    currentCost: product.costs[0]?.amountPerKg.toString() ?? null,
     lowStockThresholdKg: product.lowStockThresholdKg?.toString() ?? null,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
 }
 
-// The active-price include shared by every query that needs `currentPrice`
-// — keep this in sync with ToProductDTO's expectations.
+// The active-price/cost include shared by every query that needs
+// `currentPrice`/`currentCost` — keep this in sync with ToProductDTO.
 export const ACTIVE_PRICE_INCLUDE = {
   category: true,
   prices: {
@@ -73,4 +79,15 @@ export const ACTIVE_PRICE_INCLUDE = {
     take: 1,
     select: { amountPerKg: true },
   },
+  costs: {
+    where: { effectiveTo: null },
+    take: 1,
+    select: { amountPerKg: true },
+  },
 } as const;
+
+export const PRODUCT_SORT_KEYS = ["name", "sku", "createdAt"] as const;
+
+// Searches name and SKU.
+export const ProductQuerySchema = ListQuerySchema(PRODUCT_SORT_KEYS, "name");
+export type ProductQuery = z.input<typeof ProductQuerySchema>;

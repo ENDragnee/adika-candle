@@ -229,6 +229,10 @@ enum StockEntryType {
   ACCEPT
   SALE
   ADJUSTMENT
+  // Reversal of a SALE entry when the sale is voided (Epic 21). Kept
+  // distinct from ADJUSTMENT so reports can net voided sales out of
+  // "consumption" instead of counting them as stock corrections.
+  SALE_VOID
 }
 
 model StockBalance {
@@ -252,12 +256,15 @@ model StockLedgerEntry {
   inputUnitName  String?
   inputRatioToKg Decimal?
   note           String?
-  saleId         String?        @unique
+  // Not unique since Epic 21: a voided sale has both its SALE entry and
+  // the SALE_VOID entry that reverses it.
+  saleId         String?
   sale           Sale?          @relation(fields: [saleId], references: [id])
   createdById    String
   createdAt      DateTime       @default(now())
 
   @@index([productId, createdAt])
+  @@index([saleId])
   @@map("stock_ledger_entry")
 }
 
@@ -304,7 +311,9 @@ model RawMaterialLedgerEntry {
   materialId     String
   material       RawMaterial          @relation(fields: [materialId], references: [id])
   type           RawMaterialEntryType
-  quantityKg     Decimal // always a positive magnitude; direction implied by type
+  // Positive magnitude for RECEIVED/CONSUMED (direction implied by type);
+  // the signed difference applied for ADJUSTMENT (a stock count, Epic 21).
+  quantityKg     Decimal
   balanceAfterKg Decimal
   note           String?
   createdById    String
@@ -372,6 +381,8 @@ enum LoanTransactionType {
   ADVANCE_FROM_CUSTOMER
   ADVANCE_REDEEMED
   MANUAL_ADJUSTMENT
+  // Reversal of a sale's loan postings when the sale is voided (Epic 21).
+  SALE_VOID
 }
 
 model LoanTransaction {
@@ -382,12 +393,16 @@ model LoanTransaction {
   amount        Decimal
   balanceAfter  Decimal
   note          String?
-  saleId        String?             @unique
+  // Not unique since Epic 21: one on-account sale can post both
+  // ADVANCE_REDEEMED (spending the customer's credit) and SALE_ON_CREDIT
+  // (the remainder), plus a SALE_VOID if it's later voided.
+  saleId        String?
   sale          Sale?               @relation(fields: [saleId], references: [id])
   createdById   String
   createdAt     DateTime            @default(now())
 
   @@index([loanAccountId, createdAt])
+  @@index([saleId])
   @@map("loan_transaction")
 }
 
@@ -406,32 +421,39 @@ enum SalePaymentType {
 }
 
 model Sale {
-  id               String            @id @default(cuid())
-  referenceCode    String            @unique // via GenerateCode()
-  productId        String
-  product          Product           @relation(fields: [productId], references: [id])
-  customerId       String? // null = walk-in
-  customer         Customer?         @relation(fields: [customerId], references: [id])
-  inputQuantity    Decimal
-  inputUnitName    String // snapshot, e.g. "CARTON"
-  inputRatioToKg   Decimal // snapshot of ratio used at sale time
-  quantityKg       Decimal // inputQuantity * inputRatioToKg
-  unitPriceAtSale  Decimal // snapshot of Price.amountPerKg
-  totalAmount      Decimal // quantityKg * unitPriceAtSale
+  id                 String             @id @default(cuid())
+  referenceCode      String             @unique // via GenerateCode()
+  productId          String
+  product            Product            @relation(fields: [productId], references: [id])
+  customerId         String? // null = walk-in
+  customer           Customer?          @relation(fields: [customerId], references: [id])
+  inputQuantity      Decimal
+  inputUnitName      String // snapshot, e.g. "CARTON"
+  inputRatioToKg     Decimal // snapshot of ratio used at sale time
+  quantityKg         Decimal // inputQuantity * inputRatioToKg
+  unitPriceAtSale    Decimal // snapshot of Price.amountPerKg
+  totalAmount        Decimal // quantityKg * unitPriceAtSale
   // Snapshot of the active Cost.amountPerKg at sale time (Epic 15); null if
   // no Cost had ever been set for this product — margin isn't computable
   // for that one sale, not an error, doesn't block the sale. Never
   // backfilled for sales recorded before Epic 15 shipped.
-  costPerKgAtSale  Decimal?
-  paymentType      SalePaymentType
-  createdById      String
-  createdAt        DateTime          @default(now())
-  stockLedgerEntry StockLedgerEntry?
-  loanTransaction  LoanTransaction?
+  costPerKgAtSale    Decimal?
+  paymentType        SalePaymentType
+  createdById        String
+  createdAt          DateTime           @default(now())
+  // Void, never delete (Epic 21): a voided sale keeps its row for the
+  // audit trail, its stock/loan effects are reversed by SALE_VOID ledger
+  // entries, and every analytics aggregate excludes it.
+  voidedAt           DateTime?
+  voidedById         String?
+  voidReason         String?
+  stockLedgerEntries StockLedgerEntry[]
+  loanTransactions   LoanTransaction[]
 
   @@index([productId, createdAt])
   @@index([customerId, createdAt])
   @@index([createdById, createdAt])
+  @@index([voidedAt])
   @@map("sale")
 }
 

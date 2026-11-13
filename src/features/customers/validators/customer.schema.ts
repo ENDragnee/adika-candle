@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Customer, LoanAccount } from "@/generated/prisma/client";
+import { ListQuerySchema } from "@/lib/list-query";
 
 export const CustomerSchema = z.object({
   id: z.string(),
@@ -21,11 +22,11 @@ export const CustomerListResponseSchema = z.array(CustomerSchema);
 // filter client-side, which silently broke once results are paginated
 // (search would only ever see the current page's rows). See
 // docs/DECISIONS.md.
-export const CustomerQuerySchema = z.object({
-  search: z.string().trim().min(1).optional(),
-});
+export const CUSTOMER_SORT_KEYS = ["name", "balance"] as const;
 
-export type CustomerQuery = z.infer<typeof CustomerQuerySchema>;
+export const CustomerQuerySchema = ListQuerySchema(CUSTOMER_SORT_KEYS, "name");
+
+export type CustomerQuery = z.input<typeof CustomerQuerySchema>;
 
 export const CreateCustomerInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(160),

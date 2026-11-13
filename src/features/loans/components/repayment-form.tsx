@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateLoanTransaction } from "../hooks/use-loans";
+import { LOAN_TRANSACTION_META } from "../labels";
+import { BalancePreview } from "./balance-preview";
 
 // Stand-alone loan activity not tied to a new sale — repayment and advance
 // recording both roles can use (loan:record or loan:manage), see
@@ -18,10 +20,13 @@ import { useCreateLoanTransaction } from "../hooks/use-loans";
 export function RepaymentForm({
   accountId,
   customerId,
+  currentBalance,
   onSuccess,
 }: {
   accountId: string;
   customerId: string;
+  // Shown with a before → after preview when provided.
+  currentBalance?: string;
   onSuccess: () => void;
 }) {
   const [type, setType] = useState<
@@ -62,10 +67,10 @@ export function RepaymentForm({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="REPAYMENT_RECEIVED">
-              Repayment received
+              {LOAN_TRANSACTION_META.REPAYMENT_RECEIVED.label}
             </SelectItem>
             <SelectItem value="ADVANCE_FROM_CUSTOMER">
-              Advance from customer
+              {LOAN_TRANSACTION_META.ADVANCE_FROM_CUSTOMER.label}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -94,6 +99,15 @@ export function RepaymentForm({
           onChange={(event) => setNote(event.target.value)}
         />
       </div>
+      <p className="text-xs text-muted-foreground">
+        {LOAN_TRANSACTION_META[type].description}
+      </p>
+      {currentBalance !== undefined && (
+        <BalancePreview
+          current={Number(currentBalance)}
+          delta={Number(amount) > 0 ? -Number(amount) : null}
+        />
+      )}
       <Button type="submit" disabled={createTransaction.isPending}>
         {createTransaction.isPending ? "Recording…" : "Record"}
       </Button>

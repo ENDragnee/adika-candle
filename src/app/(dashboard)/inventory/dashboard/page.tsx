@@ -25,7 +25,11 @@ export default async function InventoryDashboardPage() {
 
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">My recent sales</h2>
-        <SaleList createdById={session?.user?.id} />
+        <SaleList
+          createdById={session?.user?.id}
+          initialRange="today"
+          linkBase="/inventory"
+        />
       </div>
 
       <div className="flex flex-col gap-2">

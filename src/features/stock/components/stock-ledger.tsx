@@ -7,64 +7,98 @@ import {
   TableSkeleton,
 } from "@/components/ui/data-table";
 import { ExportMenu } from "@/components/ui/export-menu";
+import { ToneBadge } from "@/components/ui/tone-badge";
 import type { ExportColumn } from "@/lib/export/export-column";
+import {
+  FormatDateTime,
+  FormatKg,
+  FormatNumber,
+  FormatSignedKg,
+} from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
+import { cn } from "@/lib/utils";
 import { useProductLedger } from "../hooks/use-stock";
+import { STOCK_ENTRY_META } from "../labels";
 import { FetchProductLedger } from "../services/stock.service";
 import type { StockLedgerEntryDTO } from "../validators/stock.schema";
 
-function FormatDateTime(value: string) {
-  return new Date(value).toLocaleString();
-}
-
 const columns: DataTableColumn<StockLedgerEntryDTO>[] = [
-  { key: "type", header: "Type", cell: (entry) => entry.type },
-  {
-    key: "quantity",
-    header: "Quantity (kg)",
-    cell: (entry) => entry.quantityKg,
-  },
-  {
-    key: "balance",
-    header: "Balance after (kg)",
-    cell: (entry) => entry.balanceAfterKg,
-  },
-  {
-    key: "input",
-    header: "Input",
-    cell: (entry) =>
-      entry.inputQuantity && entry.inputUnitName
-        ? `${entry.inputQuantity} ${entry.inputUnitName}`
-        : "—",
-    className: "text-muted-foreground",
-  },
-  {
-    key: "note",
-    header: "Note",
-    cell: (entry) => entry.note ?? "—",
-    className: "text-muted-foreground",
-  },
   {
     key: "date",
     header: "Date",
     cell: (entry) => FormatDateTime(entry.createdAt),
+  },
+  {
+    key: "type",
+    header: "What happened",
+    cell: (entry) => (
+      <ToneBadge tone={STOCK_ENTRY_META[entry.type].tone}>
+        {STOCK_ENTRY_META[entry.type].label}
+      </ToneBadge>
+    ),
+  },
+  {
+    key: "change",
+    header: "Change",
+    cell: (entry) => (
+      <span
+        className={cn(
+          "font-medium tabular-nums",
+          Number(entry.quantityKg) < 0 && "text-muted-foreground",
+        )}
+      >
+        {FormatSignedKg(entry.quantityKg)}
+      </span>
+    ),
+    className: "text-right",
+  },
+  {
+    key: "balance",
+    header: "Balance after",
+    cell: (entry) => FormatKg(entry.balanceAfterKg),
+    className: "text-right tabular-nums",
+  },
+  {
+    key: "detail",
+    header: "Details",
+    cell: (entry) => (
+      <span className="flex flex-col text-muted-foreground">
+        {entry.inputQuantity && entry.inputUnitName && (
+          <span>
+            {FormatNumber(entry.inputQuantity)} {entry.inputUnitName}
+          </span>
+        )}
+        {entry.note && <span className="text-xs">{entry.note}</span>}
+        {!entry.note && !entry.inputQuantity && "—"}
+      </span>
+    ),
+    className: "max-w-72 whitespace-normal",
+  },
+  {
+    key: "by",
+    header: "By",
+    cell: (entry) => entry.createdByName ?? "—",
     className: "text-muted-foreground",
   },
 ];
 
 const exportColumns: ExportColumn<StockLedgerEntryDTO>[] = [
-  { header: "Type", value: (entry) => entry.type },
-  { header: "Quantity (kg)", value: (entry) => entry.quantityKg },
+  { header: "Date", value: (entry) => FormatDateTime(entry.createdAt) },
+  {
+    header: "What happened",
+    value: (entry) => STOCK_ENTRY_META[entry.type].label,
+  },
+  { header: "Change (kg)", value: (entry) => entry.quantityKg },
   { header: "Balance after (kg)", value: (entry) => entry.balanceAfterKg },
   {
-    header: "Input",
+    header: "Entered as",
     value: (entry) =>
       entry.inputQuantity && entry.inputUnitName
         ? `${entry.inputQuantity} ${entry.inputUnitName}`
-        : "—",
+        : "",
   },
-  { header: "Note", value: (entry) => entry.note ?? "—" },
-  { header: "Date", value: (entry) => FormatDateTime(entry.createdAt) },
+  { header: "Note", value: (entry) => entry.note ?? "" },
+  { header: "By", value: (entry) => entry.createdByName ?? "" },
 ];
 
 export function StockLedger({ productId }: { productId: string }) {
@@ -79,8 +113,8 @@ export function StockLedger({ productId }: { productId: string }) {
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
         <ExportMenu
-          filename="stock-ledger"
-          title="Stock ledger"
+          filename="stock-history"
+          title="Stock history"
           columns={exportColumns}
           rows={() =>
             FetchProductLedger(productId, { pageSize: MAX_PAGE_SIZE }).then(
@@ -93,7 +127,7 @@ export function StockLedger({ productId }: { productId: string }) {
         columns={columns}
         data={result?.data ?? []}
         getRowKey={(entry) => entry.id}
-        emptyMessage="No ledger entries yet."
+        emptyMessage="No stock movements yet."
         pagination={{
           page,
           totalPages: result?.pagination.totalPages ?? 1,

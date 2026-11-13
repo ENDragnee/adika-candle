@@ -1,5 +1,6 @@
 import { axiosInstance } from "@/lib/axios";
 import type { Paginated, PaginationParams } from "@/lib/pagination";
+import type { StockCountInput } from "@/lib/schemas/stock-count.schema";
 import type {
   CreateRawMaterialInput,
   RawMaterialBalanceDTO,
@@ -77,6 +78,17 @@ export async function RecordMaterialActivity(
 ): Promise<RawMaterialLedgerEntryDTO> {
   const { data } = await axiosInstance.post<RawMaterialLedgerEntryDTO>(
     `/api/v1/raw-materials/${materialId}/activity`,
+    input,
+  );
+  return data;
+}
+
+export async function RecordMaterialCount(
+  materialId: string,
+  input: StockCountInput,
+): Promise<RawMaterialLedgerEntryDTO> {
+  const { data } = await axiosInstance.post<RawMaterialLedgerEntryDTO>(
+    `/api/v1/raw-materials/${materialId}/count`,
     input,
   );
   return data;

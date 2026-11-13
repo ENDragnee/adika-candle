@@ -28,12 +28,16 @@ export function useManagerDashboard() {
 
 export function useProductionReport(
   granularity: ReportGranularity,
+  offset: number,
   enabled: boolean,
 ) {
   return useQuery({
-    queryKey: ["analytics", "production-report", granularity] as const,
-    queryFn: () => FetchProductionReport(granularity),
+    queryKey: ["analytics", "production-report", granularity, offset] as const,
+    queryFn: () => FetchProductionReport(granularity, offset),
     enabled,
+    // Keep the previous period on screen while the next one loads, so
+    // stepping through periods doesn't flash a skeleton.
+    placeholderData: (previous) => previous,
   });
 }
 

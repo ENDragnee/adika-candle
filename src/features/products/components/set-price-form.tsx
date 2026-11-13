@@ -1,46 +1,30 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useSetNewProductPrice } from "../hooks/use-prices";
+import { AmountChangeForm } from "./amount-change-form";
 
 export function SetPriceForm({
   productId,
+  currentPrice,
+  currentCost,
   onSuccess,
 }: {
   productId: string;
+  currentPrice: string | null;
+  currentCost: string | null;
   onSuccess: () => void;
 }) {
-  const [amountPerKg, setAmountPerKg] = useState("");
   const setPrice = useSetNewProductPrice(productId);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await setPrice.mutateAsync({ amountPerKg: Number(amountPerKg) });
-    setAmountPerKg("");
-    onSuccess();
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="new-price" className="text-sm font-medium">
-          New price / kg
-        </label>
-        <Input
-          id="new-price"
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={amountPerKg}
-          onChange={(event) => setAmountPerKg(event.target.value)}
-          required
-        />
-      </div>
-      <Button type="submit" disabled={setPrice.isPending}>
-        {setPrice.isPending ? "Saving…" : "Set new price"}
-      </Button>
-    </form>
+    <AmountChangeForm
+      kind="price"
+      currentPrice={currentPrice}
+      currentCost={currentCost}
+      isPending={setPrice.isPending}
+      onConfirm={async (amountPerKg) => {
+        await setPrice.mutateAsync({ amountPerKg });
+        onSuccess();
+      }}
+    />
   );
 }

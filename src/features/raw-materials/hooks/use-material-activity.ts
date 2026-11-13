@@ -4,12 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { GetErrorMessage } from "@/lib/get-error-message";
 import type { PaginationParams } from "@/lib/pagination";
+import { InvalidateLedgerQueries } from "@/lib/query-invalidation";
+import type { StockCountInput } from "@/lib/schemas/stock-count.schema";
 import {
   FetchMaterialLedger,
   RecordMaterialActivity,
+  RecordMaterialCount,
 } from "../services/raw-material.service";
 import type { RecordMaterialActivityInput } from "../validators/raw-material.schema";
-import { RAW_MATERIAL_BALANCES_QUERY_KEY } from "./use-raw-materials";
 
 export const materialLedgerQueryKey = (
   materialId: string,
@@ -38,17 +40,28 @@ export function useRecordMaterialActivity() {
       materialId: string;
       input: RecordMaterialActivityInput;
     }) => RecordMaterialActivity(materialId, input),
-    onSuccess: (_entry, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: RAW_MATERIAL_BALANCES_QUERY_KEY,
-      });
-      queryClient.invalidateQueries({
-        queryKey: materialLedgerQueryKey(variables.materialId),
-      });
+    onSuccess: () => {
+      InvalidateLedgerQueries(queryClient);
       toast.success("Material activity recorded");
     },
     onError: (error) => {
       toast.error(GetErrorMessage(error, "Couldn't record activity"));
+    },
+  });
+}
+
+export function useRecordMaterialCount(materialId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: StockCountInput) =>
+      RecordMaterialCount(materialId, input),
+    onSuccess: () => {
+      InvalidateLedgerQueries(queryClient);
+      toast.success("Stock count recorded");
+    },
+    onError: (error) => {
+      toast.error(GetErrorMessage(error, "Couldn't record the stock count"));
     },
   });
 }

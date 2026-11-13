@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { CreateProductTrigger } from "@/features/products/components/create-product-trigger";
 import { ProductList } from "@/features/products/components/product-list";
 import { CheckPermission } from "@/lib/session";
@@ -17,15 +18,15 @@ export default async function ProductsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Products</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            What&apos;s sellable, by category, with its current price.
-          </p>
+      {/* One header pattern everywhere (Epic 21): title + description
+          live in the TopBar; page actions sit right-aligned above the
+          content. This page used to repeat "Products" in its own h1. */}
+      <PageHeader description="Everything you sell, with its current price, cost, and margin." />
+      {canManage && (
+        <div className="flex justify-end">
+          <CreateProductTrigger />
         </div>
-        {canManage && <CreateProductTrigger />}
-      </div>
+      )}
       <ProductList />
     </div>
   );

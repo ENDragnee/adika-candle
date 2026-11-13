@@ -53,6 +53,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useRoles } from "@/features/roles/hooks/use-roles";
+import { HumanizeRoleName } from "@/features/roles/permission-labels";
 import {
   useCreateUser,
   useSetUserPassword,
@@ -166,7 +167,7 @@ function CreateUserForm({
           <SelectContent>
             {roles.map((role) => (
               <SelectItem key={role.id} value={role.id}>
-                {role.name}
+                {HumanizeRoleName(role.name)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -261,7 +262,7 @@ function EditUserForm({
           <SelectContent>
             {roles.map((role) => (
               <SelectItem key={role.id} value={role.id}>
-                {role.name}
+                {HumanizeRoleName(role.name)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -309,7 +310,9 @@ function UserRow({
       <TableCell className="text-muted-foreground">
         {user.username ?? "—"}
       </TableCell>
-      <TableCell>{user.roleName ?? "—"}</TableCell>
+      <TableCell>
+        {user.roleName ? HumanizeRoleName(user.roleName) : "No role"}
+      </TableCell>
       <TableCell>{user.isActive ? "Active" : "Inactive"}</TableCell>
       <TableCell>
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

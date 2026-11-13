@@ -1,66 +1,33 @@
 "use client";
 
-import {
-  CheckCircleIcon,
-  StackIcon,
-  WarningIcon,
-  WarningOctagonIcon,
-  XCircleIcon,
-} from "@phosphor-icons/react";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ToneBadge, ToneColor } from "@/components/ui/tone-badge";
+import { LOAN_TRANSACTION_META } from "@/features/loans/labels";
+import { MATERIAL_ENTRY_META } from "@/features/raw-materials/labels";
+import { PAYMENT_TYPE_META } from "@/features/sales/labels";
+import { STOCK_STATUS_META } from "@/features/stock/components/stock-status-badge";
+import { STOCK_ENTRY_META } from "@/features/stock/labels";
+import {
+  CRITICAL_RATIO,
+  OVERSTOCKED_RATIO,
+  STOCK_STATUSES,
+} from "@/features/stock/stock-status";
 
-// Static reference content for the Legend page — authored directly in code,
-// not database-backed or Manager-editable (docs/epics/19-legend-walkthrough-
-// reference.md). Every number/threshold/field name below is copied from the
-// real schema/logic it describes, not re-derived from memory, so this page
-// can't silently drift from app behavior:
-// - Stock Health thresholds: src/app/api/graphql/route.ts
-//   (STOCK_HEALTH_CRITICAL_RATIO / STOCK_HEALTH_OVERSTOCKED_RATIO)
-// - LoanAccount.balance sign: docs/DECISIONS.md, 2026-11-07
-// - Role permission sets: prisma/seed.ts
-//
-// Status meta intentionally duplicated from stock-health-tab.tsx rather than
-// imported across feature folders — this is five display rows, not shared
-// logic, and this app's feature-folder convention keeps features
-// independent (see AGENTS.md).
-const STOCK_HEALTH_STATUSES: {
-  label: string;
-  icon: typeof CheckCircleIcon;
-  colorVar: string;
-  rule: string;
-}[] = [
-  {
-    label: "Out of stock",
-    icon: XCircleIcon,
-    colorVar: "var(--color-status-critical)",
-    rule: "Quantity on hand = 0.",
-  },
-  {
-    label: "Critical",
-    icon: WarningOctagonIcon,
-    colorVar: "var(--color-status-serious)",
-    rule: "Quantity < 50% of the product's low-stock threshold.",
-  },
-  {
-    label: "Low",
-    icon: WarningIcon,
-    colorVar: "var(--color-status-warning)",
-    rule: "Quantity ≥ 50% but < 100% of the threshold.",
-  },
-  {
-    label: "Healthy",
-    icon: CheckCircleIcon,
-    colorVar: "var(--color-status-good)",
-    rule: "Quantity between 100% and 300% of the threshold — or the product has no threshold set at all (no baseline to bucket against, so a stocked product defaults here rather than blocking the report).",
-  },
-  {
-    label: "Overstocked",
-    icon: StackIcon,
-    colorVar: "var(--color-status-info)",
-    rule: "Quantity > 300% of the threshold.",
-  },
-];
+// Static reference content for the Legend page (docs/epics/19-legend-
+// walkthrough-reference.md). Since Epic 21 every label, status rule, and
+// ledger entry name here is read from the same definitions the rest of the
+// app renders with (stock-status.ts and each feature's labels.ts), instead
+// of a hand-copied duplicate — so this page can't drift from what the
+// screens actually show.
+const STOCK_STATUS_RULES: Record<(typeof STOCK_STATUSES)[number], string> = {
+  NEGATIVE: "Recorded balance is below zero.",
+  OUT_OF_STOCK: "Recorded balance is exactly 0.",
+  CRITICAL: `Below ${CRITICAL_RATIO * 100}% of the product's low-stock alert level.`,
+  LOW: `At least ${CRITICAL_RATIO * 100}% but below 100% of the alert level.`,
+  HEALTHY: `Between 100% and ${OVERSTOCKED_RATIO * 100}% of the alert level.`,
+  OVERSTOCKED: `More than ${OVERSTOCKED_RATIO * 100}% of the alert level.`,
+  UNTRACKED: "In stock, but the product has no low-stock alert level set.",
+};
 
 // Term + description row, shared by the "Daily Stock Report columns" and
 // "Ledger entry types" sections below. Deliberately not the shared
@@ -101,113 +68,161 @@ export function LegendContent() {
           so the mental model carries straight over:
         </p>
         <div className="divide-y divide-border overflow-hidden rounded-xl ring-1 ring-foreground/10">
-          <DefinitionRow term="Opening Stock">
-            Quantity on hand at the start of the period. Computed algebraically
-            (Closing − Received + Consumption), not stored separately.
+          <DefinitionRow term="Opening">
+            Quantity on hand at the start of the period, worked back from the
+            closing figure and every movement in the period.
           </DefinitionRow>
           <DefinitionRow term="Received">
             Stock accepted (finished goods) or materials received during the
             period.
           </DefinitionRow>
-          <DefinitionRow term="Consumption">
-            Stock sold (finished goods) or raw materials consumed into
-            production during the period.
+          <DefinitionRow term="Used / Sold">
+            Raw materials used in production, or finished goods sold (net of any
+            voided sales) during the period.
           </DefinitionRow>
-          <DefinitionRow term="Closing Stock">
-            Quantity on hand right now — read straight from the live cached
-            balance (<code>StockBalance</code> or{" "}
-            <code>RawMaterialBalance</code>), since "now" is always inside the
-            still-in-progress current period.
+          <DefinitionRow term="Count corrections">
+            Changes from stock counts recorded during the period. Only shown
+            when there are any.
+          </DefinitionRow>
+          <DefinitionRow term="Closing">
+            Quantity on hand at the end of the period (right now, for the
+            current period). Opening + Received − Used ± Count corrections =
+            Closing on every row. Days, weeks and months follow Addis Ababa
+            time.
           </DefinitionRow>
         </div>
       </section>
 
       <section id="sales" className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-foreground">
-          2. Sales: cash vs loan, walk-in vs named customer
+          2. Sales: cash vs on account, walk-in vs named customer
         </h2>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
           <p>
-            Every sale has a{" "}
-            <strong className="text-foreground">payment type</strong>:{" "}
-            <Badge variant="outline">CASH</Badge> or{" "}
-            <Badge variant="outline">LOAN</Badge>. A <code>LOAN</code> sale is
-            paid for later and adds to the customer's outstanding loan balance
-            instead of being settled immediately.
+            Every sale is paid{" "}
+            <ToneBadge tone={PAYMENT_TYPE_META.CASH.tone}>
+              {PAYMENT_TYPE_META.CASH.label}
+            </ToneBadge>{" "}
+            or{" "}
+            <ToneBadge tone={PAYMENT_TYPE_META.LOAN.tone}>
+              {PAYMENT_TYPE_META.LOAN.label}
+            </ToneBadge>
+            . An on-account sale is paid for later: it first uses up any credit
+            the customer already has with you, and only the rest is added to
+            what they owe.
           </p>
           <p>
-            Every sale also has a{" "}
-            <strong className="text-foreground">customer</strong> field, and it
-            can be empty: <code>null</code> means a{" "}
+            A sale can be for a named customer (a standing account such as
+            Merkato, Gondor, Moges, Mekele) or a{" "}
             <strong className="text-foreground">walk-in</strong> buyer with no
-            account. A named <code>Customer</code> record (Merkato, Gondor,
-            Moges, Mekele, etc.) is a standing account that can carry a loan
-            balance across multiple sales. A walk-in sale can only be paid CASH
-            — there's no account to lend against.
+            account. Walk-in sales are always cash.
+          </p>
+          <p>
+            If a sale would take a product's recorded stock below zero, the app
+            asks you to confirm first. If the goods really are there, confirm,
+            then record a stock count so the numbers match again.
+          </p>
+          <p>
+            A mistaken sale is{" "}
+            <strong className="text-foreground">voided</strong>, never deleted:
+            it stays in the history marked "Voided", its stock goes back on
+            hand, anything it added to the customer's account is taken off, and
+            it no longer counts in totals or reports. To correct a sale, void it
+            and record the right one.
           </p>
         </div>
       </section>
 
       <section id="loan-balance" className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-foreground">
-          3. Loan balance sign convention
+          3. Customer balances
         </h2>
         <Card
           size="sm"
           className="border-l-2 border-l-(--color-status-warning)"
         >
-          <CardContent className="text-sm">
+          <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
             <p>
-              <strong className="text-foreground">
-                A positive <code>LoanAccount.balance</code> means the customer
-                owes the business.
-              </strong>{" "}
-              A negative balance means the business owes the customer — for
-              example, an advance the customer paid in that hasn't been redeemed
-              against a purchase yet. It's easy to get this backwards, so it's
-              worth re-reading before interpreting any balance on a customer's
-              loan ledger.
+              Every customer balance is shown in words:{" "}
+              <strong className="text-foreground">Owes you</strong> (they owe
+              the business), <strong className="text-foreground">Credit</strong>{" "}
+              (they paid in advance and the business owes them goods), or{" "}
+              <strong className="text-foreground">Settled</strong>.
+            </p>
+            <p>
+              In exported spreadsheets the balance is a plain number: positive
+              means the customer owes you, negative means they have credit.
             </p>
           </CardContent>
         </Card>
+        <div className="divide-y divide-border overflow-hidden rounded-xl ring-1 ring-foreground/10">
+          {Object.values(LOAN_TRANSACTION_META).map((meta) => (
+            <DefinitionRow
+              key={meta.label}
+              term={<ToneBadge tone={meta.tone}>{meta.label}</ToneBadge>}
+            >
+              {meta.description}
+            </DefinitionRow>
+          ))}
+        </div>
       </section>
 
       <section id="ledger-entries" className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-foreground">
-          4. Ledger entry types
+          4. Stock history entries
         </h2>
         <p className="text-sm text-muted-foreground">
-          Both finished-goods stock and raw materials use the same shape: a
-          cached running balance, plus an append-only ledger of every movement
-          that produced it. The entry types differ slightly between the two:
+          Finished goods and raw materials each keep a running balance plus a
+          history of every movement that produced it. A history entry is never
+          edited or deleted — corrections are new entries.
         </p>
         <div className="divide-y divide-border overflow-hidden rounded-xl ring-1 ring-foreground/10">
           <DefinitionRow
             term={
-              <>
-                <code>ACCEPT</code> / <code>RECEIVED</code>
-              </>
+              <span className="flex flex-wrap gap-1">
+                <ToneBadge tone={STOCK_ENTRY_META.ACCEPT.tone}>
+                  {STOCK_ENTRY_META.ACCEPT.label}
+                </ToneBadge>
+                <ToneBadge tone={MATERIAL_ENTRY_META.RECEIVED.tone}>
+                  {MATERIAL_ENTRY_META.RECEIVED.label}
+                </ToneBadge>
+              </span>
             }
           >
-            Stock/material came in.
+            Candles accepted from production, or raw material received.
           </DefinitionRow>
           <DefinitionRow
             term={
-              <>
-                <code>SALE</code> / <code>CONSUMED</code>
-              </>
+              <span className="flex flex-wrap gap-1">
+                <ToneBadge tone={STOCK_ENTRY_META.SALE.tone}>
+                  {STOCK_ENTRY_META.SALE.label}
+                </ToneBadge>
+                <ToneBadge tone={MATERIAL_ENTRY_META.CONSUMED.tone}>
+                  {MATERIAL_ENTRY_META.CONSUMED.label}
+                </ToneBadge>
+              </span>
             }
           >
-            Stock went out via a sale, or material was used in production.
+            Candles went out in a sale, or raw material was used in production.
           </DefinitionRow>
           <DefinitionRow
             term={
-              <>
-                <code>ADJUSTMENT</code> / <code>ADJUSTMENT</code>
-              </>
+              <ToneBadge tone={STOCK_ENTRY_META.ADJUSTMENT.tone}>
+                {STOCK_ENTRY_META.ADJUSTMENT.label}
+              </ToneBadge>
             }
           >
-            A manual correction (e.g. a stock count discrepancy).
+            A Manager recorded a physical count; the entry is the difference
+            from what was recorded, with the reason.
+          </DefinitionRow>
+          <DefinitionRow
+            term={
+              <ToneBadge tone={STOCK_ENTRY_META.SALE_VOID.tone}>
+                {STOCK_ENTRY_META.SALE_VOID.label}
+              </ToneBadge>
+            }
+          >
+            A sale was voided, so its quantity went back on hand.
           </DefinitionRow>
         </div>
       </section>
@@ -238,30 +253,32 @@ export function LegendContent() {
 
       <section id="stock-health" className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-foreground">
-          6. Stock Health statuses
+          6. Stock statuses
         </h2>
         <p className="text-sm text-muted-foreground">
-          Manager → Analytics → Stock Health buckets every active product into
-          one of five statuses, based on its current quantity against its own
-          low-stock threshold (a per-product setting a Manager can optionally
-          configure on the product):
+          Every screen that shows stock (Dashboard, Stock, Products, Analytics →
+          Stock health) uses the same statuses, based on what is on hand
+          compared with the product's own low-stock alert level (set on the
+          product's Details tab):
         </p>
         <div className="flex flex-col gap-2">
-          {STOCK_HEALTH_STATUSES.map((status) => {
-            const Icon = status.icon;
+          {STOCK_STATUSES.map((status) => {
+            const meta = STOCK_STATUS_META[status];
+            const Icon = meta.icon;
             return (
-              <Card key={status.label} size="sm">
+              <Card key={status} size="sm">
                 <CardContent className="flex items-start gap-3">
                   <Icon
+                    weight="fill"
                     className="mt-0.5 size-5 shrink-0"
-                    style={{ color: status.colorVar }}
+                    style={{ color: ToneColor(meta.tone) }}
                   />
                   <div className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium text-foreground">
-                      {status.label}
+                      {meta.label}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {status.rule}
+                      {STOCK_STATUS_RULES[status]} {meta.description}
                     </span>
                   </div>
                 </CardContent>
@@ -275,6 +292,11 @@ export function LegendContent() {
         <h2 className="text-base font-semibold text-foreground">
           7. Manager vs Inventory Manager
         </h2>
+        <p className="text-sm text-muted-foreground">
+          These are the default roles. A Manager can turn individual features on
+          or off per role under Roles, and the sidebar always shows each person
+          exactly the pages their role can open.
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Card size="sm">
             <CardHeader>
@@ -287,7 +309,7 @@ export function LegendContent() {
                 <li>Product cost entry and margin/profitability analytics.</li>
                 <li>Raw material catalog and recipe (BOM) setup.</li>
                 <li>
-                  Stock and loan oversight, including manual loan adjustments.
+                  Stock counts, voiding sales, and correcting customer balances.
                 </li>
                 <li>
                   The full Analytics hub (Production, Profitability, Stock
@@ -306,14 +328,14 @@ export function LegendContent() {
             </CardHeader>
             <CardContent>
               <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                <li>Accept stock and record sales (cash or loan).</li>
+                <li>Accept stock and record sales (cash or on account).</li>
                 <li>
                   Record raw material activity (Received/Consumed) against the
                   catalog a Manager maintains.
                 </li>
                 <li>
-                  View customers and record loan repayments — day-to-day loan
-                  activity, not manual corrections.
+                  View customers and record their payments — day-to-day account
+                  activity, not corrections.
                 </li>
                 <li>
                   Read-only access to the product catalog, just enough to pick a

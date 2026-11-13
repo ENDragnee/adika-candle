@@ -1,14 +1,21 @@
 "use client";
 
-import { SortAscendingIcon, SortDescendingIcon } from "@phosphor-icons/react";
+import {
+  CoinsIcon,
+  PercentIcon,
+  ReceiptIcon,
+  TrendUpIcon,
+  WarningIcon,
+} from "@phosphor-icons/react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   DataTable,
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
 import { ExportMenu } from "@/components/ui/export-menu";
+import { Section } from "@/components/ui/section";
 import {
   Select,
   SelectContent,
@@ -18,145 +25,323 @@ import {
 } from "@/components/ui/select";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import type { ExportColumn } from "@/lib/export/export-column";
+import {
+  FormatCompactNumber,
+  FormatDateKey,
+  FormatKg,
+  FormatMoney,
+  FormatPercent,
+  Pluralize,
+} from "@/lib/format";
 import { useProfitability } from "../hooks/use-analytics";
 import type { ProductMarginRowDTO } from "../validators/analytics.schema";
 import { StatTile } from "./stat-tile";
 import { TrendLineChart } from "./trend-line-chart";
 
-const WINDOW_DAYS = 30;
+const WINDOW_OPTIONS = [
+  { value: 7, label: "Last 7 days" },
+  { value: 30, label: "Last 30 days" },
+  { value: 90, label: "Last 90 days" },
+];
 
-type SortKey = "marginPercent" | "unitsSoldKg" | "totalProfit";
+type SortKey = "totalProfit" | "realizedMarginPercent" | "revenue";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "totalProfit", label: "Total profit" },
-  { value: "marginPercent", label: "Margin %" },
-  { value: "unitsSoldKg", label: "Units sold" },
+  { value: "totalProfit", label: "Sort by profit" },
+  { value: "realizedMarginPercent", label: "Sort by margin" },
+  { value: "revenue", label: "Sort by revenue" },
 ];
+
+// A margin cell with a small bar, so the table reads as a ranking at a
+// glance. Negative margins (selling below cost) get the critical color.
+function MarginCell({ value }: { value: string | null }) {
+  if (value === null) {
+    return <span className="text-muted-foreground">No cost data</span>;
+  }
+  const number = Number(value);
+  const width = Math.min(Math.abs(number), 100);
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-14 text-right tabular-nums">
+        {FormatPercent(number)}
+      </span>
+      <span className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+        <span
+          className="block h-full rounded-full"
+          style={{
+            width: `${width}%`,
+            backgroundColor:
+              number < 0
+                ? "var(--color-status-critical)"
+                : "var(--color-chart-series-1)",
+          }}
+        />
+      </span>
+    </div>
+  );
+}
 
 const columns: DataTableColumn<ProductMarginRowDTO>[] = [
   {
     key: "name",
     header: "Product",
-    cell: (row) => `${row.productName} (${row.productSku})`,
+    cell: (row) => (
+      <span className="flex items-center gap-1.5">
+        <Link
+          href={`/manager/products/${row.productId}`}
+          className="underline-offset-4 hover:underline"
+        >
+          {row.productName}
+        </Link>
+        {row.uncostedSaleCount > 0 && (
+          <WarningIcon
+            className="size-3.5"
+            style={{ color: "var(--color-status-warning)" }}
+            aria-label={`${Pluralize(row.uncostedSaleCount, "sale")} without cost data`}
+          >
+            <title>
+              {Pluralize(row.uncostedSaleCount, "sale")} had no cost on record
+              and are left out of profit and margin
+            </title>
+          </WarningIcon>
+        )}
+      </span>
+    ),
   },
   {
-    key: "price",
-    header: "Sell price / kg",
-    cell: (row) => row.sellPricePerKg ?? "—",
+    key: "revenue",
+    header: "Revenue",
+    cell: (row) => FormatMoney(row.revenue),
+    className: "text-right tabular-nums",
   },
-  { key: "cost", header: "Cost / kg", cell: (row) => row.costPerKg ?? "—" },
+  {
+    key: "units",
+    header: "Sold",
+    cell: (row) => FormatKg(row.unitsSoldKg),
+    className: "text-right tabular-nums",
+  },
+  {
+    key: "profit",
+    header: "Profit",
+    cell: (row) => FormatMoney(row.totalProfit),
+    className: "text-right font-medium tabular-nums",
+  },
   {
     key: "margin",
-    header: "Margin %",
-    cell: (row) => (row.marginPercent ? `${row.marginPercent}%` : "—"),
+    header: "Margin (actual)",
+    cell: (row) => <MarginCell value={row.realizedMarginPercent} />,
   },
-  { key: "units", header: "Units sold (kg)", cell: (row) => row.unitsSoldKg },
-  { key: "profit", header: "Total profit", cell: (row) => row.totalProfit },
+  {
+    key: "current",
+    header: "Today's price / cost",
+    cell: (row) => (
+      <span className="text-muted-foreground tabular-nums">
+        {FormatMoney(row.currentPricePerKg)} /{" "}
+        {FormatMoney(row.currentCostPerKg)}
+        {row.currentMarginPercent !== null &&
+          ` · ${FormatPercent(row.currentMarginPercent)}`}
+      </span>
+    ),
+  },
 ];
 
 const exportColumns: ExportColumn<ProductMarginRowDTO>[] = [
+  { header: "Product", value: (row) => row.productName },
+  { header: "SKU", value: (row) => row.productSku },
+  { header: "Revenue", value: (row) => row.revenue },
+  { header: "Sold (kg)", value: (row) => row.unitsSoldKg },
+  { header: "Profit", value: (row) => row.totalProfit ?? "" },
   {
-    header: "Product",
-    value: (row) => `${row.productName} (${row.productSku})`,
+    header: "Actual margin %",
+    value: (row) => row.realizedMarginPercent ?? "",
   },
-  { header: "Sell price / kg", value: (row) => row.sellPricePerKg ?? "—" },
-  { header: "Cost / kg", value: (row) => row.costPerKg ?? "—" },
+  { header: "Current price / kg", value: (row) => row.currentPricePerKg ?? "" },
+  { header: "Current cost / kg", value: (row) => row.currentCostPerKg ?? "" },
   {
-    header: "Margin %",
-    value: (row) => (row.marginPercent ? `${row.marginPercent}%` : "—"),
+    header: "Current margin %",
+    value: (row) => row.currentMarginPercent ?? "",
   },
-  { header: "Units sold (kg)", value: (row) => row.unitsSoldKg },
-  { header: "Total profit", value: (row) => row.totalProfit },
+  {
+    header: "Sales without cost",
+    value: (row) => String(row.uncostedSaleCount),
+  },
 ];
 
+function NullableNumber(value: string | null) {
+  return value === null ? null : Number(value);
+}
+
 export function ProfitabilityTab() {
-  const { data, isLoading } = useProfitability(WINDOW_DAYS, true);
+  const [days, setDays] = useState(30);
+  const { data, isLoading } = useProfitability(days, true);
   const [sortKey, setSortKey] = useState<SortKey>("totalProfit");
-  const [descending, setDescending] = useState(true);
 
   const sortedProducts = useMemo(() => {
     if (!data) return [];
-    const rows = [...data.products];
-    rows.sort((a, b) => {
-      const diff = Number(a[sortKey] ?? 0) - Number(b[sortKey] ?? 0);
-      return descending ? -diff : diff;
+    // Rows with no figure sort last regardless of direction.
+    return [...data.products].sort((a, b) => {
+      const left = a[sortKey];
+      const right = b[sortKey];
+      if (left === null) return 1;
+      if (right === null) return -1;
+      return Number(right) - Number(left);
     });
-    return rows;
-  }, [data, sortKey, descending]);
+  }, [data, sortKey]);
+
+  const coverage =
+    data && Number(data.stats.totalRevenue) > 0
+      ? (Number(data.stats.costedRevenue) / Number(data.stats.totalRevenue)) *
+        100
+      : null;
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-sm font-medium">Profitability</h2>
-        <p className="text-xs text-muted-foreground">
-          Last {WINDOW_DAYS} days.
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          Profit = what customers paid − what the goods cost to make, using the
+          cost on record when each sale happened.
         </p>
+        <Select
+          value={String(days)}
+          onValueChange={(value) => setDays(Number(value))}
+        >
+          <SelectTrigger className="w-40" aria-label="Period">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {WINDOW_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={String(option.value)}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile
-              label="Total revenue"
+              icon={ReceiptIcon}
+              label="Revenue"
               value={Number(data.stats.totalRevenue)}
+              format={FormatMoney}
+              hint={Pluralize(
+                data.stats.includedSaleCount + data.stats.excludedSaleCount,
+                "sale",
+              )}
             />
-            <StatTile label="Total cost" value={Number(data.stats.totalCost)} />
             <StatTile
-              label="Total profit"
-              value={Number(data.stats.totalProfit)}
+              icon={CoinsIcon}
+              label="Cost of goods sold"
+              value={
+                data.stats.includedSaleCount > 0
+                  ? Number(data.stats.totalCost)
+                  : null
+              }
+              format={FormatMoney}
+              hint="For sales with a cost on record"
             />
             <StatTile
-              label="Average margin"
-              value={Number(data.stats.averageMarginPercent)}
-              format={(value) => `${value.toFixed(1)}%`}
+              icon={TrendUpIcon}
+              label="Profit"
+              value={NullableNumber(data.stats.totalProfit)}
+              format={FormatMoney}
+              hint={
+                data.stats.totalProfit === null
+                  ? "No cost data for this period"
+                  : undefined
+              }
+            />
+            <StatTile
+              icon={PercentIcon}
+              label="Margin"
+              value={NullableNumber(data.stats.averageMarginPercent)}
+              format={(value) => FormatPercent(value)}
+              hint={
+                data.stats.averageMarginPercent === null
+                  ? "Set product costs to see margin"
+                  : "Profit ÷ revenue"
+              }
             />
           </div>
-          {data.stats.excludedSaleCount > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {data.stats.excludedSaleCount} sale
-              {data.stats.excludedSaleCount === 1 ? "" : "s"} in this window had
-              no cost on record (recorded before Epic 15) and are excluded from
-              the cost/profit totals above — revenue still includes them, so
-              margin figures are partial for this window.
-            </p>
+          {coverage !== null && coverage < 100 && (
+            <div className="flex flex-col gap-1.5 rounded-xl border border-border p-3">
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="flex items-center gap-1.5">
+                  <WarningIcon
+                    weight="fill"
+                    style={{ color: "var(--color-status-warning)" }}
+                  />
+                  Cost data covers{" "}
+                  {FormatPercent(coverage, { fractionDigits: 0 })} of revenue
+                </span>
+                <Link
+                  href="/manager/products"
+                  className="text-xs font-medium underline-offset-4 hover:underline"
+                >
+                  Set product costs
+                </Link>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-chart-series-1"
+                  style={{ width: `${coverage}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {Pluralize(data.stats.excludedSaleCount, "sale")} had no cost
+                set when they were recorded, so they count toward revenue but
+                are left out of profit and margin.
+              </p>
+            </div>
           )}
         </div>
       )}
 
-      {isLoading || !data ? (
-        <CardSkeleton />
-      ) : (
-        <TrendLineChart
-          points={data.trend.map((point) => ({
-            label: point.date,
-            values: { margin: Number(point.marginPercent) },
-          }))}
-          series={[
-            {
-              key: "margin",
-              label: "Margin %",
-              color: "var(--color-chart-series-1)",
-            },
-          ]}
-          valueFormatter={(value) => `${value.toFixed(1)}%`}
-        />
-      )}
+      <Section
+        title="Daily margin"
+        description="Gaps are days with no sales that had a cost on record."
+      >
+        {isLoading || !data ? (
+          <CardSkeleton />
+        ) : (
+          <TrendLineChart
+            points={data.trend.map((point) => ({
+              key: point.date,
+              label: FormatDateKey(point.date),
+              values: { margin: NullableNumber(point.marginPercent) },
+            }))}
+            series={[
+              {
+                key: "margin",
+                label: "Margin",
+                color: "var(--color-chart-series-1)",
+              },
+            ]}
+            valueFormatter={(value) => FormatPercent(value)}
+            axisFormatter={(value) => `${FormatCompactNumber(value)}%`}
+            emptyMessage="No sales with cost data in this period."
+          />
+        )}
+      </Section>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">Per-product margin</h3>
-          <div className="flex items-center gap-2">
+      <Section
+        title="By product"
+        description="Actual margin uses each sale's recorded price and cost. Today's price / cost shows what a sale made now would earn."
+        actions={
+          <>
             {data && (
               <ExportMenu
                 filename="profitability"
-                title="Profitability"
+                title={`Profitability — last ${days} days`}
                 columns={exportColumns}
                 rows={sortedProducts}
               />
@@ -165,7 +350,7 @@ export function ProfitabilityTab() {
               value={sortKey}
               onValueChange={(value) => setSortKey(value as SortKey)}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-40" aria-label="Sort products">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -176,16 +361,9 @@ export function ProfitabilityTab() {
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label={descending ? "Sort ascending" : "Sort descending"}
-              onClick={() => setDescending((value) => !value)}
-            >
-              {descending ? <SortDescendingIcon /> : <SortAscendingIcon />}
-            </Button>
-          </div>
-        </div>
+          </>
+        }
+      >
         {isLoading || !data ? (
           <TableSkeleton columns={columns.length} />
         ) : (
@@ -193,10 +371,10 @@ export function ProfitabilityTab() {
             columns={columns}
             data={sortedProducts}
             getRowKey={(row) => row.productId}
-            emptyMessage="No sales in this window."
+            emptyMessage="No sales in this period."
           />
         )}
-      </div>
+      </Section>
     </div>
   );
 }

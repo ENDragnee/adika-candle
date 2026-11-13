@@ -1,22 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import {
   DataTable,
   type DataTableColumn,
   TableSkeleton,
 } from "@/components/ui/data-table";
 import { ExportMenu } from "@/components/ui/export-menu";
+import { ListSearch } from "@/components/ui/list-search";
+import { ToneBadge } from "@/components/ui/tone-badge";
 import type { ExportColumn } from "@/lib/export/export-column";
+import { FormatKg, FormatRelative } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
+import { useListParams } from "@/lib/use-list-params";
+import { cn } from "@/lib/utils";
 import { useRawMaterialBalances } from "../hooks/use-raw-materials";
 import { FetchRawMaterialBalances } from "../services/raw-material.service";
 import type { RawMaterialBalanceDTO } from "../validators/raw-material.schema";
-
-function FormatDateTime(value: string | null) {
-  return value ? new Date(value).toLocaleString() : "Never";
-}
 
 export function MaterialBalanceList({
   detailHrefBase,
@@ -26,76 +26,115 @@ export function MaterialBalanceList({
   // Manager's view, which records activity from this same page instead.
   detailHrefBase?: string;
 }) {
-  const [page, setPage] = useState(1);
-  const { data: result, isLoading } = useRawMaterialBalances({ page });
+  const list = useListParams<"name" | "quantity">("name");
+  const {
+    data: result,
+    isLoading,
+    isFetching,
+  } = useRawMaterialBalances(list.params);
 
   const columns: DataTableColumn<RawMaterialBalanceDTO>[] = [
     {
       key: "name",
-      header: "Name",
+      header: "Material",
+      sortKey: "name",
       cell: (balance) =>
         detailHrefBase ? (
           <Link
             href={`${detailHrefBase}/${balance.materialId}`}
-            className="underline underline-offset-4"
+            className="font-medium underline-offset-4 hover:underline"
           >
             {balance.materialName}
           </Link>
         ) : (
-          balance.materialName
+          <span className="font-medium">{balance.materialName}</span>
         ),
     },
     {
       key: "quantity",
-      header: "Quantity (kg)",
-      cell: (balance) => balance.quantityKg,
+      header: "On hand",
+      sortKey: "quantity",
+      cell: (balance) => {
+        const quantity = Number(balance.quantityKg);
+        return (
+          <span className="inline-flex items-center gap-2">
+            <span
+              className={cn(
+                "font-medium tabular-nums",
+                quantity < 0 && "text-destructive",
+              )}
+            >
+              {FormatKg(balance.quantityKg)}
+            </span>
+            {quantity < 0 && (
+              <ToneBadge
+                tone="critical"
+                title="More was used than was recorded as received. Record a stock count to correct it."
+              >
+                Negative
+              </ToneBadge>
+            )}
+            {quantity === 0 && <ToneBadge tone="critical">Empty</ToneBadge>}
+          </span>
+        );
+      },
     },
     {
       key: "updated",
-      header: "Last updated",
-      cell: (balance) => FormatDateTime(balance.updatedAt),
+      header: "Last movement",
+      cell: (balance) =>
+        balance.updatedAt
+          ? FormatRelative(balance.updatedAt)
+          : "No activity yet",
       className: "text-muted-foreground",
     },
   ];
 
   const exportColumns: ExportColumn<RawMaterialBalanceDTO>[] = [
-    { header: "Name", value: (balance) => balance.materialName },
-    { header: "Quantity (kg)", value: (balance) => balance.quantityKg },
-    {
-      header: "Last updated",
-      value: (balance) => FormatDateTime(balance.updatedAt),
-    },
+    { header: "Material", value: (balance) => balance.materialName },
+    { header: "On hand (kg)", value: (balance) => balance.quantityKg },
+    { header: "Last movement", value: (balance) => balance.updatedAt ?? "" },
   ];
-
-  if (isLoading) {
-    return <TableSkeleton columns={columns.length} />;
-  }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ListSearch
+          placeholder="Search materials…"
+          onSearch={list.setSearch}
+          className="w-full sm:w-64"
+        />
         <ExportMenu
           filename="material-balances"
           title="Raw material balances"
           columns={exportColumns}
           rows={() =>
-            FetchRawMaterialBalances({ pageSize: MAX_PAGE_SIZE }).then(
-              (result) => result.data,
-            )
+            FetchRawMaterialBalances({
+              ...list.params,
+              page: 1,
+              pageSize: MAX_PAGE_SIZE,
+            }).then((page) => page.data)
           }
         />
       </div>
-      <DataTable
-        columns={columns}
-        data={result?.data ?? []}
-        getRowKey={(balance) => balance.materialId}
-        emptyMessage="No raw materials yet."
-        pagination={{
-          page,
-          totalPages: result?.pagination.totalPages ?? 1,
-          onPageChange: setPage,
-        }}
-      />
+      {isLoading ? (
+        <TableSkeleton columns={columns.length} />
+      ) : (
+        <div className={cn(isFetching && "opacity-70 transition-opacity")}>
+          <DataTable
+            columns={columns}
+            data={result?.data ?? []}
+            getRowKey={(balance) => balance.materialId}
+            emptyMessage="No raw materials match."
+            sort={list.sort}
+            pagination={{
+              page: list.page,
+              totalPages: result?.pagination.totalPages ?? 1,
+              onPageChange: list.setPage,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

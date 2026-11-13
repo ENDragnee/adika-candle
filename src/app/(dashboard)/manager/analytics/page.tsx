@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/shell/page-header";
 import { AnalyticsHub } from "@/features/analytics/components/analytics-hub";
 import { CheckPermission } from "@/lib/session";
@@ -16,7 +17,10 @@ export default async function AnalyticsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader description="Production, profitability, stock health, and best sellers." />
-      <AnalyticsHub />
+      {/* AnalyticsHub reads ?tab= via useSearchParams. */}
+      <Suspense>
+        <AnalyticsHub />
+      </Suspense>
     </div>
   );
 }

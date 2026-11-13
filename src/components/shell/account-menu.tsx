@@ -106,7 +106,7 @@ export function AccountMenu({
   side = "top",
 }: AccountMenuProps) {
   const router = useRouter();
-  const startTour = useProductTour(user.role);
+  const startTour = useProductTour(user.role, user.permissions);
 
   async function handleSignOut() {
     await authClient.signOut();

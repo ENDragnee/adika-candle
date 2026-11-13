@@ -10,10 +10,10 @@ export interface LegendSection {
 
 export const LEGEND_SECTIONS: LegendSection[] = [
   { id: "daily-stock-report", label: "Daily Stock Report columns" },
-  { id: "sales", label: "Sales: cash vs loan, walk-in vs customer" },
-  { id: "loan-balance", label: "Loan balance sign convention" },
-  { id: "ledger-entries", label: "Ledger entry types" },
+  { id: "sales", label: "Sales, voids, and overselling" },
+  { id: "loan-balance", label: "Customer balances" },
+  { id: "ledger-entries", label: "Stock history entries" },
   { id: "unit-conversions", label: "Unit conversions" },
-  { id: "stock-health", label: "Stock Health statuses" },
+  { id: "stock-health", label: "Stock statuses" },
   { id: "roles", label: "Manager vs Inventory Manager" },
 ];

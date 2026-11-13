@@ -1,52 +1,91 @@
 import { z } from "zod";
 
+export const StockStatusSchema = z.enum([
+  "NEGATIVE",
+  "OUT_OF_STOCK",
+  "CRITICAL",
+  "LOW",
+  "HEALTHY",
+  "OVERSTOCKED",
+  "UNTRACKED",
+]);
+export type StockStatusValue = z.infer<typeof StockStatusSchema>;
+
+export const StockStatusBucketSchema = z.object({
+  status: StockStatusSchema,
+  count: z.number().int(),
+});
+export type StockStatusBucketDTO = z.infer<typeof StockStatusBucketSchema>;
+
 export const SalesTrendPointSchema = z.object({
   date: z.string(),
   totalAmount: z.string(),
+  cashAmount: z.string(),
+  onAccountAmount: z.string(),
   saleCount: z.number().int(),
 });
 
 export type SalesTrendPointDTO = z.infer<typeof SalesTrendPointSchema>;
 
-export const DashboardStockLevelSchema = z.object({
-  productId: z.string(),
-  productName: z.string(),
-  productSku: z.string(),
-  quantityKg: z.string(),
-  updatedAt: z.string().nullable(),
+export const TodaySalesSchema = z.object({
+  salesAmount: z.string(),
+  cashAmount: z.string(),
+  onAccountAmount: z.string(),
+  saleCount: z.number().int(),
+  yesterdaySalesAmount: z.string(),
 });
 
-export type DashboardStockLevelDTO = z.infer<typeof DashboardStockLevelSchema>;
+export const ReceivablesSchema = z.object({
+  owedToUs: z.string(),
+  customerCredit: z.string(),
+  debtorCount: z.number().int(),
+  creditCount: z.number().int(),
+});
+export type ReceivablesDTO = z.infer<typeof ReceivablesSchema>;
 
-export const DashboardLoanAccountSchema = z.object({
-  id: z.string(),
+export const DashboardDebtorSchema = z.object({
+  accountId: z.string(),
   customerId: z.string(),
   customerName: z.string(),
   balance: z.string(),
-  updatedAt: z.string(),
+  lastPaymentAt: z.string().nullable(),
 });
+export type DashboardDebtorDTO = z.infer<typeof DashboardDebtorSchema>;
 
-export type DashboardLoanAccountDTO = z.infer<
-  typeof DashboardLoanAccountSchema
->;
+export const AttentionKindSchema = z.enum([
+  "NEGATIVE_STOCK",
+  "OUT_OF_STOCK",
+  "LOW_STOCK",
+  "NO_PRICE",
+  "NO_COST",
+  "NEGATIVE_MATERIAL",
+  "STALE_DEBT",
+]);
+export type AttentionKind = z.infer<typeof AttentionKindSchema>;
 
-export const LowStockAlertSchema = z.object({
-  productId: z.string(),
-  productName: z.string(),
-  productSku: z.string(),
-  quantityKg: z.string(),
-  thresholdKg: z.string(),
+export const AttentionItemSchema = z.object({
+  id: z.string(),
+  kind: AttentionKindSchema,
+  severity: z.enum(["critical", "warning", "info"]),
+  subjectName: z.string(),
+  href: z.string(),
+  quantityKg: z.string().nullable(),
+  thresholdKg: z.string().nullable(),
+  daysOfCover: z.string().nullable(),
+  amount: z.string().nullable(),
+  lastPaymentAt: z.string().nullable(),
 });
-
-export type LowStockAlertDTO = z.infer<typeof LowStockAlertSchema>;
+export type AttentionItemDTO = z.infer<typeof AttentionItemSchema>;
 
 export const ManagerDashboardSchema = z.object({
+  today: TodaySalesSchema,
   salesTrend: z.array(SalesTrendPointSchema),
   salesTotalLast30Days: z.string(),
-  stockLevels: z.array(DashboardStockLevelSchema),
-  loanAccounts: z.array(DashboardLoanAccountSchema),
-  totalLoanExposure: z.string(),
-  lowStockAlerts: z.array(LowStockAlertSchema),
+  salesTotalPrior30Days: z.string(),
+  receivables: ReceivablesSchema,
+  topDebtors: z.array(DashboardDebtorSchema),
+  stockDistribution: z.array(StockStatusBucketSchema),
+  attention: z.array(AttentionItemSchema),
 });
 
 export type ManagerDashboardDTO = z.infer<typeof ManagerDashboardSchema>;
@@ -65,6 +104,7 @@ export const MaterialProductionRowSchema = z.object({
   openingKg: z.string(),
   receivedKg: z.string(),
   consumedKg: z.string(),
+  adjustedKg: z.string(),
   closingKg: z.string(),
 });
 export type MaterialProductionRowDTO = z.infer<
@@ -78,6 +118,7 @@ export const ProductProductionRowSchema = z.object({
   openingKg: z.string(),
   receivedKg: z.string(),
   consumedKg: z.string(),
+  adjustedKg: z.string(),
   closingKg: z.string(),
   expectedOutputKg: z.string().nullable(),
   variancePercent: z.string().nullable(),
@@ -87,6 +128,7 @@ export type ProductProductionRowDTO = z.infer<
 >;
 
 export const ProductionTrendPointSchema = z.object({
+  periodKey: z.string(),
   periodLabel: z.string(),
   materialConsumedKg: z.string(),
   productActualOutputKg: z.string(),
@@ -98,6 +140,10 @@ export type ProductionTrendPointDTO = z.infer<
 export const ProductionReportSchema = z.object({
   granularity: ReportGranularitySchema,
   periodLabel: z.string(),
+  periodStart: z.string(),
+  periodEnd: z.string(),
+  offset: z.number().int(),
+  hasNext: z.boolean(),
   materials: z.array(MaterialProductionRowSchema),
   products: z.array(ProductProductionRowSchema),
   trend: z.array(ProductionTrendPointSchema),
@@ -106,16 +152,21 @@ export type ProductionReportDTO = z.infer<typeof ProductionReportSchema>;
 
 export const ProfitabilityStatsSchema = z.object({
   totalRevenue: z.string(),
+  // Revenue from sales that had a cost on record — the base profit and
+  // margin are computed against. Profit/margin are null when it's 0.
+  costedRevenue: z.string(),
   totalCost: z.string(),
-  totalProfit: z.string(),
-  averageMarginPercent: z.string(),
+  totalProfit: z.string().nullable(),
+  averageMarginPercent: z.string().nullable(),
   includedSaleCount: z.number().int(),
   excludedSaleCount: z.number().int(),
 });
 
 export const MarginTrendPointSchema = z.object({
   date: z.string(),
-  marginPercent: z.string(),
+  revenue: z.string(),
+  profit: z.string().nullable(),
+  marginPercent: z.string().nullable(),
 });
 export type MarginTrendPointDTO = z.infer<typeof MarginTrendPointSchema>;
 
@@ -123,29 +174,29 @@ export const ProductMarginRowSchema = z.object({
   productId: z.string(),
   productName: z.string(),
   productSku: z.string(),
-  sellPricePerKg: z.string().nullable(),
-  costPerKg: z.string().nullable(),
-  marginPercent: z.string().nullable(),
+  currentPricePerKg: z.string().nullable(),
+  currentCostPerKg: z.string().nullable(),
+  currentMarginPercent: z.string().nullable(),
+  realizedMarginPercent: z.string().nullable(),
   unitsSoldKg: z.string(),
-  totalProfit: z.string(),
+  revenue: z.string(),
+  totalProfit: z.string().nullable(),
+  uncostedSaleCount: z.number().int(),
 });
 export type ProductMarginRowDTO = z.infer<typeof ProductMarginRowSchema>;
 
 export const ProfitabilitySchema = z.object({
+  periodDays: z.number().int(),
   stats: ProfitabilityStatsSchema,
   trend: z.array(MarginTrendPointSchema),
   products: z.array(ProductMarginRowSchema),
 });
 export type ProfitabilityDTO = z.infer<typeof ProfitabilitySchema>;
 
-export const StockHealthStatusSchema = z.enum([
-  "OUT_OF_STOCK",
-  "CRITICAL",
-  "LOW",
-  "HEALTHY",
-  "OVERSTOCKED",
-]);
-export type StockHealthStatus = z.infer<typeof StockHealthStatusSchema>;
+// Kept as aliases so Stock Health code reads naturally; the status set is
+// shared with the Dashboard via src/features/stock/stock-status.ts.
+export const StockHealthStatusSchema = StockStatusSchema;
+export type StockHealthStatus = StockStatusValue;
 
 export const StockHealthRowSchema = z.object({
   productId: z.string(),
@@ -153,20 +204,17 @@ export const StockHealthRowSchema = z.object({
   productSku: z.string(),
   quantityKg: z.string(),
   thresholdKg: z.string().nullable(),
-  status: StockHealthStatusSchema,
+  status: StockStatusSchema,
   averageDailySalesKg: z.string(),
   daysOfCover: z.string().nullable(),
 });
 export type StockHealthRowDTO = z.infer<typeof StockHealthRowSchema>;
 
-export const StockHealthBucketSchema = z.object({
-  status: StockHealthStatusSchema,
-  count: z.number().int(),
-});
-export type StockHealthBucketDTO = z.infer<typeof StockHealthBucketSchema>;
+export type StockHealthBucketDTO = StockStatusBucketDTO;
 
 export const StockHealthSchema = z.object({
-  distribution: z.array(StockHealthBucketSchema),
+  windowDays: z.number().int(),
+  distribution: z.array(StockStatusBucketSchema),
   rows: z.array(StockHealthRowSchema),
 });
 export type StockHealthDTO = z.infer<typeof StockHealthSchema>;

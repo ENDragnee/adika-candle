@@ -3,11 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { GetErrorMessage } from "@/lib/get-error-message";
-import type { PaginationParams } from "@/lib/pagination";
 import {
   CreateProduct,
   FetchProduct,
   FetchProducts,
+  type ProductsQueryParams,
   UpdateProduct,
 } from "../services/product.service";
 import type {
@@ -16,11 +16,11 @@ import type {
 } from "../validators/product.schema";
 
 export const PRODUCTS_QUERY_KEY = ["products"] as const;
-export const productsQueryKey = (params: PaginationParams) =>
+export const productsQueryKey = (params: ProductsQueryParams) =>
   ["products", params] as const;
 export const productQueryKey = (id: string) => ["products", id] as const;
 
-export function useProducts(params: PaginationParams = {}) {
+export function useProducts(params: ProductsQueryParams = {}) {
   return useQuery({
     queryKey: productsQueryKey(params),
     queryFn: () => FetchProducts(params),

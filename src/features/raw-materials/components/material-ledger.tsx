@@ -7,48 +7,73 @@ import {
   TableSkeleton,
 } from "@/components/ui/data-table";
 import { ExportMenu } from "@/components/ui/export-menu";
+import { ToneBadge } from "@/components/ui/tone-badge";
 import type { ExportColumn } from "@/lib/export/export-column";
+import { FormatDateTime, FormatKg, FormatSignedKg } from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useMaterialLedger } from "../hooks/use-material-activity";
+import { MATERIAL_ENTRY_META, MaterialEntryDelta } from "../labels";
 import { FetchMaterialLedger } from "../services/raw-material.service";
 import type { RawMaterialLedgerEntryDTO } from "../validators/raw-material.schema";
 
-function FormatDateTime(value: string) {
-  return new Date(value).toLocaleString();
-}
-
 const columns: DataTableColumn<RawMaterialLedgerEntryDTO>[] = [
-  { key: "type", header: "Type", cell: (entry) => entry.type },
   {
-    key: "quantity",
-    header: "Quantity (kg)",
-    cell: (entry) => entry.quantityKg,
+    key: "date",
+    header: "Date",
+    cell: (entry) => FormatDateTime(entry.createdAt),
+  },
+  {
+    key: "type",
+    header: "What happened",
+    cell: (entry) => (
+      <ToneBadge tone={MATERIAL_ENTRY_META[entry.type].tone}>
+        {MATERIAL_ENTRY_META[entry.type].label}
+      </ToneBadge>
+    ),
+  },
+  {
+    key: "change",
+    header: "Change",
+    cell: (entry) => (
+      <span className="font-medium tabular-nums">
+        {FormatSignedKg(MaterialEntryDelta(entry.type, entry.quantityKg))}
+      </span>
+    ),
+    className: "text-right",
   },
   {
     key: "balance",
-    header: "Balance after (kg)",
-    cell: (entry) => entry.balanceAfterKg,
+    header: "Balance after",
+    cell: (entry) => FormatKg(entry.balanceAfterKg),
+    className: "text-right tabular-nums",
   },
   {
     key: "note",
     header: "Note",
     cell: (entry) => entry.note ?? "—",
-    className: "text-muted-foreground",
+    className: "max-w-72 whitespace-normal text-muted-foreground",
   },
   {
-    key: "date",
-    header: "Date",
-    cell: (entry) => FormatDateTime(entry.createdAt),
+    key: "by",
+    header: "By",
+    cell: (entry) => entry.createdByName ?? "—",
     className: "text-muted-foreground",
   },
 ];
 
 const exportColumns: ExportColumn<RawMaterialLedgerEntryDTO>[] = [
-  { header: "Type", value: (entry) => entry.type },
-  { header: "Quantity (kg)", value: (entry) => entry.quantityKg },
-  { header: "Balance after (kg)", value: (entry) => entry.balanceAfterKg },
-  { header: "Note", value: (entry) => entry.note ?? "—" },
   { header: "Date", value: (entry) => FormatDateTime(entry.createdAt) },
+  {
+    header: "What happened",
+    value: (entry) => MATERIAL_ENTRY_META[entry.type].label,
+  },
+  {
+    header: "Change (kg)",
+    value: (entry) => String(MaterialEntryDelta(entry.type, entry.quantityKg)),
+  },
+  { header: "Balance after (kg)", value: (entry) => entry.balanceAfterKg },
+  { header: "Note", value: (entry) => entry.note ?? "" },
+  { header: "By", value: (entry) => entry.createdByName ?? "" },
 ];
 
 export function MaterialLedger({ materialId }: { materialId: string }) {
@@ -77,7 +102,7 @@ export function MaterialLedger({ materialId }: { materialId: string }) {
         columns={columns}
         data={result?.data ?? []}
         getRowKey={(entry) => entry.id}
-        emptyMessage="No ledger entries yet."
+        emptyMessage="No activity recorded yet."
         pagination={{
           page,
           totalPages: result?.pagination.totalPages ?? 1,

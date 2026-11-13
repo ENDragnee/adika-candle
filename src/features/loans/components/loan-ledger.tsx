@@ -7,51 +7,107 @@ import {
   TableSkeleton,
 } from "@/components/ui/data-table";
 import { ExportMenu } from "@/components/ui/export-menu";
+import { ToneBadge } from "@/components/ui/tone-badge";
 import type { ExportColumn } from "@/lib/export/export-column";
+import {
+  DescribeLoanBalance,
+  FormatDateTime,
+  FormatMoney,
+  FormatSignedMoney,
+} from "@/lib/format";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useLoanTransactions } from "../hooks/use-loans";
+import { LOAN_TRANSACTION_META } from "../labels";
 import { FetchLoanTransactions } from "../services/loan.service";
 import type { LoanTransactionDTO } from "../validators/loan.schema";
 
-function FormatDateTime(value: string) {
-  return new Date(value).toLocaleString();
+function BalanceAfter({ value }: { value: string }) {
+  const described = DescribeLoanBalance(value);
+  return (
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span className="tabular-nums">
+        {described.direction === "SETTLED" ? "Settled" : described.amount}
+      </span>
+      {described.direction !== "SETTLED" && (
+        <span className="text-xs text-muted-foreground">
+          {described.direction === "OWES" ? "owes you" : "credit"}
+        </span>
+      )}
+    </span>
+  );
 }
 
 const columns: DataTableColumn<LoanTransactionDTO>[] = [
-  { key: "type", header: "Type", cell: (transaction) => transaction.type },
   {
-    key: "amount",
-    header: "Amount",
-    cell: (transaction) => transaction.amount,
+    key: "date",
+    header: "Date",
+    cell: (transaction) => FormatDateTime(transaction.createdAt),
+  },
+  {
+    key: "type",
+    header: "What happened",
+    cell: (transaction) => {
+      const meta = LOAN_TRANSACTION_META[transaction.type];
+      return (
+        <ToneBadge tone={meta.tone} title={meta.description}>
+          {meta.label}
+        </ToneBadge>
+      );
+    },
+  },
+  {
+    key: "change",
+    header: "Change",
+    // + = customer owes more, − = owes less / more credit. Falls back to
+    // the unsigned amount if the API didn't send a change.
+    cell: (transaction) => (
+      <span className="font-medium tabular-nums">
+        {transaction.change === null
+          ? FormatMoney(transaction.amount)
+          : FormatSignedMoney(transaction.change)}
+      </span>
+    ),
+    className: "text-right",
   },
   {
     key: "balance",
     header: "Balance after",
-    cell: (transaction) => transaction.balanceAfter,
+    cell: (transaction) => <BalanceAfter value={transaction.balanceAfter} />,
+    className: "text-right",
   },
   {
     key: "note",
     header: "Note",
     cell: (transaction) => transaction.note ?? "—",
-    className: "text-muted-foreground",
+    className: "max-w-72 whitespace-normal text-muted-foreground",
   },
   {
-    key: "date",
-    header: "Date",
-    cell: (transaction) => FormatDateTime(transaction.createdAt),
+    key: "by",
+    header: "By",
+    cell: (transaction) => transaction.createdByName ?? "—",
     className: "text-muted-foreground",
   },
 ];
 
 const exportColumns: ExportColumn<LoanTransactionDTO>[] = [
-  { header: "Type", value: (transaction) => transaction.type },
-  { header: "Amount", value: (transaction) => transaction.amount },
-  { header: "Balance after", value: (transaction) => transaction.balanceAfter },
-  { header: "Note", value: (transaction) => transaction.note ?? "—" },
   {
     header: "Date",
     value: (transaction) => FormatDateTime(transaction.createdAt),
   },
+  {
+    header: "What happened",
+    value: (transaction) => LOAN_TRANSACTION_META[transaction.type].label,
+  },
+  {
+    header: "Change (+ owes more, − owes less)",
+    value: (transaction) => transaction.change ?? transaction.amount,
+  },
+  {
+    header: "Balance after (+ owes you, − credit)",
+    value: (transaction) => transaction.balanceAfter,
+  },
+  { header: "Note", value: (transaction) => transaction.note ?? "" },
+  { header: "By", value: (transaction) => transaction.createdByName ?? "" },
 ];
 
 export function LoanLedger({ accountId }: { accountId: string }) {
@@ -68,13 +124,13 @@ export function LoanLedger({ accountId }: { accountId: string }) {
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
         <ExportMenu
-          filename="loan-ledger"
-          title="Loan ledger"
+          filename="customer-account"
+          title="Customer account history"
           columns={exportColumns}
           rows={() =>
-            FetchLoanTransactions(accountId, {
-              pageSize: MAX_PAGE_SIZE,
-            }).then((result) => result.data)
+            FetchLoanTransactions(accountId, { pageSize: MAX_PAGE_SIZE }).then(
+              (result) => result.data,
+            )
           }
         />
       </div>
@@ -82,7 +138,7 @@ export function LoanLedger({ accountId }: { accountId: string }) {
         columns={columns}
         data={result?.data ?? []}
         getRowKey={(transaction) => transaction.id}
-        emptyMessage="No loan activity yet."
+        emptyMessage="No account activity yet."
         pagination={{
           page,
           totalPages: result?.pagination.totalPages ?? 1,

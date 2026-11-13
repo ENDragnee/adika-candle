@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   ACTIVE_PRICE_INCLUDE,
   CreateProductInputSchema,
+  ProductQuerySchema,
   ProductSchema,
   ToProductDTO,
 } from "@/features/products/validators/product.schema";
@@ -28,19 +29,32 @@ function GenerateSku(): string {
   return code;
 }
 
+const ProductsQuerySchema = ProductQuerySchema.extend(
+  PaginationQuerySchema.shape,
+);
+
 export const GET = CreateApiRoute({
   moduleName: "products",
-  schema: PaginationQuerySchema,
+  schema: ProductsQuerySchema,
   requiresAuth: { status: true, permission: "product:read" },
   responseSchema: PaginatedResponseSchema(ProductSchema),
   handler: async (query) => {
+    const where: Prisma.ProductWhereInput | undefined = query.search
+      ? {
+          OR: [
+            { name: { contains: query.search, mode: "insensitive" } },
+            { sku: { contains: query.search, mode: "insensitive" } },
+          ],
+        }
+      : undefined;
     const [products, total] = await Promise.all([
       prisma.product.findMany({
-        orderBy: { name: "asc" },
+        where,
+        orderBy: [{ [query.sort]: query.dir }, { id: "asc" }],
         include: ACTIVE_PRICE_INCLUDE,
         ...ToSkipTake(query),
       }),
-      prisma.product.count(),
+      prisma.product.count({ where }),
     ]);
     return {
       data: products.map(ToProductDTO),
