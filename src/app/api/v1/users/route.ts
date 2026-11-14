@@ -72,7 +72,10 @@ export const POST = CreateApiRoute({
 
       const user = await prisma.user.update({
         where: { id: result.user.id },
-        data: { roleId: body.roleId },
+        data: {
+          roleId: body.roleId,
+          mustChangePassword: body.requirePasswordChange,
+        },
         include: WITH_ROLE_INCLUDE,
       });
 

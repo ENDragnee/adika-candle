@@ -27,6 +27,7 @@ export const PATCH = CreateApiRoute<SetUserPasswordInput, Params>({
       entityLabel: name,
       changes: {
         signedOutEverywhere: body.signOutEverywhere,
+        requirePasswordChange: body.requirePasswordChange,
         sessionsEnded: result.signedOutSessions,
       },
     };
@@ -62,6 +63,15 @@ export const PATCH = CreateApiRoute<SetUserPasswordInput, Params>({
     }
 
     await SetUserPassword(userId, body.password);
+    // Epic 24: the person replaces a password someone else chose.
+    // Never for your own — you already know it.
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        mustChangePassword:
+          userId !== session?.id && body.requirePasswordChange !== false,
+      },
+    });
 
     // The signed-in Manager resetting their *own* password keeps the
     // session they're using; every other session ends.

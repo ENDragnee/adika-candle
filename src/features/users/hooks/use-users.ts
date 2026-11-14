@@ -7,6 +7,7 @@ import {
   CreateUser,
   FetchUsers,
   SetUserPassword,
+  UnlockUser,
   UpdateUser,
 } from "../services/user.service";
 import type {
@@ -52,10 +53,24 @@ export function useUpdateUser(id: string) {
   });
 }
 
+export function useUnlockUser(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => UnlockUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
+      toast.success("Account unlocked");
+    },
+    meta: { errorTitle: "Couldn't unlock the account" },
+  });
+}
+
 export function useSetUserPassword(id: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: SetUserPasswordInput) => SetUserPassword(id, input),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
       toast.success("Password updated");
     },
     meta: { errorTitle: "Couldn't set password" },

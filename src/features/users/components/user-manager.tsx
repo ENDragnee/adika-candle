@@ -4,6 +4,7 @@ import {
   CheckCircleIcon,
   DotsThreeVerticalIcon,
   KeyIcon,
+  LockOpenIcon,
   PencilSimpleIcon,
   PlusIcon,
   ProhibitIcon,
@@ -55,17 +56,67 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ToneBadge } from "@/components/ui/tone-badge";
 import { useRoles } from "@/features/roles/hooks/use-roles";
 import { HumanizeRoleName } from "@/features/roles/permission-labels";
 import { useRevokeSessions } from "@/features/sessions/hooks/use-sessions";
+import { FormatDateTime } from "@/lib/format";
 import { usePagination } from "@/lib/use-pagination";
 import {
   useCreateUser,
   useSetUserPassword,
+  useUnlockUser,
   useUpdateUser,
   useUsers,
 } from "../hooks/use-users";
 import type { UserDTO } from "../validators/user.schema";
+
+// "Ask them to choose their own password" (Epic 24): on by default
+// whenever someone sets a password for another person.
+// "14:05" today, otherwise the full date and time.
+function FormatTime(value: string): string {
+  const date = new Date(value);
+  return date.toDateString() === new Date().toDateString()
+    ? date.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Africa/Addis_Ababa",
+      })
+    : FormatDateTime(value);
+}
+
+function RequireChangeSwitch({
+  id,
+  checked,
+  onChange,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className="flex items-start gap-3 rounded-lg border border-border p-3 text-sm"
+    >
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
+        aria-label="Require a new password at next sign-in"
+      />
+      <span className="flex flex-col gap-0.5">
+        <span className="font-medium">
+          Require a new password at next sign-in
+        </span>
+        <span className="text-xs text-muted-foreground">
+          They'll pick their own before they can use the app, so nobody else
+          knows it.
+        </span>
+      </span>
+    </label>
+  );
+}
 
 function CreateUserForm({
   roles,
@@ -79,6 +130,7 @@ function CreateUserForm({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [roleId, setRoleId] = useState("");
+  const [requireChange, setRequireChange] = useState(true);
 
   // `roles` arrives from useRoles() after this form's first render, so the
   // initial useState can't default to roles[0].id yet — sync it once the
@@ -99,6 +151,7 @@ function CreateUserForm({
       username,
       roleId,
       password,
+      requirePasswordChange: requireChange,
     });
 
     setName("");
@@ -151,6 +204,11 @@ function CreateUserForm({
         onChange={setPassword}
         context={{ personal: [name, username, email] }}
       />
+      <RequireChangeSwitch
+        id="new-user-require-change"
+        checked={requireChange}
+        onChange={setRequireChange}
+      />
       <div className="flex flex-col gap-1">
         <label htmlFor="new-user-role" className="text-sm font-medium">
           Role
@@ -198,6 +256,7 @@ function SetPasswordForm({
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [signOutEverywhere, setSignOutEverywhere] = useState(true);
+  const [requireChange, setRequireChange] = useState(true);
   const setUserPassword = useSetUserPassword(user.id);
   const context = { personal: [user.name, user.username, user.email] };
   const mismatch = confirm.length > 0 && confirm !== password;
@@ -210,6 +269,7 @@ function SetPasswordForm({
       password,
       confirmPassword: confirm,
       signOutEverywhere,
+      requirePasswordChange: !isSelf && requireChange,
     });
     setPassword("");
     setConfirm("");
@@ -267,6 +327,13 @@ function SetPasswordForm({
           </span>
         </span>
       </label>
+      {!isSelf && (
+        <RequireChangeSwitch
+          id="set-password-require-change"
+          checked={requireChange}
+          onChange={setRequireChange}
+        />
+      )}
       <Button
         loading={setUserPassword.isPending}
         type="submit"
@@ -396,11 +463,13 @@ function UserRow({
   roles,
   isSelf,
   canManageSessions,
+  canManageSystem,
 }: {
   user: UserDTO;
   roles: { id: string; name: string }[];
   isSelf: boolean;
   canManageSessions: boolean;
+  canManageSystem: boolean;
 }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -408,6 +477,7 @@ function UserRow({
   const [isSignOutOpen, setIsSignOutOpen] = useState(false);
   const updateUser = useUpdateUser(user.id);
   const revokeSessions = useRevokeSessions();
+  const unlockUser = useUnlockUser(user.id);
 
   async function handleActivate() {
     await updateUser.mutateAsync({ isActive: true });
@@ -433,7 +503,19 @@ function UserRow({
       <TableCell>
         {user.roleName ? HumanizeRoleName(user.roleName) : "No role"}
       </TableCell>
-      <TableCell>{user.isActive ? "Active" : "Inactive"}</TableCell>
+      <TableCell>
+        <span className="flex flex-wrap items-center gap-1.5">
+          {user.isActive ? "Active" : "Inactive"}
+          {user.lockedUntil && (
+            <ToneBadge tone="critical">
+              Locked until {FormatTime(user.lockedUntil)}
+            </ToneBadge>
+          )}
+          {user.mustChangePassword && (
+            <ToneBadge tone="warning">New password pending</ToneBadge>
+          )}
+        </span>
+      </TableCell>
       <TableCell>
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
@@ -463,6 +545,12 @@ function UserRow({
                     <KeyIcon />
                     Set password
                   </DropdownMenuItem>
+                  {canManageSystem && user.lockedUntil && (
+                    <DropdownMenuItem onSelect={() => unlockUser.mutate()}>
+                      <LockOpenIcon />
+                      Unlock
+                    </DropdownMenuItem>
+                  )}
                   {canManageSessions && (
                     <DropdownMenuItem onSelect={() => setIsSignOutOpen(true)}>
                       <SignOutIcon />
@@ -562,9 +650,11 @@ function UserRow({
 export function UserManager({
   currentUserId,
   canManageSessions = false,
+  canManageSystem = false,
 }: {
   currentUserId: string;
   canManageSessions?: boolean;
+  canManageSystem?: boolean;
 }) {
   const pager = usePagination();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -620,6 +710,7 @@ export function UserManager({
                       roles={roles}
                       isSelf={user.id === currentUserId}
                       canManageSessions={canManageSessions}
+                      canManageSystem={canManageSystem}
                     />
                   ))
                 ) : (

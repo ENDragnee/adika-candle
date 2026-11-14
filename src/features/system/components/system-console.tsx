@@ -2,6 +2,7 @@
 
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { useSystemSettings } from "../hooks/use-system";
+import { SecurityCard } from "./security-card";
 
 // /manager/system (Epic 24): the Admin's controls, one card per power.
 export function SystemConsole() {
@@ -18,5 +19,9 @@ export function SystemConsole() {
     );
   }
 
-  return <div className="grid items-start gap-4 lg:grid-cols-2" />;
+  return (
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+      <SecurityCard settings={settings.security} />
+    </div>
+  );
 }

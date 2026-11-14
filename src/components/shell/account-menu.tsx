@@ -3,6 +3,7 @@
 import {
   CompassIcon,
   DesktopIcon,
+  KeyIcon,
   MoonIcon,
   SignOutIcon,
   SunIcon,
@@ -132,6 +133,12 @@ export function AccountMenu({
         <DropdownMenuItem onSelect={startTour}>
           <CompassIcon />
           Take a tour
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => router.push("/account/change-password")}
+        >
+          <KeyIcon />
+          Change password
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={handleSignOut}>

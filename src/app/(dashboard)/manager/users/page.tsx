@@ -19,6 +19,7 @@ export default async function UsersPage() {
       <UserManager
         currentUserId={session.user.id}
         canManageSessions={session.user.permissions.includes("session:manage")}
+        canManageSystem={session.user.permissions.includes("system:manage")}
       />
     </div>
   );

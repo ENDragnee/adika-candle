@@ -36,6 +36,7 @@ export const auth = betterAuth({
         where: { id: user.id },
         select: {
           isActive: true,
+          mustChangePassword: true,
           role: {
             select: { name: true, permissions: { select: { name: true } } },
           },
@@ -49,7 +50,27 @@ export const auth = betterAuth({
       // docs/DECISIONS.md, "Epic 7 decisions".
       if (!dbUser?.isActive) {
         return {
-          user: { ...user, role: null, permissions: [] },
+          user: {
+            ...user,
+            role: null,
+            permissions: [] as string[],
+            mustChangePassword: false,
+          },
+          session,
+        };
+      }
+
+      // Someone else chose this password (Epic 24): no permissions until
+      // the person picks their own. The dashboard layout and
+      // RoleRedirector send them to /account/change-password.
+      if (dbUser.mustChangePassword) {
+        return {
+          user: {
+            ...user,
+            role: dbUser.role?.name ?? null,
+            permissions: [] as string[],
+            mustChangePassword: true,
+          },
           session,
         };
       }
@@ -60,6 +81,7 @@ export const auth = betterAuth({
           role: dbUser.role?.name ?? null,
           permissions:
             dbUser.role?.permissions.map((permission) => permission.name) ?? [],
+          mustChangePassword: false,
         },
         session,
       };

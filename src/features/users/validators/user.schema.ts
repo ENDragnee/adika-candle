@@ -15,6 +15,11 @@ export const UserSchema = z.object({
   // when its role holds access the viewer's own role doesn't (see
   // src/lib/server/access-containment.ts). The API enforces it either way.
   canManage: z.boolean(),
+  // Locked after repeated failed sign-ins until this time (Epic 24);
+  // null or in the past = not locked.
+  lockedUntil: z.iso.datetime().nullable(),
+  // Must pick a new password at next sign-in (Epic 24).
+  mustChangePassword: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -45,7 +50,7 @@ export const UsernameSchema = z
 // The shared password policy (src/lib/password-policy.ts, Epic 22) — the
 // same rules the form's live checklist shows. Rules about the person's
 // own name/username are checked where the account is known (the routes).
-const PasswordSchema = z.string().superRefine((password, ctx) => {
+export const PasswordSchema = z.string().superRefine((password, ctx) => {
   for (const rule of FailedPasswordRules(password)) {
     ctx.addIssue({ code: "custom", message: `Password: ${rule.label}` });
   }
@@ -59,9 +64,11 @@ export const CreateUserInputSchema = z.object({
   // The Manager sets this directly — see docs/DECISIONS.md for why this
   // reverses Epic 7's original "auto-generated temp password" decision.
   password: PasswordSchema,
+  // The person replaces this password at first sign-in (Epic 24).
+  requirePasswordChange: z.boolean().default(true),
 });
 
-export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
+export type CreateUserInput = z.input<typeof CreateUserInputSchema>;
 
 // Email stays fixed: sign-in is by username, and email is the account's
 // stable identity in better-auth.
@@ -81,6 +88,9 @@ export const SetUserPasswordInputSchema = z
     // Ends every existing session for the account, so whoever knew the
     // old password (or holds a stolen session) is signed out now.
     signOutEverywhere: z.boolean().default(true),
+    // The person must replace this password at next sign-in (Epic 24).
+    // Ignored when setting your own.
+    requirePasswordChange: z.boolean().default(true),
   })
   .refine((input) => input.password === input.confirmPassword, {
     message: "The two passwords don't match",
@@ -106,6 +116,11 @@ export function ToUserDTO(
     isActive: user.isActive,
     roleId: user.roleId,
     roleName: user.role?.name ?? null,
+    lockedUntil:
+      user.lockedUntil && user.lockedUntil > new Date()
+        ? user.lockedUntil.toISOString()
+        : null,
+    mustChangePassword: user.mustChangePassword,
     canManage: IsWithinReach(
       viewerPermissions,
       user.role?.permissions.map((permission) => permission.name) ?? [],

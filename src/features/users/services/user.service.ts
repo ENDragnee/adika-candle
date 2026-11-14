@@ -33,6 +33,13 @@ export async function UpdateUser(
   return data;
 }
 
+export async function UnlockUser(id: string): Promise<UserDTO> {
+  const { data } = await axiosInstance.post<UserDTO>(
+    `/api/v1/users/${id}/unlock`,
+  );
+  return data;
+}
+
 export async function SetUserPassword(
   id: string,
   input: SetUserPasswordInput,
