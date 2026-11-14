@@ -10,6 +10,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { ToneBadge } from "@/components/ui/tone-badge";
+import { cn } from "@/lib/utils";
 import { useRoles, useUpdateRolePermissions } from "../hooks/use-roles";
 import {
   DescribeModule,
@@ -41,11 +42,13 @@ function RolePermissionMatrix({
   role,
   modules,
   isOwnRole,
+  viewerPermissions,
   onDeleted,
 }: {
   role: RoleDTO;
   modules: ModuleDTO[];
   isOwnRole: boolean;
+  viewerPermissions: string[];
   onDeleted: () => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -101,17 +104,29 @@ function RolePermissionMatrix({
       // single-line, so Enabled would otherwise land past the fold on
       // anything narrower than a wide desktop viewport.
       cell: ({ permission }) => {
-        const locked = isOwnRole && permission.name === SELF_LOCKED_PERMISSION;
+        const selfLocked =
+          isOwnRole && permission.name === SELF_LOCKED_PERMISSION;
+        // Access containment (Epic 23): you can only switch on or off
+        // what you hold yourself, and a role beyond yours is read-only.
+        const outOfReach =
+          !role.canEdit || !viewerPermissions.includes(permission.name);
         return (
           <span className="inline-flex items-center gap-2">
             <Switch
               checked={selectedIds.has(permission.id)}
               onCheckedChange={() => toggle(permission.id)}
-              disabled={locked}
+              disabled={selfLocked || outOfReach}
               aria-label={DescribePermission(permission.name).label}
             />
-            {locked && (
+            {selfLocked ? (
               <span className="text-xs text-muted-foreground">Your role</span>
+            ) : (
+              role.canEdit &&
+              outOfReach && (
+                <span className="text-xs text-muted-foreground">
+                  Not yours to give
+                </span>
+              )
             )}
           </span>
         );
@@ -159,13 +174,21 @@ function RolePermissionMatrix({
             · {selectedIds.size} of {rows.length} permissions on
           </p>
         </div>
-        <div className="flex gap-1">
-          <EditRoleDialog role={role} />
-          {!role.isBuiltIn && (
-            <DeleteRoleDialog role={role} onDeleted={onDeleted} />
-          )}
-        </div>
+        {role.canEdit && (
+          <div className="flex gap-1">
+            <EditRoleDialog role={role} />
+            {!role.isBuiltIn && (
+              <DeleteRoleDialog role={role} onDeleted={onDeleted} />
+            )}
+          </div>
+        )}
       </div>
+      {!role.canEdit && (
+        <p className="rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+          This role can do things your own role can't, so it's read-only for
+          you.
+        </p>
+      )}
       {selectedIds.size === 0 && (
         <p className="rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
           This role has no permissions yet — people with it can only see the
@@ -178,7 +201,7 @@ function RolePermissionMatrix({
         getRowKey={(row) => row.permission.id}
         emptyMessage="No permissions defined."
       />
-      <div className="flex items-center gap-2">
+      <div className={cn("flex items-center gap-2", !role.canEdit && "hidden")}>
         <Button
           loading={updatePermissions.isPending}
           size="sm"
@@ -249,8 +272,10 @@ function RoleManagerSkeleton() {
 
 export function RoleManager({
   currentRoleName,
+  viewerPermissions,
 }: {
   currentRoleName: string | null;
+  viewerPermissions: string[];
 }) {
   const { data, isLoading } = useRoles();
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
@@ -284,6 +309,7 @@ export function RoleManager({
           role={activeRole}
           modules={data.modules}
           isOwnRole={activeRole.name === currentRoleName}
+          viewerPermissions={viewerPermissions}
           onDeleted={() => setSelectedRoleId(null)}
         />
       </div>

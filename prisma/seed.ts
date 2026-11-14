@@ -18,6 +18,7 @@ const MODULE_PERMISSIONS: Record<string, string[]> = {
   sale: ["sale:create", "sale:read", "sale:void"],
   user: ["user:manage"],
   role: ["role:manage"],
+  session: ["session:manage"],
   "unit-conversion": ["unit-conversion:manage"],
   "raw-material": [
     "raw-material:read",
@@ -67,24 +68,38 @@ async function seedModulesAndPermissions() {
   return allPermissionNames;
 }
 
-// There is no separate admin role: the Manager is the administrator (every
-// permission, including users and roles).
+// Permissions only the Admin holds (Epic 23). The Manager gets everything
+// else; access containment (src/lib/server/access-containment.ts) keeps a
+// Manager from granting these to anyone, themselves included.
+const ADMIN_ONLY_PERMISSIONS = ["session:manage"];
+
+const ADMIN_DESCRIPTION =
+  "Total control: everything the Manager does, plus seeing and ending anyone's sessions.";
 const MANAGER_DESCRIPTION =
-  "Administrator: full access to analytics, stock, sales, pricing, users and roles.";
+  "Runs the business: analytics, stock, sales, loans, pricing, users and roles.";
 
 async function seedRoles(allPermissionNames: string[]) {
-  await prisma.role.upsert({
-    where: { name: ROLES.MANAGER },
-    update: {
-      description: MANAGER_DESCRIPTION,
-      permissions: { set: allPermissionNames.map((name) => ({ name })) },
-    },
-    create: {
-      name: ROLES.MANAGER,
-      description: MANAGER_DESCRIPTION,
-      permissions: { connect: allPermissionNames.map((name) => ({ name })) },
-    },
-  });
+  const managerPermissions = allPermissionNames.filter(
+    (name) => !ADMIN_ONLY_PERMISSIONS.includes(name),
+  );
+
+  for (const [name, description, permissions] of [
+    [ROLES.ADMIN, ADMIN_DESCRIPTION, allPermissionNames],
+    [ROLES.MANAGER, MANAGER_DESCRIPTION, managerPermissions],
+  ] as const) {
+    await prisma.role.upsert({
+      where: { name },
+      update: {
+        description,
+        permissions: { set: permissions.map((name) => ({ name })) },
+      },
+      create: {
+        name,
+        description,
+        permissions: { connect: permissions.map((name) => ({ name })) },
+      },
+    });
+  }
 
   await prisma.role.upsert({
     where: { name: ROLES.INVENTORY_MANAGER },
@@ -253,7 +268,7 @@ async function ensureDevUser({
 const DEV_PASSWORD = "ChangeMe123!";
 
 function SeedAccount(
-  prefix: "MANAGER" | "INVENTORY",
+  prefix: "ADMIN" | "MANAGER" | "INVENTORY",
   defaults: { email: string; username: string; name: string; roleName: string },
 ) {
   const env = (key: string) => process.env[`SEED_${prefix}_${key}`];
@@ -280,10 +295,20 @@ async function main() {
   await seedCustomers();
   await seedCandleCatalog();
 
-  // One Manager and one Inventory Manager account. The defaults are dev
-  // credentials; set SEED_MANAGER_* / SEED_INVENTORY_* to create real
-  // accounts. Outside development the passwords must be provided — the
-  // seed refuses to create accounts with the well-known dev password.
+  // One Admin, one Manager and one Inventory Manager account. The defaults
+  // are dev credentials; set SEED_ADMIN_* / SEED_MANAGER_* /
+  // SEED_INVENTORY_* to create real accounts. Outside development the
+  // passwords must be provided — the seed refuses to create accounts with
+  // the well-known dev password.
+  await ensureDevUser(
+    SeedAccount("ADMIN", {
+      email: "admin@adika.local",
+      username: "admin",
+      name: "Administrator",
+      roleName: ROLES.ADMIN,
+    }),
+  );
+
   await ensureDevUser(
     SeedAccount("MANAGER", {
       email: "manager@adika.local",

@@ -12,6 +12,18 @@ undo.
 
 ---
 
+## 2026-11-14 — Epic 23 (Admin role) decisions
+
+- **Admin is defined by one admin-only permission (`session:manage`), not by role name.** The Manager keeps every other permission. This reverses the earlier seed note ("no separate admin role; the Manager is the administrator"), at the owner's request.
+- **Access containment instead of a hard-coded role hierarchy.** A role or account is "within reach" only when the actor holds every one of its permissions.
+  - A rank list (Admin > Manager > …) would break as soon as someone creates a custom role. The permission-set rule needs no list.
+  - Without containment the Admin role means nothing: the Manager could assign it to themselves, or reset the Admin's password.
+  - Enforced in the API (`src/lib/server/access-containment.ts`). The UI only mirrors it.
+- **`session:manage` joins `role:manage`/`user:manage` as a guarded permission.** At least one role must always hold it.
+- **Revoking means deleting `session` rows.** This works immediately only because `src/lib/auth.ts` configures no `cookieCache`. If one is ever added, revocation is delayed by up to its max age.
+- **"Last used" is `session.updatedAt`.** better-auth refreshes it about once a day (`updateAge`), so it means "recently used", not a live heartbeat.
+- **Email is not editable.** Sign-in is by username, and email is the better-auth identity.
+
 ## 2026-11-12 — Epic 22 (Platform Features) decisions
 
 **The activity log is written by the API layer, not by each feature.**

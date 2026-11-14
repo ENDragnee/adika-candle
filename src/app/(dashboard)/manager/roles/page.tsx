@@ -16,7 +16,10 @@ export default async function RolesPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader description="Create roles and choose what each can do. The sidebar shows each person only the pages their role opens." />
-      <RoleManager currentRoleName={session.user.role} />
+      <RoleManager
+        currentRoleName={session.user.role}
+        viewerPermissions={session.user.permissions}
+      />
     </div>
   );
 }

@@ -10,11 +10,15 @@ import {
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
+import { AssertCanEditRole } from "@/lib/server/access-containment";
 import { DomainError } from "@/lib/server/domain-error";
 
 type Params = { id: string };
 
-async function FindRole(id: string | undefined) {
+async function FindRole(
+  id: string | undefined,
+  viewerPermissions: readonly string[],
+) {
   const role = id
     ? await prisma.role.findUnique({
         where: { id },
@@ -22,7 +26,7 @@ async function FindRole(id: string | undefined) {
       })
     : null;
   if (!role) throw new DomainError("Role not found", 404, "NOT_FOUND");
-  return ToRoleDTO(role);
+  return ToRoleDTO(role, viewerPermissions);
 }
 
 // Rename / re-describe a role. The two built-in roles keep their names:
@@ -41,8 +45,9 @@ export const PATCH = CreateApiRoute<UpdateRoleInput, Params, RoleDTO>({
     entityLabel: result.name,
     changes: { ...body },
   }),
-  handler: async (body, _session, params) => {
-    const existing = await FindRole(params?.id);
+  handler: async (body, session, params) => {
+    const existing = await FindRole(params?.id, session?.permissions ?? []);
+    await AssertCanEditRole(session?.permissions ?? [], existing.id);
     if (existing.isBuiltIn && body.name && body.name !== existing.name) {
       throw new DomainError(
         "Built-in roles can't be renamed",
@@ -61,7 +66,7 @@ export const PATCH = CreateApiRoute<UpdateRoleInput, Params, RoleDTO>({
         },
         include: ROLE_DTO_INCLUDE,
       });
-      return ToRoleDTO(role);
+      return ToRoleDTO(role, session?.permissions ?? []);
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -92,8 +97,9 @@ export const DELETE = CreateApiRoute<unknown, Params, RoleDTO>({
     entityId: result.id,
     entityLabel: result.name,
   }),
-  handler: async (_body, _session, params) => {
-    const role = await FindRole(params?.id);
+  handler: async (_body, session, params) => {
+    const role = await FindRole(params?.id, session?.permissions ?? []);
+    await AssertCanEditRole(session?.permissions ?? [], role.id);
     if (role.isBuiltIn) {
       throw new DomainError(
         "Built-in roles can't be deleted",

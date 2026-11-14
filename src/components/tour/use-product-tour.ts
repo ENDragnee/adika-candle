@@ -6,7 +6,7 @@ import "driver.js/dist/driver.css";
 import "./tour-theme.css";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef } from "react";
-import { ROLES } from "@/lib/roles";
+import { MANAGER_AREA_ROLES, ROLES } from "@/lib/roles";
 import { FindTourElement } from "./tour-elements";
 import {
   INVENTORY_TOUR_STEPS,
@@ -67,7 +67,7 @@ export function useProductTour(role: string | null, permissions: string[]) {
 
   return useCallback(() => {
     const steps =
-      role === ROLES.MANAGER
+      role && MANAGER_AREA_ROLES.includes(role)
         ? MANAGER_TOUR_STEPS
         : role === ROLES.INVENTORY_MANAGER
           ? INVENTORY_TOUR_STEPS

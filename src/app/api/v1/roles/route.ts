@@ -10,12 +10,13 @@ import {
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
+import { AssertCanGrantRole } from "@/lib/server/access-containment";
 
 export const GET = CreateApiRoute({
   moduleName: "roles",
   requiresAuth: { status: true, permission: "role:manage" },
   responseSchema: RolesResponseSchema,
-  handler: async () => {
+  handler: async (_query, session) => {
     const [roles, modules] = await Promise.all([
       prisma.role.findMany({
         include: ROLE_DTO_INCLUDE,
@@ -28,7 +29,7 @@ export const GET = CreateApiRoute({
     ]);
 
     return {
-      roles: roles.map(ToRoleDTO),
+      roles: roles.map((role) => ToRoleDTO(role, session?.permissions ?? [])),
       modules: modules.map(ToModuleDTO),
     };
   },
@@ -55,7 +56,11 @@ export const POST = CreateApiRoute({
       copiedFrom: body.copyFromRoleId ?? null,
     },
   }),
-  handler: async (body) => {
+  handler: async (body, session) => {
+    // A copy can't carry access its creator doesn't hold (Epic 23).
+    if (body.copyFromRoleId) {
+      await AssertCanGrantRole(session?.permissions ?? [], body.copyFromRoleId);
+    }
     const source = body.copyFromRoleId
       ? await prisma.role.findUnique({
           where: { id: body.copyFromRoleId },
@@ -80,7 +85,7 @@ export const POST = CreateApiRoute({
         },
         include: ROLE_DTO_INCLUDE,
       });
-      return ToRoleDTO(role);
+      return ToRoleDTO(role, session?.permissions ?? []);
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&

@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToneBadge, ToneColor } from "@/components/ui/tone-badge";
 import { BusinessDateKey } from "@/lib/business-time";
 import { type DateRangeValue, ResolveDateRange } from "@/lib/date-range";
+import { DescribeDevice } from "@/lib/describe-device";
 import { FormatDate, FormatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useActivities, useActivityFacets } from "../hooks/use-activities";
@@ -47,33 +48,6 @@ function FormatValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
-}
-
-// A rough device name from the user agent — enough to tell "phone" from
-// "office PC" when reading the log, without a UA-parsing dependency.
-function DescribeDevice(userAgent: string | null): string | null {
-  if (!userAgent) return null;
-  const browser = /Edg\//.test(userAgent)
-    ? "Edge"
-    : /Chrome\//.test(userAgent)
-      ? "Chrome"
-      : /Firefox\//.test(userAgent)
-        ? "Firefox"
-        : /Safari\//.test(userAgent)
-          ? "Safari"
-          : null;
-  const os = /Android/.test(userAgent)
-    ? "Android"
-    : /iPhone|iPad/.test(userAgent)
-      ? "iOS"
-      : /Windows/.test(userAgent)
-        ? "Windows"
-        : /Mac OS X/.test(userAgent)
-          ? "macOS"
-          : /Linux/.test(userAgent)
-            ? "Linux"
-            : null;
-  return [browser, os].filter(Boolean).join(" on ") || null;
 }
 
 function ActivityRow({ activity }: { activity: ActivityDTO }) {

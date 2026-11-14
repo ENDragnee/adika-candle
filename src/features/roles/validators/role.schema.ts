@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Module, Permission, Role } from "@/generated/prisma/client";
+import { IsWithinReach } from "@/lib/access-rules";
 import { ROLES } from "@/lib/roles";
 
 export const PermissionSchema = z.object({
@@ -22,9 +23,12 @@ export const RoleSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   permissionIds: z.array(z.string()),
-  // Manager / Inventory Manager — referenced by name in code, so they
-  // can't be renamed or deleted (Epic 22).
+  // Admin / Manager / Inventory Manager — referenced by name in code, so
+  // they can't be renamed or deleted (Epic 22).
   isBuiltIn: z.boolean(),
+  // Whether the viewer may edit this role: false when it holds access the
+  // viewer's own role doesn't (Epic 23). The API enforces it either way.
+  canEdit: z.boolean(),
   userCount: z.number().int(),
 });
 
@@ -52,26 +56,33 @@ export type UpdateRolePermissionsInput = z.infer<
 >;
 
 type RoleWithPermissions = Role & {
-  permissions: Pick<Permission, "id">[];
+  permissions: Pick<Permission, "id" | "name">[];
   _count?: { users: number };
 };
 
 export const BUILT_IN_ROLE_NAMES: readonly string[] = Object.values(ROLES);
 
-export function ToRoleDTO(role: RoleWithPermissions): RoleDTO {
+export function ToRoleDTO(
+  role: RoleWithPermissions,
+  viewerPermissions: readonly string[],
+): RoleDTO {
   return {
     id: role.id,
     name: role.name,
     description: role.description,
     permissionIds: role.permissions.map((permission) => permission.id),
     isBuiltIn: BUILT_IN_ROLE_NAMES.includes(role.name),
+    canEdit: IsWithinReach(
+      viewerPermissions,
+      role.permissions.map((permission) => permission.name),
+    ),
     userCount: role._count?.users ?? 0,
   };
 }
 
 // Everything a role query needs for ToRoleDTO.
 export const ROLE_DTO_INCLUDE = {
-  permissions: { select: { id: true } },
+  permissions: { select: { id: true, name: true } },
   _count: { select: { users: true } },
 } as const;
 

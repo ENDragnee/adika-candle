@@ -2,6 +2,7 @@ import {
   ArchiveIcon,
   ChartLineUpIcon,
   ClockCounterClockwiseIcon,
+  DevicesIcon,
   FlaskIcon,
   GearSixIcon,
   HandCoinsIcon,
@@ -39,6 +40,7 @@ export const MODULE_LABELS: Record<string, ModuleLabel> = {
   sale: { label: "Sales", icon: ReceiptIcon },
   user: { label: "Users", icon: UserGearIcon },
   role: { label: "Roles", icon: ShieldCheckIcon },
+  session: { label: "Sessions", icon: DevicesIcon },
   "unit-conversion": { label: "Unit settings", icon: GearSixIcon },
   "raw-material": { label: "Raw materials", icon: FlaskIcon },
 };
@@ -113,6 +115,11 @@ export const PERMISSION_LABELS: Record<string, PermissionLabel> = {
   "sale:read": {
     label: "View sales",
     description: "See the sales history.",
+  },
+  "session:manage": {
+    label: "Manage sessions",
+    description:
+      "See who is signed in on which device, and sign anyone out. Admin only by default.",
   },
   "user:manage": {
     label: "Manage users",

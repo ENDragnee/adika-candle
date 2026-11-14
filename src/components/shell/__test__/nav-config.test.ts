@@ -22,6 +22,17 @@ describe("BuildNavItems", () => {
     expect(nav.at(-1)).toBe("Legend");
   });
 
+  it("gives Admin the Manager area plus Sessions", () => {
+    const nav = labels("ADMIN", ["analytics:read", "session:manage"]);
+    expect(nav).toEqual(["Dashboard", "Analytics", "Sessions", "Legend"]);
+  });
+
+  it("hides Sessions from a Manager without session:manage", () => {
+    expect(labels("MANAGER", ["user:manage", "role:manage"])).not.toContain(
+      "Sessions",
+    );
+  });
+
   it("shows only Legend to a user with no permissions", () => {
     expect(labels("INVENTORY_MANAGER", [])).toEqual(["Legend"]);
   });

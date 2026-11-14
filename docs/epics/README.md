@@ -30,6 +30,7 @@ conventions.
 | 20 | [Interactive Product Tutorial](./20-interactive-product-tutorial.md) | 9, 16 | done |
 | 21 | [Manager UX & Logic Audit Fixes](./21-manager-ux-logic-audit-fixes.md) | 8, 13, 15, 17 | done |
 | 22 | [Platform Features](./22-platform-features.md) | 21 | done |
+| 23 | [Admin Role & Account Edits](./23-admin-role-and-account-edits.md) | 22 | done |
 
 Update the Status column as epics move through
 not-started → in-progress → done.

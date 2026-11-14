@@ -7,6 +7,7 @@ import {
   PencilSimpleIcon,
   PlusIcon,
   ProhibitIcon,
+  SignOutIcon,
 } from "@phosphor-icons/react";
 import { type FormEvent, useEffect, useState } from "react";
 import {
@@ -56,6 +57,7 @@ import {
 } from "@/components/ui/table";
 import { useRoles } from "@/features/roles/hooks/use-roles";
 import { HumanizeRoleName } from "@/features/roles/permission-labels";
+import { useRevokeSessions } from "@/features/sessions/hooks/use-sessions";
 import { usePagination } from "@/lib/use-pagination";
 import {
   useCreateUser,
@@ -276,24 +278,45 @@ function SetPasswordForm({
   );
 }
 
+// Name, username and role (Epic 23). Email stays fixed — it's the
+// account's identity in better-auth; people sign in by username. Your own
+// role can't be changed here (self-lockout guard).
 function EditUserForm({
   user,
   roles,
+  isSelf,
   onSuccess,
 }: {
   user: UserDTO;
   roles: { id: string; name: string }[];
+  isSelf: boolean;
   onSuccess: () => void;
 }) {
+  const [name, setName] = useState(user.name);
+  const [username, setUsername] = useState(user.username ?? "");
   const [roleId, setRoleId] = useState(user.roleId ?? "");
   const updateUser = useUpdateUser(user.id);
+  const usernameValid = /^[a-zA-Z0-9_.]{3,30}$/.test(username.trim());
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    await updateUser.mutateAsync({ roleId });
+    await updateUser.mutateAsync({
+      ...(name.trim() !== user.name && { name: name.trim() }),
+      ...(username.trim() !== (user.username ?? "") && {
+        username: username.trim(),
+      }),
+      ...(!isSelf && roleId !== (user.roleId ?? "") && { roleId }),
+    });
     onSuccess();
   }
+
+  // The current role stays listed even if it's no longer one the viewer
+  // could hand out, so the select never shows blank.
+  const roleOptions =
+    user.roleId && !roles.some((role) => role.id === user.roleId)
+      ? [{ id: user.roleId, name: user.roleName ?? "Current role" }, ...roles]
+      : roles;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -301,31 +324,68 @@ function EditUserForm({
         <label htmlFor="edit-user-name" className="text-sm font-medium">
           Name
         </label>
-        <Input id="edit-user-name" value={user.name} disabled />
+        <Input
+          id="edit-user-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          maxLength={160}
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="edit-user-username" className="text-sm font-medium">
+          Username
+        </label>
+        <Input
+          id="edit-user-username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          autoComplete="off"
+          aria-invalid={username.length > 0 && !usernameValid}
+          aria-describedby="edit-user-username-hint"
+          required
+        />
+        <p
+          id="edit-user-username-hint"
+          className="text-xs text-muted-foreground"
+        >
+          3–30 letters, numbers, underscores or dots. They sign in with this.
+        </p>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="edit-user-email" className="text-sm font-medium">
+          Email
+        </label>
+        <Input id="edit-user-email" value={user.email} disabled />
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="edit-user-role" className="text-sm font-medium">
           Role
         </label>
-        <Select value={roleId} onValueChange={setRoleId}>
+        <Select value={roleId} onValueChange={setRoleId} disabled={isSelf}>
           <SelectTrigger id="edit-user-role" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {roles.map((role) => (
+            {roleOptions.map((role) => (
               <SelectItem key={role.id} value={role.id}>
                 {HumanizeRoleName(role.name)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {isSelf && (
+          <p className="text-xs text-muted-foreground">
+            You can't change your own role.
+          </p>
+        )}
       </div>
       <Button
         loading={updateUser.isPending}
         type="submit"
-        disabled={updateUser.isPending}
+        disabled={!name.trim() || !usernameValid}
       >
-        {updateUser.isPending ? "Saving…" : "Save"}
+        Save
       </Button>
     </form>
   );
@@ -335,15 +395,19 @@ function UserRow({
   user,
   roles,
   isSelf,
+  canManageSessions,
 }: {
   user: UserDTO;
   roles: { id: string; name: string }[];
   isSelf: boolean;
+  canManageSessions: boolean;
 }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [isSignOutOpen, setIsSignOutOpen] = useState(false);
   const updateUser = useUpdateUser(user.id);
+  const revokeSessions = useRevokeSessions();
 
   async function handleActivate() {
     await updateUser.mutateAsync({ isActive: true });
@@ -380,9 +444,11 @@ function UserRow({
                     variant="ghost"
                     size="icon-sm"
                     aria-label="Actions"
-                    disabled={isSelf}
+                    disabled={!user.canManage}
                     title={
-                      isSelf ? "You can't edit your own account" : undefined
+                      user.canManage
+                        ? undefined
+                        : "This account has access your role doesn't, so you can't change it"
                     }
                   >
                     <DotsThreeVerticalIcon />
@@ -397,7 +463,15 @@ function UserRow({
                     <KeyIcon />
                     Set password
                   </DropdownMenuItem>
-                  {user.isActive ? (
+                  {canManageSessions && (
+                    <DropdownMenuItem onSelect={() => setIsSignOutOpen(true)}>
+                      <SignOutIcon />
+                      {isSelf
+                        ? "Sign out other devices"
+                        : "Sign out everywhere"}
+                    </DropdownMenuItem>
+                  )}
+                  {isSelf ? null : user.isActive ? (
                     <DropdownMenuItem
                       onSelect={() => setIsConfirmOpen(true)}
                       className="text-destructive focus:text-destructive"
@@ -446,22 +520,59 @@ function UserRow({
             <EditUserForm
               user={user}
               roles={roles}
+              isSelf={isSelf}
               onSuccess={() => setIsEditOpen(false)}
             />
           </DialogContent>
         </Dialog>
+        <AlertDialog open={isSignOutOpen} onOpenChange={setIsSignOutOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {isSelf
+                  ? "Sign out your other devices?"
+                  : `Sign ${user.name} out everywhere?`}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {isSelf
+                  ? "Every other device you're signed in on is signed out. You stay signed in here."
+                  : "Every device they're signed in on is signed out on its next request. Their account stays active."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                loading={revokeSessions.isPending}
+                onClick={async () => {
+                  await revokeSessions.mutateAsync({ userId: user.id });
+                  setIsSignOutOpen(false);
+                }}
+              >
+                Sign out
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </TableCell>
     </TableRow>
   );
 }
 
-export function UserManager({ currentUserId }: { currentUserId: string }) {
+export function UserManager({
+  currentUserId,
+  canManageSessions = false,
+}: {
+  currentUserId: string;
+  canManageSessions?: boolean;
+}) {
   const pager = usePagination();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: result, isLoading } = useUsers(pager.params);
   const users = result?.data;
   const { data: rolesData } = useRoles();
-  const roles = rolesData?.roles ?? [];
+  // Only roles the viewer could hand out (access containment, Epic 23).
+  const roles = (rolesData?.roles ?? []).filter((role) => role.canEdit);
 
   return (
     <div className="flex flex-col gap-4">
@@ -508,6 +619,7 @@ export function UserManager({ currentUserId }: { currentUserId: string }) {
                       user={user}
                       roles={roles}
                       isSelf={user.id === currentUserId}
+                      canManageSessions={canManageSessions}
                     />
                   ))
                 ) : (

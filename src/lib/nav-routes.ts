@@ -1,4 +1,4 @@
-import { ROLES } from "./roles";
+import { MANAGER_AREA_ROLES } from "./roles";
 
 // Which pages exist and which permission opens each (Epic 21/22). Plain
 // data with no icons, so server code (the post-sign-in redirect) and client
@@ -54,6 +54,11 @@ export const MANAGER_ROUTES: NavRoute[] = [
   { label: "Users", href: "/manager/users", permission: ["user:manage"] },
   { label: "Roles", href: "/manager/roles", permission: ["role:manage"] },
   {
+    label: "Sessions",
+    href: "/manager/sessions",
+    permission: ["session:manage"],
+  },
+  {
     label: "Settings",
     href: "/manager/settings",
     permission: ["unit-conversion:manage", "raw-material:manage"],
@@ -87,14 +92,14 @@ function HasAny(permissions: string[], required: string[]) {
 }
 
 // Navigation follows permissions, not role names: the role's own area
-// (Manager → /manager, every other role → /inventory) filtered to what the
+// (Admin/Manager → /manager, every other role → /inventory) filtered to what the
 // user may open, then any Manager-area page the role was granted on the
 // Roles page, skipping labels already covered. Legend stays last.
 export function BuildNavRoutes(
   role: string | null | undefined,
   permissions: string[],
 ): NavRoute[] {
-  const isManager = role === ROLES.MANAGER;
+  const isManager = !!role && MANAGER_AREA_ROLES.includes(role);
   const base = (isManager ? MANAGER_ROUTES : INVENTORY_ROUTES).filter((route) =>
     HasAny(permissions, route.permission),
   );

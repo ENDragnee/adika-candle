@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Role, User } from "@/generated/prisma/client";
+import { IsWithinReach } from "@/lib/access-rules";
 import { FailedPasswordRules } from "@/lib/password-policy";
 
 export const UserSchema = z.object({
@@ -10,6 +11,10 @@ export const UserSchema = z.object({
   isActive: z.boolean(),
   roleId: z.string().nullable(),
   roleName: z.string().nullable(),
+  // Whether the person viewing the list may change this account: false
+  // when its role holds access the viewer's own role doesn't (see
+  // src/lib/server/access-containment.ts). The API enforces it either way.
+  canManage: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -17,6 +22,25 @@ export const UserSchema = z.object({
 export type UserDTO = z.infer<typeof UserSchema>;
 
 export const UserListResponseSchema = z.array(UserSchema);
+
+export const UserNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Name is required")
+  .max(160, "Keep the name under 160 characters");
+
+// Same rules as better-auth's username plugin (3–30 characters; letters,
+// digits, underscore and dot), so an account renamed here can still sign
+// in. Usernames are compared case-insensitively.
+export const UsernameSchema = z
+  .string()
+  .trim()
+  .min(3, "Username must be at least 3 characters")
+  .max(30, "Username must be at most 30 characters")
+  .regex(
+    /^[a-zA-Z0-9_.]+$/,
+    "Username can only use letters, numbers, underscores and dots",
+  );
 
 // The shared password policy (src/lib/password-policy.ts, Epic 22) — the
 // same rules the form's live checklist shows. Rules about the person's
@@ -28,9 +52,9 @@ const PasswordSchema = z.string().superRefine((password, ctx) => {
 });
 
 export const CreateUserInputSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(160),
+  name: UserNameSchema,
   email: z.email(),
-  username: z.string().trim().min(1, "Username is required").max(60),
+  username: UsernameSchema,
   roleId: z.string().min(1, "Role is required"),
   // The Manager sets this directly — see docs/DECISIONS.md for why this
   // reverses Epic 7's original "auto-generated temp password" decision.
@@ -39,8 +63,11 @@ export const CreateUserInputSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
 
-// roleId/isActive only — name/email/username aren't editable from this UI.
+// Email stays fixed: sign-in is by username, and email is the account's
+// stable identity in better-auth.
 export const UpdateUserInputSchema = z.object({
+  name: UserNameSchema.optional(),
+  username: UsernameSchema.optional(),
   roleId: z.string().min(1).optional(),
   isActive: z.boolean().optional(),
 });
@@ -62,9 +89,15 @@ export const SetUserPasswordInputSchema = z
 
 export type SetUserPasswordInput = z.input<typeof SetUserPasswordInputSchema>;
 
-type UserWithRole = User & { role: Role | null };
+type UserWithRole = User & {
+  role: (Role & { permissions: { name: string }[] }) | null;
+};
 
-export function ToUserDTO(user: UserWithRole): UserDTO {
+// `viewerPermissions` decides `canManage` (Epic 23 access containment).
+export function ToUserDTO(
+  user: UserWithRole,
+  viewerPermissions: readonly string[],
+): UserDTO {
   return {
     id: user.id,
     name: user.name,
@@ -73,11 +106,15 @@ export function ToUserDTO(user: UserWithRole): UserDTO {
     isActive: user.isActive,
     roleId: user.roleId,
     roleName: user.role?.name ?? null,
+    canManage: IsWithinReach(
+      viewerPermissions,
+      user.role?.permissions.map((permission) => permission.name) ?? [],
+    ),
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   };
 }
 
 export const WITH_ROLE_INCLUDE = {
-  role: true,
+  role: { include: { permissions: { select: { name: true } } } },
 } as const;
