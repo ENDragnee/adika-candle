@@ -3,6 +3,7 @@
 import { DotsThreeIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Fragment } from "react";
 import { AccountMenu, GetInitials } from "@/components/shell/account-menu";
 import {
   ACCOUNT_TRIGGER_TOUR_ID,
@@ -13,11 +14,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AppUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import type { NavItem } from "./nav-config";
+import { GroupNavItems, type NavItem } from "./nav-config";
 
 interface BottomNavProps {
   user: AppUser;
@@ -96,24 +99,41 @@ export function BottomNav({ user, navItems }: BottomNavProps) {
               More
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" side="top" className="mb-1">
-            {overflowItems.map((item) => {
-              const isActive = IsActive(pathname, item.href);
-              const Icon = item.icon;
+          <DropdownMenuContent
+            align="center"
+            side="top"
+            className="mb-1 max-h-[70vh] min-w-48 overflow-y-auto"
+          >
+            {/* Same groups as the sidebar (Epic 25), as labelled sections. */}
+            {GroupNavItems(overflowItems).map((group, index) => (
+              <Fragment key={group.id}>
+                {index > 0 && <DropdownMenuSeparator />}
+                {group.label && (
+                  <DropdownMenuLabel className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    {group.label}
+                  </DropdownMenuLabel>
+                )}
+                {group.items.map((item) => {
+                  const isActive = IsActive(pathname, item.href);
+                  const Icon = item.icon;
 
-              return (
-                <DropdownMenuItem key={item.href} asChild>
-                  <Link
-                    href={item.href}
-                    data-tour={NavTourId(item.href)}
-                    className={isActive ? "text-sidebar-primary" : undefined}
-                  >
-                    <Icon weight={isActive ? "fill" : "regular"} />
-                    {item.label}
-                  </Link>
-                </DropdownMenuItem>
-              );
-            })}
+                  return (
+                    <DropdownMenuItem key={item.href} asChild>
+                      <Link
+                        href={item.href}
+                        data-tour={NavTourId(item.href)}
+                        className={
+                          isActive ? "text-sidebar-primary" : undefined
+                        }
+                      >
+                        <Icon weight={isActive ? "fill" : "regular"} />
+                        {item.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </Fragment>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       )}

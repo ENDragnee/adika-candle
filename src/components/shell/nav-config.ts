@@ -21,8 +21,10 @@ import {
 import type { Icon } from "@phosphor-icons/react/lib";
 import {
   BuildNavRoutes,
+  GroupNavRoutes,
   INVENTORY_ROUTES,
   MANAGER_ROUTES,
+  type NavGroup,
   type NavRoute,
 } from "@/lib/nav-routes";
 
@@ -68,4 +70,10 @@ export function BuildNavItems(
   permissions: string[],
 ): NavItem[] {
   return BuildNavRoutes(role, permissions).map(WithIcon);
+}
+
+export type NavItemGroup = NavGroup<NavItem>;
+
+export function GroupNavItems(items: NavItem[]): NavItemGroup[] {
+  return GroupNavRoutes(items);
 }

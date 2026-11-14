@@ -6,6 +6,7 @@ import "driver.js/dist/driver.css";
 import "./tour-theme.css";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef } from "react";
+import { ExpandAllNavGroups } from "@/components/shell/use-nav-groups";
 import { MANAGER_AREA_ROLES, ROLES } from "@/lib/roles";
 import { FindTourElement } from "./tour-elements";
 import {
@@ -74,6 +75,8 @@ export function useProductTour(role: string | null, permissions: string[]) {
           : null;
     if (!steps) return;
     const visibleSteps = VisibleTourSteps(steps, permissions);
+    // Folded sidebar groups would hide the nav links the tour points at.
+    ExpandAllNavGroups();
 
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",

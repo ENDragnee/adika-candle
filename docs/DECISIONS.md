@@ -12,6 +12,21 @@ undo.
 
 ---
 
+## 2026-11-14 — Sidebar groups (Epic 25)
+
+- **Groups follow access level, from everyday to admin-only.** The order is Daily work → Insights → Catalog → People & access → System, with Dashboard on top and Legend at the bottom (no headings for those two). A role sees only the groups it has pages in, so the sidebar grows with the role:
+  - Inventory Manager: Daily work.
+  - Manager: everything except System.
+  - Admin: everything.
+- Defined once on each route (`group` in `src/lib/nav-routes.ts`); `BuildNavRoutes` returns routes in group order. So `HomeRouteFor`, the mobile bar's first three slots (now Dashboard, Sales, Stock) and the "More" menu sections all follow it.
+- **Collapsible, because the Admin has 16 links.** Without folding they overflow a laptop-height sidebar.
+  - Folding only appears when there are 2+ headed groups; the Inventory Manager's single group stays a plain heading.
+  - Folded groups are remembered per browser (`localStorage`).
+  - Navigating into a folded group opens it, so the current page is never hidden.
+  - The product tour expands all groups first.
+  - Folded lists are `inert`, so they're out of the tab order.
+  - In icon-only mode, groups become dividers and every icon stays visible (an icon in a folded group would be unreachable).
+
 ## 2026-11-14 — Epic 24 (Admin controls) decisions
 
 - **Settings live in one `SystemSetting` table**, one JSON row per group, validated by Zod with defaults.

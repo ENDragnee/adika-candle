@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CaretDownIcon,
   CaretLeftIcon,
   CaretUpDownIcon,
   FlameIcon,
@@ -8,6 +9,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
+import { useEffect, useId } from "react";
 import { AccountMenu, GetInitials } from "@/components/shell/account-menu";
 import {
   ACCOUNT_TRIGGER_TOUR_ID,
@@ -25,8 +27,14 @@ import type { AppUser } from "@/lib/auth";
 import { HumanizeRoleName } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./bottom-nav";
-import { BuildNavItems, type NavItem } from "./nav-config";
+import {
+  BuildNavItems,
+  GroupNavItems,
+  type NavItem,
+  type NavItemGroup,
+} from "./nav-config";
 import { TopBar } from "./top-bar";
+import { ExpandNavGroup, useNavGroups } from "./use-nav-groups";
 import { useSidebarCollapsed } from "./use-sidebar-collapsed";
 
 interface AppShellProps {
@@ -88,10 +96,116 @@ function SidebarNavLink({
   );
 }
 
+function IsActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+// One sidebar section (Epic 25). A labelled group gets a heading that
+// folds it away when there's more than one such group to choose between;
+// "home" and "help" have no heading. With the sidebar folded to icons
+// there's no room for headings, so groups become thin dividers and every
+// item shows (an icon hidden in a folded group would be unreachable).
+function SidebarNavGroup({
+  group,
+  pathname,
+  sidebarCollapsed,
+  collapsible,
+  folded,
+  onToggle,
+}: {
+  group: NavItemGroup;
+  pathname: string;
+  sidebarCollapsed: boolean;
+  collapsible: boolean;
+  folded: boolean;
+  onToggle: () => void;
+}) {
+  const listId = useId();
+  const items = group.items.map((item) => (
+    <SidebarNavLink
+      key={item.href}
+      item={item}
+      isActive={IsActive(pathname, item.href)}
+      collapsed={sidebarCollapsed}
+    />
+  ));
+
+  if (!group.label || sidebarCollapsed) {
+    return (
+      <div
+        className={cn(
+          "space-y-1",
+          group.label && "mt-2 border-t border-sidebar-border pt-2",
+        )}
+      >
+        {items}
+      </div>
+    );
+  }
+
+  const open = !collapsible || !folded;
+  const headingClass =
+    "flex w-full items-center justify-between rounded-md px-3 pt-4 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
+
+  return (
+    <div>
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={listId}
+          className={cn(
+            headingClass,
+            "transition-colors hover:text-sidebar-foreground",
+          )}
+        >
+          {group.label}
+          <CaretDownIcon
+            className={cn(
+              "size-3 transition-transform duration-200 motion-reduce:transition-none",
+              !open && "-rotate-90",
+            )}
+          />
+        </button>
+      ) : (
+        <p className={headingClass}>{group.label}</p>
+      )}
+      {/* grid-rows 0fr↔1fr animates to the content's natural height;
+          `inert` keeps folded links out of the tab order. */}
+      <div
+        id={listId}
+        inert={!open}
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div className="space-y-1 overflow-hidden">{items}</div>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({ user, children }: AppShellProps) {
   const navItems = BuildNavItems(user.role, user.permissions);
+  const navGroups = GroupNavItems(navItems);
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebarCollapsed();
+  const { isCollapsed, toggle: toggleGroup } = useNavGroups();
+  // Folding only helps when there's another group to keep in view.
+  const collapsible =
+    navGroups.filter((group) => group.label !== null).length > 1;
+
+  // Arriving on a page inside a folded group (a link, the tour, the back
+  // button) opens that group, so the current page is always visible.
+  const activeGroupId = navGroups.find((group) =>
+    group.items.some((item) => IsActive(pathname, item.href)),
+  )?.id;
+  // Runs on navigation only, so folding the current group still works.
+  useEffect(() => {
+    if (activeGroupId) ExpandNavGroup(activeGroupId);
+  }, [activeGroupId]);
 
   return (
     <div className="flex min-h-screen">
@@ -135,20 +249,18 @@ export function AppShell({ user, children }: AppShellProps) {
         </div>
 
         <TooltipProvider delayDuration={200}>
-          <nav className="flex-1 space-y-1 px-3">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-              return (
-                <SidebarNavLink
-                  key={item.href}
-                  item={item}
-                  isActive={isActive}
-                  collapsed={collapsed}
-                />
-              );
-            })}
+          <nav className="flex-1 overflow-y-auto px-3 pb-3">
+            {navGroups.map((group) => (
+              <SidebarNavGroup
+                key={group.id}
+                group={group}
+                pathname={pathname}
+                sidebarCollapsed={collapsed}
+                collapsible={collapsible}
+                folded={isCollapsed(group.id)}
+                onToggle={() => toggleGroup(group.id)}
+              />
+            ))}
           </nav>
         </TooltipProvider>
 
