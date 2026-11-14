@@ -54,7 +54,7 @@ export function PasswordField({
             {PASSWORD_RULES.map((rule, index) => (
               <span
                 key={rule.id}
-                className="h-1 flex-1 rounded-full bg-muted transition-colors"
+                className="h-1 flex-1 rounded-sm bg-muted transition-colors"
                 style={
                   index < passed
                     ? {

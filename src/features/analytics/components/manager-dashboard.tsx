@@ -70,9 +70,9 @@ function DebtorList({
                 {FormatMoney(debtor.balance)}
               </span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-1.5 overflow-hidden rounded-sm bg-muted">
               <div
-                className="h-full rounded-full bg-chart-series-1"
+                className="h-full rounded-sm bg-chart-series-1"
                 style={{ width: `${(amount / largest) * 100}%` }}
               />
             </div>
