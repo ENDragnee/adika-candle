@@ -15,8 +15,12 @@ export default async function UsersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="Create accounts, assign roles, and deactivate access." />
-      <UserManager currentUserId={session.user.id} />
+      <PageHeader description="Create accounts, rename them, assign roles, and deactivate access." />
+      <UserManager
+        currentUserId={session.user.id}
+        canManageSessions={session.user.permissions.includes("session:manage")}
+        canManageSystem={session.user.permissions.includes("system:manage")}
+      />
     </div>
   );
 }

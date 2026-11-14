@@ -26,6 +26,15 @@ model User {
   // them post-login without touching the auth flow itself. See
   // docs/DECISIONS.md, "Epic 7 decisions".
   isActive        Boolean  @default(true)
+  // Account lockout (Epic 24): consecutive failed sign-ins, reset on a
+  // successful one. At the System page's threshold the account is locked
+  // until `lockedUntil`; an Admin can unlock it early.
+  failedSignInCount Int       @default(0)
+  lockedUntil       DateTime?
+  // Set when someone else chose this person's password (account creation
+  // or a reset). Until they pick their own, every page sends them to
+  // /auth/change-password and they hold no permissions.
+  mustChangePassword Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -233,6 +242,9 @@ enum StockEntryType {
   // distinct from ADJUSTMENT so reports can net voided sales out of
   // "consumption" instead of counting them as stock corrections.
   SALE_VOID
+  // Re-applies a voided sale's stock decrement when an Admin restores it
+  // (Epic 24). Nets with SALE_VOID exactly like SALE does.
+  SALE_RESTORE
 }
 
 model StockBalance {
@@ -383,6 +395,8 @@ enum LoanTransactionType {
   MANUAL_ADJUSTMENT
   // Reversal of a sale's loan postings when the sale is voided (Epic 21).
   SALE_VOID
+  // Re-posts a voided sale's amount when it is restored (Epic 24).
+  SALE_RESTORE
 }
 
 model LoanTransaction {
@@ -502,4 +516,17 @@ model Log {
   @@index([type, createdAt])
   @@index([entityType, entityId])
   @@map("log")
+}
+
+// Admin-controlled, system-wide settings (Epic 24): one row per group
+// ("security", "maintenance", "periodLock", "retention"), its value
+// validated by src/features/system/validators/system.schema.ts — a
+// missing row means "use the defaults".
+model SystemSetting {
+  key         String   @id
+  value       Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@map("system_setting")
 }

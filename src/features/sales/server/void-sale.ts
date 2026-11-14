@@ -1,3 +1,4 @@
+import { AssertPeriodOpen } from "@/features/system/server/period-lock";
 import { Prisma } from "@/generated/prisma/client";
 import { ApplyLoanDelta, ApplyStockDelta } from "@/lib/ledger-balance";
 import { prisma } from "@/lib/prisma";
@@ -37,6 +38,8 @@ export async function VoidSale(
         "ALREADY_VOIDED",
       );
     }
+    // Epic 24: a closed period's sales stay as they are.
+    await AssertPeriodOpen(sale.createdAt, "void");
 
     const now = new Date();
     await tx.sale.update({

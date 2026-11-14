@@ -22,7 +22,7 @@ export interface MaterialMovement {
 
 export interface StockMovement {
   productId: string;
-  type: "ACCEPT" | "SALE" | "ADJUSTMENT" | "SALE_VOID";
+  type: "ACCEPT" | "SALE" | "ADJUSTMENT" | "SALE_VOID" | "SALE_RESTORE";
   quantityKg: Prisma.Decimal; // signed
   createdAt: Date;
 }
@@ -136,10 +136,14 @@ export function ComputeProductionReport(input: {
       (entry) => entry.quantityKg,
     );
     // Net sold: SALE entries are negative, SALE_VOID entries give the
-    // voided quantity back, so a voided sale nets to zero consumption.
+    // voided quantity back, so a voided sale nets to zero consumption;
+    // SALE_RESTORE (Epic 24) takes it again.
     const consumed = Sum(
       inPeriod.filter(
-        (entry) => entry.type === "SALE" || entry.type === "SALE_VOID",
+        (entry) =>
+          entry.type === "SALE" ||
+          entry.type === "SALE_VOID" ||
+          entry.type === "SALE_RESTORE",
       ),
       (entry) => entry.quantityKg,
     ).negated();

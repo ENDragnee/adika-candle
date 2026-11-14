@@ -27,8 +27,9 @@ interface IApiHandlerConfig<T, P = Record<string, string>, R = any> {
     // A string[] grants access to any one of the listed permissions (via
     // CheckAnyPermission) — e.g. a read endpoint that both a "manage" role
     // and a narrower "use" role may call. Single-string behavior (the
-    // common case) is unchanged.
-    permission: string | string[];
+    // common case) is unchanged. null = any signed-in user, for the
+    // person's own account (e.g. changing their own password, Epic 24).
+    permission: string | string[] | null;
   };
   handler: (
     body: T,
@@ -100,9 +101,13 @@ export function CreateApiRoute<T = any, P = Record<string, string>, R = any>(
           );
         }
 
-        const hasPermission = Array.isArray(config.requiresAuth.permission)
-          ? await CheckAnyPermission(config.requiresAuth.permission)
-          : await CheckPermission(config.requiresAuth.permission);
+        const { permission } = config.requiresAuth;
+        const hasPermission =
+          permission === null
+            ? true
+            : Array.isArray(permission)
+              ? await CheckAnyPermission(permission)
+              : await CheckPermission(permission);
 
         if (!hasPermission) {
           reqLogger.warn(

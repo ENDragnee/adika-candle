@@ -8,7 +8,8 @@ export const LOAN_TRANSACTION_META: Record<
   | "ADVANCE_FROM_CUSTOMER"
   | "ADVANCE_REDEEMED"
   | "MANUAL_ADJUSTMENT"
-  | "SALE_VOID",
+  | "SALE_VOID"
+  | "SALE_RESTORE",
   { label: string; tone: Tone; description: string }
 > = {
   SALE_ON_CREDIT: {
@@ -42,5 +43,11 @@ export const LOAN_TRANSACTION_META: Record<
     tone: "neutral",
     description:
       "A sale on account was cancelled, so its amount was taken back off.",
+  },
+  SALE_RESTORE: {
+    label: "Sale restored",
+    tone: "warning",
+    description:
+      "A voided sale was brought back by an administrator, so its amount applies again.",
   },
 };

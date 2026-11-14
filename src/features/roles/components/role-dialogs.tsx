@@ -123,11 +123,14 @@ export function CreateRoleDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE}>Nothing — I'll choose them</SelectItem>
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    {HumanizeRoleName(role.name)} ({role.permissionIds.length})
-                  </SelectItem>
-                ))}
+                {roles
+                  .filter((role) => role.canEdit)
+                  .map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {HumanizeRoleName(role.name)} ({role.permissionIds.length}
+                      )
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

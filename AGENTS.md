@@ -11,7 +11,8 @@ second-guessing it.
 ## What this project is
 
 A management system for a small candle factory: sales, production, and
-inventory. Two roles: **Manager** (analytics, stock, users, permissions,
+inventory. Three built-in roles: **Admin** (everything, plus session
+control), **Manager** (analytics, stock, sales, loans, users, permissions,
 categories, products, pricing) and **Inventory Manager** (accept/sell
 stock). Standard customers (Merkato, Gondor, Moges, Mekele) can lend/borrow
 items or money against future purchases (loans). Pricing is variable over
@@ -135,6 +136,25 @@ route and a `Button` `loading` prop; central error handling in
 (`motion-tokens.ts`) and a tablet layout (sidebar collapsed below `lg`).
 Components that Server Components import must take icons from
 `@phosphor-icons/react/ssr`.
+
+**Admin Role (Epic 23)** is done.
+- **ADMIN** holds every permission. `session:manage` is the one permission only ADMIN has.
+- `/manager/sessions` lists signed-in devices and can revoke them; the dashboard has a System panel.
+- The Manager can edit a user's name and username.
+- **Access containment** (`src/lib/server/access-containment.ts`): no one can grant, edit or act on access they don't hold. Every new user/role mutation must call it.
+
+**Admin Controls (Epic 24)** is done. `/manager/system` (`system:manage`, admin-only) has:
+- Account lockout thresholds; locked accounts can be unlocked from Users.
+- Maintenance mode.
+- Closed periods: no void or restore on or before the lock date.
+- Activity-log retention, with a manual purge.
+- A JSON backup download.
+
+Related:
+- Forced password change at next sign-in: `/account/change-password`.
+- Restoring voided sales (`sale:restore`, `SALE_RESTORE` ledger types).
+- Settings are read with `GetSystemSettings()` (`src/features/system/server/settings.ts`).
+- `customSession` withholds permissions for maintenance mode and pending password changes.
 
 ## Tech stack
 

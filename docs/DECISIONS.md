@@ -12,6 +12,55 @@ undo.
 
 ---
 
+## 2026-11-14 — Sidebar groups (Epic 25)
+
+- **Groups follow access level, from everyday to admin-only.** The order is Daily work → Insights → Catalog → People & access → System, with Dashboard on top and Legend at the bottom (no headings for those two). A role sees only the groups it has pages in, so the sidebar grows with the role:
+  - Inventory Manager: Daily work.
+  - Manager: everything except System.
+  - Admin: everything.
+- Defined once on each route (`group` in `src/lib/nav-routes.ts`); `BuildNavRoutes` returns routes in group order. So `HomeRouteFor`, the mobile bar's first three slots (now Dashboard, Sales, Stock) and the "More" menu sections all follow it.
+- **Collapsible, because the Admin has 16 links.** Without folding they overflow a laptop-height sidebar.
+  - Folding only appears when there are 2+ headed groups; the Inventory Manager's single group stays a plain heading.
+  - Folded groups are remembered per browser (`localStorage`).
+  - Navigating into a folded group opens it, so the current page is never hidden.
+  - The product tour expands all groups first.
+  - Folded lists are `inert`, so they're out of the tab order.
+  - In icon-only mode, groups become dividers and every icon stays visible (an icon in a folded group would be unreachable).
+
+## 2026-11-14 — Epic 24 (Admin controls) decisions
+
+- **Settings live in one `SystemSetting` table**, one JSON row per group, validated by Zod with defaults.
+  - A missing or invalid row falls back to the defaults instead of breaking requests.
+  - Reads are cached in-process for 5s, because `customSession` checks maintenance mode on every request.
+  - Next.js bundles pages and route handlers separately, so a change can take up to 5s to reach every module.
+- **Lockout runs in the better-auth sign-in hooks, not in middleware.**
+  - A locked account is refused *before* its password is checked.
+  - Failures are counted with an atomic increment. Refusals for lockout or maintenance aren't counted as failed guesses.
+  - The maintenance refusal is the same for unknown usernames, so it doesn't reveal which accounts exist.
+- **Forced password change and maintenance withhold permissions in `customSession`**, the same way deactivation does (Epic 7), so every existing permission check enforces them for free. Layouts and `RoleRedirector` do the redirects.
+  - `CreateApiRoute` gained `permission: null` (any signed-in user) for the person's own account endpoints.
+- **The period lock guards void and restore only.** Every write is dated "now", so voiding an old sale is the only way to change a closed period's reports (analytics drop voided sales from the day they were made). The latest lockable day is yesterday.
+- **Restore is a mirror of void, with its own `SALE_RESTORE` ledger types.** It does not reuse `SALE`, so history reads truthfully.
+  - The loan amount re-posted is "voids minus restores so far", which keeps repeated cycles exact.
+  - Like a new sale, it refuses when the stock isn't on hand.
+- **Log purge is manual only.** The app has no scheduler, and silent deletion should be a person's decision. The purge entry is written after the delete, so it survives.
+- **The backup is a logical JSON export, not `pg_dump`** (not available to the app).
+  - It excludes `Account`, `Session` and `Verification`, so there are no hashes or tokens.
+  - It is taken in one repeatable-read transaction, so balances match ledgers.
+  - There is no UI restore: overwriting live data is an operator task.
+
+## 2026-11-14 — Epic 23 (Admin role) decisions
+
+- **Admin is defined by one admin-only permission (`session:manage`), not by role name.** The Manager keeps every other permission. This reverses the earlier seed note ("no separate admin role; the Manager is the administrator"), at the owner's request.
+- **Access containment instead of a hard-coded role hierarchy.** A role or account is "within reach" only when the actor holds every one of its permissions.
+  - A rank list (Admin > Manager > …) would break as soon as someone creates a custom role. The permission-set rule needs no list.
+  - Without containment the Admin role means nothing: the Manager could assign it to themselves, or reset the Admin's password.
+  - Enforced in the API (`src/lib/server/access-containment.ts`). The UI only mirrors it.
+- **`session:manage` joins `role:manage`/`user:manage` as a guarded permission.** At least one role must always hold it.
+- **Revoking means deleting `session` rows.** This works immediately only because `src/lib/auth.ts` configures no `cookieCache`. If one is ever added, revocation is delayed by up to its max age.
+- **"Last used" is `session.updatedAt`.** better-auth refreshes it about once a day (`updateAge`), so it means "recently used", not a live heartbeat.
+- **Email is not editable.** Sign-in is by username, and email is the better-auth identity.
+
 ## 2026-11-12 — Epic 22 (Platform Features) decisions
 
 **The activity log is written by the API layer, not by each feature.**

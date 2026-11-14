@@ -5,6 +5,7 @@ import {
   BookOpenIcon,
   ChartLineUpIcon,
   ClockCounterClockwiseIcon,
+  DevicesIcon,
   FlaskIcon,
   GaugeIcon,
   GearSixIcon,
@@ -12,6 +13,7 @@ import {
   PackageIcon,
   ReceiptIcon,
   ShieldCheckIcon,
+  ShieldStarIcon,
   TagIcon,
   UserGearIcon,
   UsersIcon,
@@ -19,8 +21,10 @@ import {
 import type { Icon } from "@phosphor-icons/react/lib";
 import {
   BuildNavRoutes,
+  GroupNavRoutes,
   INVENTORY_ROUTES,
   MANAGER_ROUTES,
+  type NavGroup,
   type NavRoute,
 } from "@/lib/nav-routes";
 
@@ -43,6 +47,8 @@ const ICONS: Record<string, Icon> = {
   "/manager/loans": HandCoinsIcon,
   "/manager/users": UserGearIcon,
   "/manager/roles": ShieldCheckIcon,
+  "/manager/sessions": DevicesIcon,
+  "/manager/system": ShieldStarIcon,
   "/manager/settings": GearSixIcon,
   "/legend": BookOpenIcon,
   "/inventory/dashboard": GaugeIcon,
@@ -64,4 +70,10 @@ export function BuildNavItems(
   permissions: string[],
 ): NavItem[] {
   return BuildNavRoutes(role, permissions).map(WithIcon);
+}
+
+export type NavItemGroup = NavGroup<NavItem>;
+
+export function GroupNavItems(items: NavItem[]): NavItemGroup[] {
+  return GroupNavRoutes(items);
 }

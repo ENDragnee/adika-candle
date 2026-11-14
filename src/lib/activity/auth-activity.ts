@@ -3,14 +3,26 @@ import {
   getSessionFromCtx,
   isAPIError,
 } from "better-auth/api";
+import {
+  GuardSignIn,
+  RecordFailedSignIn,
+  RecordSuccessfulSignIn,
+} from "@/features/system/server/sign-in-guard";
 import { RecordActivity, RequestContext } from "./record-activity";
 
 // Sign-in / sign-out / failed sign-in for the activity log (Epic 22),
 // wired into better-auth's own request pipeline (src/lib/auth.ts) — those
-// endpoints don't go through CreateApiRoute.
+// endpoints don't go through CreateApiRoute. Since Epic 24 the same hooks
+// also run account lockout (src/features/system/server/sign-in-guard.ts).
 
 const SIGN_IN_PATH = "/sign-in/username";
 const SIGN_OUT_PATH = "/sign-out";
+
+function UsernameOf(body: unknown): string | null {
+  return body && typeof body === "object" && "username" in body
+    ? String((body as { username: unknown }).username).slice(0, 60)
+    : null;
+}
 
 export const AuthActivityAfterHook = createAuthMiddleware(async (ctx) => {
   if (ctx.path !== SIGN_IN_PATH) return;
@@ -20,10 +32,16 @@ export const AuthActivityAfterHook = createAuthMiddleware(async (ctx) => {
   if (isAPIError(returned)) {
     // Never log the attempted password; the username is what an admin
     // needs to spot repeated failures against one account.
-    const username =
-      ctx.body && typeof ctx.body === "object" && "username" in ctx.body
-        ? String((ctx.body as { username: unknown }).username).slice(0, 60)
-        : "unknown";
+    const username = UsernameOf(ctx.body) ?? "unknown";
+    // A refusal from GuardSignIn (account already locked) isn't another
+    // failed guess — it's logged there.
+    // Same for a maintenance-mode refusal.
+    if (
+      returned.body?.code === "ACCOUNT_LOCKED" ||
+      returned.body?.code === "MAINTENANCE"
+    ) {
+      return;
+    }
     await RecordActivity(
       {
         type: "auth",
@@ -35,11 +53,13 @@ export const AuthActivityAfterHook = createAuthMiddleware(async (ctx) => {
       },
       meta,
     );
+    await RecordFailedSignIn(username, meta);
     return;
   }
 
   const user = ctx.context.newSession?.user;
   if (user) {
+    await RecordSuccessfulSignIn(user.id);
     await RecordActivity(
       {
         type: "auth",
@@ -57,6 +77,16 @@ export const AuthActivityAfterHook = createAuthMiddleware(async (ctx) => {
 // Sign-out is recorded *before* the endpoint runs: afterwards the session
 // is gone and there's no way left to tell who it was.
 export const AuthActivityBeforeHook = createAuthMiddleware(async (ctx) => {
+  if (ctx.path === SIGN_IN_PATH) {
+    const username = UsernameOf(ctx.body);
+    if (username) {
+      await GuardSignIn(
+        username,
+        ctx.headers ? RequestContext(ctx.headers) : {},
+      );
+    }
+    return;
+  }
   if (ctx.path !== SIGN_OUT_PATH) return;
   const session = await getSessionFromCtx(ctx);
   if (!session) return;

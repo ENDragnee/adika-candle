@@ -5,6 +5,7 @@ import {
   SaleList,
   type SaleRange,
 } from "@/features/sales/components/sale-list";
+import { GetSystemSettings } from "@/features/system/server/settings";
 import { GetSession } from "@/lib/session";
 
 // Reads the session directly — not a candidate for instant navigation.
@@ -34,6 +35,7 @@ export default async function ManagerSalesPage({
   }
 
   const { range } = await searchParams;
+  const { periodLock } = await GetSystemSettings();
 
   return (
     <div className="flex flex-col gap-4">
@@ -46,6 +48,8 @@ export default async function ManagerSalesPage({
       <SaleList
         showFilters
         canVoid={session.user.permissions.includes("sale:void")}
+        canRestore={session.user.permissions.includes("sale:restore")}
+        lockedThrough={periodLock.lockedThrough}
         initialRange={
           RANGES.includes(range as SaleRange) ? (range as SaleRange) : "30d"
         }

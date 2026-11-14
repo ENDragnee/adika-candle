@@ -5,6 +5,7 @@ import { UserName } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { FailedPasswordRules } from "@/lib/password-policy";
 import { prisma } from "@/lib/prisma";
+import { AssertCanManageUser } from "@/lib/server/access-containment";
 import { GetApiSession } from "@/lib/session";
 import { SetUserPassword } from "@/lib/set-user-password";
 
@@ -26,6 +27,7 @@ export const PATCH = CreateApiRoute<SetUserPasswordInput, Params>({
       entityLabel: name,
       changes: {
         signedOutEverywhere: body.signOutEverywhere,
+        requirePasswordChange: body.requirePasswordChange,
         sessionsEnded: result.signedOutSessions,
       },
     };
@@ -36,6 +38,10 @@ export const PATCH = CreateApiRoute<SetUserPasswordInput, Params>({
     if (!userId) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Setting someone's password lets you sign in as them, so their
+    // account must be within your reach (Epic 23).
+    await AssertCanManageUser(session?.permissions ?? [], userId);
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -57,6 +63,15 @@ export const PATCH = CreateApiRoute<SetUserPasswordInput, Params>({
     }
 
     await SetUserPassword(userId, body.password);
+    // Epic 24: the person replaces a password someone else chose.
+    // Never for your own — you already know it.
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        mustChangePassword:
+          userId !== session?.id && body.requirePasswordChange !== false,
+      },
+    });
 
     // The signed-in Manager resetting their *own* password keeps the
     // session they're using; every other session ends.

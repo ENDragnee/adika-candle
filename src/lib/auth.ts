@@ -2,6 +2,8 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { customSession, username } from "better-auth/plugins";
 import { SESSION_MAX_AGE } from "@/configs/global-vars";
+import { IsMaintenanceExempt } from "@/features/system/server/maintenance";
+import { GetSystemSettings } from "@/features/system/server/settings";
 import {
   AuthActivityAfterHook,
   AuthActivityBeforeHook,
@@ -36,6 +38,7 @@ export const auth = betterAuth({
         where: { id: user.id },
         select: {
           isActive: true,
+          mustChangePassword: true,
           role: {
             select: { name: true, permissions: { select: { name: true } } },
           },
@@ -49,7 +52,49 @@ export const auth = betterAuth({
       // docs/DECISIONS.md, "Epic 7 decisions".
       if (!dbUser?.isActive) {
         return {
-          user: { ...user, role: null, permissions: [] },
+          user: {
+            ...user,
+            role: null,
+            permissions: [] as string[],
+            mustChangePassword: false,
+            maintenance: false,
+          },
+          session,
+        };
+      }
+
+      // Someone else chose this password (Epic 24): no permissions until
+      // the person picks their own. The dashboard layout and
+      // RoleRedirector send them to /account/change-password.
+      if (dbUser.mustChangePassword) {
+        return {
+          user: {
+            ...user,
+            role: dbUser.role?.name ?? null,
+            permissions: [] as string[],
+            mustChangePassword: true,
+            maintenance: false,
+          },
+          session,
+        };
+      }
+
+      const permissions =
+        dbUser.role?.permissions.map((permission) => permission.name) ?? [];
+
+      // Maintenance mode (Epic 24): only people who can turn it off keep
+      // working; everyone else holds no permissions and is sent to
+      // /maintenance.
+      const { maintenance } = await GetSystemSettings();
+      if (maintenance.enabled && !IsMaintenanceExempt(permissions)) {
+        return {
+          user: {
+            ...user,
+            role: dbUser.role?.name ?? null,
+            permissions: [] as string[],
+            mustChangePassword: false,
+            maintenance: true,
+          },
           session,
         };
       }
@@ -58,8 +103,9 @@ export const auth = betterAuth({
         user: {
           ...user,
           role: dbUser.role?.name ?? null,
-          permissions:
-            dbUser.role?.permissions.map((permission) => permission.name) ?? [],
+          permissions,
+          mustChangePassword: false,
+          maintenance: false,
         },
         session,
       };

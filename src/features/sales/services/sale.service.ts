@@ -2,6 +2,7 @@ import { axiosInstance } from "@/lib/axios";
 import type { Paginated, PaginationParams } from "@/lib/pagination";
 import type {
   CreateSaleInput,
+  RestoreSaleInput,
   SaleDTO,
   SaleQuery,
   SalesSummaryDTO,
@@ -30,6 +31,17 @@ export async function FetchSale(id: string): Promise<SaleDTO> {
 
 export async function CreateSale(input: CreateSaleInput): Promise<SaleDTO> {
   const { data } = await axiosInstance.post<SaleDTO>("/api/v1/sales", input);
+  return data;
+}
+
+export async function RestoreSale(
+  id: string,
+  input: RestoreSaleInput,
+): Promise<SaleDTO> {
+  const { data } = await axiosInstance.post<SaleDTO>(
+    `/api/v1/sales/${id}/restore`,
+    input,
+  );
   return data;
 }
 

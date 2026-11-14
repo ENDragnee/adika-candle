@@ -12,6 +12,7 @@ export const LoanTransactionTypeSchema = z.enum([
   "ADVANCE_REDEEMED",
   "MANUAL_ADJUSTMENT",
   "SALE_VOID",
+  "SALE_RESTORE",
 ]);
 
 export const LoanTransactionSchema = z.object({

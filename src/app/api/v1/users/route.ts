@@ -15,13 +15,14 @@ import {
   ToSkipTake,
 } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
+import { AssertCanGrantRole } from "@/lib/server/access-containment";
 
 export const GET = CreateApiRoute({
   moduleName: "users",
   schema: PaginationQuerySchema,
   requiresAuth: { status: true, permission: "user:manage" },
   responseSchema: PaginatedResponseSchema(UserSchema),
-  handler: async (query) => {
+  handler: async (query, session) => {
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         include: WITH_ROLE_INCLUDE,
@@ -31,7 +32,7 @@ export const GET = CreateApiRoute({
       prisma.user.count(),
     ]);
     return {
-      data: users.map(ToUserDTO),
+      data: users.map((user) => ToUserDTO(user, session?.permissions ?? [])),
       pagination: BuildPaginationMeta(query, total),
     };
   },
@@ -51,7 +52,9 @@ export const POST = CreateApiRoute({
     entityLabel: result.name,
     changes: { role: result.roleName },
   }),
-  handler: async (body) => {
+  handler: async (body, session) => {
+    // A new account can't be given more access than its creator holds.
+    await AssertCanGrantRole(session?.permissions ?? [], body.roleId);
     try {
       // Same auth.api.signUpEmail call shape as prisma/seed.ts's
       // ensureDevUser — better-auth owns password hashing, so this handler
@@ -69,11 +72,14 @@ export const POST = CreateApiRoute({
 
       const user = await prisma.user.update({
         where: { id: result.user.id },
-        data: { roleId: body.roleId },
+        data: {
+          roleId: body.roleId,
+          mustChangePassword: body.requirePasswordChange,
+        },
         include: WITH_ROLE_INCLUDE,
       });
 
-      return ToUserDTO(user);
+      return ToUserDTO(user, session?.permissions ?? []);
     } catch (err) {
       if (err instanceof APIError) {
         return NextResponse.json(

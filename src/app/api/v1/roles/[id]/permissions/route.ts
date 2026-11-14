@@ -12,6 +12,7 @@ import {
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { prisma } from "@/lib/prisma";
+import { AssertCanSetPermissions } from "@/lib/server/access-containment";
 
 type Params = { id: string };
 
@@ -21,7 +22,12 @@ type Params = { id: string };
 // role"), this handler only ever touches the permission list — it never
 // renames a role, even though Role.name is technically editable in the
 // schema. See docs/DECISIONS.md, "Epic 7 decisions".
-const GUARDED_PERMISSION_NAMES = ["role:manage", "user:manage"];
+const GUARDED_PERMISSION_NAMES = [
+  "role:manage",
+  "user:manage",
+  "session:manage",
+  "system:manage",
+];
 
 export const PATCH = CreateApiRoute<
   UpdateRolePermissionsInput,
@@ -43,6 +49,16 @@ export const PATCH = CreateApiRoute<
     changes: { permissionCount: result.permissionIds.length },
   }),
   handler: async (body, session, params) => {
+    // Access containment (Epic 23): a role you don't fully hold is out of
+    // reach, and you can only add or remove permissions you hold.
+    if (params?.id) {
+      await AssertCanSetPermissions(
+        session?.permissions ?? [],
+        params.id,
+        body.permissionIds,
+      );
+    }
+
     // Self-lockout guard (Epic 21): taking "role:manage" off your *own*
     // role would lock you out of this page with no way to undo it. The
     // check below only ensures *some* role keeps the permission.
@@ -96,7 +112,7 @@ export const PATCH = CreateApiRoute<
         },
         include: ROLE_DTO_INCLUDE,
       });
-      return ToRoleDTO(role);
+      return ToRoleDTO(role, session?.permissions ?? []);
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
