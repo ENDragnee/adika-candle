@@ -10,6 +10,7 @@ import {
   PackageIcon,
   ReceiptIcon,
   ShieldCheckIcon,
+  ShieldStarIcon,
   TagIcon,
   UserGearIcon,
   UsersIcon,
@@ -41,6 +42,7 @@ export const MODULE_LABELS: Record<string, ModuleLabel> = {
   user: { label: "Users", icon: UserGearIcon },
   role: { label: "Roles", icon: ShieldCheckIcon },
   session: { label: "Sessions", icon: DevicesIcon },
+  system: { label: "System", icon: ShieldStarIcon },
   "unit-conversion": { label: "Unit settings", icon: GearSixIcon },
   "raw-material": { label: "Raw materials", icon: FlaskIcon },
 };
@@ -115,6 +117,16 @@ export const PERMISSION_LABELS: Record<string, PermissionLabel> = {
   "sale:read": {
     label: "View sales",
     description: "See the sales history.",
+  },
+  "system:manage": {
+    label: "Control the system",
+    description:
+      "Sign-in lockout, maintenance mode, closing past periods, log retention and backups. Admin only by default.",
+  },
+  "sale:restore": {
+    label: "Restore voided sales",
+    description:
+      "Bring back a sale that was voided by mistake; its stock and customer balance effects are re-applied. Admin only by default.",
   },
   "session:manage": {
     label: "Manage sessions",

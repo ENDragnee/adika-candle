@@ -26,6 +26,7 @@ const GUARDED_PERMISSION_NAMES = [
   "role:manage",
   "user:manage",
   "session:manage",
+  "system:manage",
 ];
 
 export const PATCH = CreateApiRoute<

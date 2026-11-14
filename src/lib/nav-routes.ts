@@ -59,6 +59,11 @@ export const MANAGER_ROUTES: NavRoute[] = [
     permission: ["session:manage"],
   },
   {
+    label: "System",
+    href: "/manager/system",
+    permission: ["system:manage"],
+  },
+  {
     label: "Settings",
     href: "/manager/settings",
     permission: ["unit-conversion:manage", "raw-material:manage"],

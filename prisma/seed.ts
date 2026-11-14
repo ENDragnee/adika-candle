@@ -15,10 +15,11 @@ const MODULE_PERMISSIONS: Record<string, string[]> = {
   stock: ["stock:read", "stock:accept", "stock:adjust"],
   customer: ["customer:read", "customer:manage"],
   loan: ["loan:record", "loan:manage"],
-  sale: ["sale:create", "sale:read", "sale:void"],
+  sale: ["sale:create", "sale:read", "sale:void", "sale:restore"],
   user: ["user:manage"],
   role: ["role:manage"],
   session: ["session:manage"],
+  system: ["system:manage"],
   "unit-conversion": ["unit-conversion:manage"],
   "raw-material": [
     "raw-material:read",
@@ -71,7 +72,13 @@ async function seedModulesAndPermissions() {
 // Permissions only the Admin holds (Epic 23). The Manager gets everything
 // else; access containment (src/lib/server/access-containment.ts) keeps a
 // Manager from granting these to anyone, themselves included.
-const ADMIN_ONLY_PERMISSIONS = ["session:manage"];
+const ADMIN_ONLY_PERMISSIONS = [
+  "session:manage",
+  // Epic 24: System page (lockout, maintenance, period lock, retention,
+  // backup) and restoring voided sales.
+  "system:manage",
+  "sale:restore",
+];
 
 const ADMIN_DESCRIPTION =
   "Total control: everything the Manager does, plus seeing and ending anyone's sessions.";
