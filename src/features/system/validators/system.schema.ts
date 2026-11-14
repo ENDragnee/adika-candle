@@ -66,3 +66,18 @@ export const UpdateSystemSettingsInputSchema = z.object({
 export type UpdateSystemSettingsInput = z.infer<
   typeof UpdateSystemSettingsInputSchema
 >;
+
+export const LogPurgePreviewSchema = z.object({
+  retentionDays: z.number().int(),
+  cutoff: z.iso.datetime(),
+  purgeable: z.number().int(),
+  total: z.number().int(),
+  oldestAt: z.iso.datetime().nullable(),
+});
+export type LogPurgePreview = z.infer<typeof LogPurgePreviewSchema>;
+
+export const LogPurgeResultSchema = z.object({
+  deleted: z.number().int(),
+  cutoff: z.iso.datetime(),
+});
+export type LogPurgeResult = z.infer<typeof LogPurgeResultSchema>;

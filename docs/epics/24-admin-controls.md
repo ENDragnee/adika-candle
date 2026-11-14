@@ -1,7 +1,7 @@
 # Epic 24 — Admin controls
 
 **Depends on:** 23 (Admin role, session control, account edits)
-**Status:** in-progress
+**Status:** done
 
 ## Goal
 
@@ -72,6 +72,19 @@ containment (Epic 23) keeps the Manager from granting them.
   - It never includes password hashes, session tokens or verification rows.
   - Each download is logged.
   - There is no restore-from-file: overwriting live data from the UI is out of scope.
+
+## Verified (local dev DB, 2026-11-14)
+- **Lockout:** 3 wrong passwords locked the account. The right password was then refused (`ACCOUNT_LOCKED`). The Manager's unlock was refused (403), the Admin's unlock worked, and every step was logged.
+- **Forced change:** after a reset, the user had no permissions and was redirected to `/account/change-password`. A wrong current password was rejected, a reused password was rejected, and a valid change restored access.
+- **Maintenance:**
+  - Non-admins are refused at sign-in (503), including unknown usernames.
+  - Open sessions are redirected to `/maintenance`.
+  - Admins see the banner.
+  - Turning it off reaches every server module within the 5s settings cache.
+- **Void/restore:** two void→restore cycles each brought stock and the customer balance back exactly. The Manager's restore was refused (403), and restoring an active sale gave 409.
+- **Period lock:** locking today was refused (400), and voiding a sale in a locked period gave 409 `PERIOD_LOCKED`.
+- **Backup:** has no password, token or session fields. The Manager is refused (403).
+- **Purge:** removed exactly the out-of-window entries and logged itself.
 
 ## Out of scope
 - Automatic scheduled purges or backups (would need a scheduler or cron).

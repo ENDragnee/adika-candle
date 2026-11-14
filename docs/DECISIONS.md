@@ -12,6 +12,28 @@ undo.
 
 ---
 
+## 2026-11-14 — Epic 24 (Admin controls) decisions
+
+- **Settings live in one `SystemSetting` table**, one JSON row per group, validated by Zod with defaults.
+  - A missing or invalid row falls back to the defaults instead of breaking requests.
+  - Reads are cached in-process for 5s, because `customSession` checks maintenance mode on every request.
+  - Next.js bundles pages and route handlers separately, so a change can take up to 5s to reach every module.
+- **Lockout runs in the better-auth sign-in hooks, not in middleware.**
+  - A locked account is refused *before* its password is checked.
+  - Failures are counted with an atomic increment. Refusals for lockout or maintenance aren't counted as failed guesses.
+  - The maintenance refusal is the same for unknown usernames, so it doesn't reveal which accounts exist.
+- **Forced password change and maintenance withhold permissions in `customSession`**, the same way deactivation does (Epic 7), so every existing permission check enforces them for free. Layouts and `RoleRedirector` do the redirects.
+  - `CreateApiRoute` gained `permission: null` (any signed-in user) for the person's own account endpoints.
+- **The period lock guards void and restore only.** Every write is dated "now", so voiding an old sale is the only way to change a closed period's reports (analytics drop voided sales from the day they were made). The latest lockable day is yesterday.
+- **Restore is a mirror of void, with its own `SALE_RESTORE` ledger types.** It does not reuse `SALE`, so history reads truthfully.
+  - The loan amount re-posted is "voids minus restores so far", which keeps repeated cycles exact.
+  - Like a new sale, it refuses when the stock isn't on hand.
+- **Log purge is manual only.** The app has no scheduler, and silent deletion should be a person's decision. The purge entry is written after the delete, so it survives.
+- **The backup is a logical JSON export, not `pg_dump`** (not available to the app).
+  - It excludes `Account`, `Session` and `Verification`, so there are no hashes or tokens.
+  - It is taken in one repeatable-read transaction, so balances match ledgers.
+  - There is no UI restore: overwriting live data is an operator task.
+
 ## 2026-11-14 — Epic 23 (Admin role) decisions
 
 - **Admin is defined by one admin-only permission (`session:manage`), not by role name.** The Manager keeps every other permission. This reverses the earlier seed note ("no separate admin role; the Manager is the administrator"), at the owner's request.

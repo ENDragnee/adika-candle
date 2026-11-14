@@ -143,6 +143,19 @@ Components that Server Components import must take icons from
 - The Manager can edit a user's name and username.
 - **Access containment** (`src/lib/server/access-containment.ts`): no one can grant, edit or act on access they don't hold. Every new user/role mutation must call it.
 
+**Admin Controls (Epic 24)** is done. `/manager/system` (`system:manage`, admin-only) has:
+- Account lockout thresholds; locked accounts can be unlocked from Users.
+- Maintenance mode.
+- Closed periods: no void or restore on or before the lock date.
+- Activity-log retention, with a manual purge.
+- A JSON backup download.
+
+Related:
+- Forced password change at next sign-in: `/account/change-password`.
+- Restoring voided sales (`sale:restore`, `SALE_RESTORE` ledger types).
+- Settings are read with `GetSystemSettings()` (`src/features/system/server/settings.ts`).
+- `customSession` withholds permissions for maintenance mode and pending password changes.
+
 ## Tech stack
 
 Next.js (App Router) · React · TanStack Query · Axios · better-auth ·

@@ -2,8 +2,10 @@
 
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { useSystemSettings } from "../hooks/use-system";
+import { BackupCard } from "./backup-card";
 import { MaintenanceCard } from "./maintenance-card";
 import { PeriodLockCard } from "./period-lock-card";
+import { RetentionCard } from "./retention-card";
 import { SecurityCard } from "./security-card";
 
 // /manager/system (Epic 24): the Admin's controls, one card per power.
@@ -32,6 +34,8 @@ export function SystemConsole() {
         key={String(settings.maintenance.enabled)}
         settings={settings.maintenance}
       />
+      <BackupCard />
+      <RetentionCard settings={settings.retention} />
     </div>
   );
 }
