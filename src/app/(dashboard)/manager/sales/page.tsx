@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
+import { RecordSaleDialog } from "@/features/sales/components/record-sale-dialog";
 import {
   SaleList,
   type SaleRange,
@@ -37,6 +38,11 @@ export default async function ManagerSalesPage({
   return (
     <div className="flex flex-col gap-4">
       <PageHeader description="Every sale, with totals for whatever you filter to. Void a mistaken sale from its row menu." />
+      {session.user.permissions.includes("sale:create") && (
+        <div className="flex justify-end">
+          <RecordSaleDialog />
+        </div>
+      )}
       <SaleList
         showFilters
         canVoid={session.user.permissions.includes("sale:void")}

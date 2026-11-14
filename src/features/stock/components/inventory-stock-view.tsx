@@ -1,38 +1,13 @@
 "use client";
 
-import { PlusIcon } from "@phosphor-icons/react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { AcceptStockForm } from "./accept-stock-form";
+import { AcceptStockDialog } from "./accept-stock-dialog";
 import { StockBalanceList } from "./stock-balance-list";
 
 export function InventoryStockView() {
-  const [isAcceptOpen, setIsAcceptOpen] = useState(false);
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Dialog open={isAcceptOpen} onOpenChange={setIsAcceptOpen}>
-          <DialogTrigger asChild>
-            <Button data-tour="accept-stock-trigger">
-              <PlusIcon data-icon="inline-start" />
-              Accept stock
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Accept stock</DialogTitle>
-            </DialogHeader>
-            <AcceptStockForm onSuccess={() => setIsAcceptOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <AcceptStockDialog />
       </div>
       <StockBalanceList />
     </div>
