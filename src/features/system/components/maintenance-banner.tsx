@@ -6,7 +6,6 @@ import Link from "next/link";
 export function MaintenanceBanner() {
   return (
     <div
-      role="status"
       className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-sm"
       style={{
         borderColor: "var(--color-status-warning)",
