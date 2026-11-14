@@ -276,9 +276,9 @@ export function ProfitabilityTab() {
                   Set product costs
                 </Link>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-1.5 overflow-hidden rounded-sm bg-muted">
                 <div
-                  className="h-full rounded-full bg-chart-series-1"
+                  className="h-full rounded-sm bg-chart-series-1"
                   style={{ width: `${coverage}%` }}
                 />
               </div>

@@ -130,7 +130,7 @@ export function ErrorState({
       }
     >
       <div className="flex max-w-md flex-col items-center gap-4 text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-muted">
+        <div className="flex size-14 items-center justify-center rounded-lg bg-muted">
           <Icon
             weight="duotone"
             className="size-7"

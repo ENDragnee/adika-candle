@@ -43,7 +43,7 @@ export function StockStatusStrip({
   return (
     <div className="flex flex-col gap-3">
       <div
-        className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full bg-muted"
+        className="flex h-3 w-full gap-[2px] overflow-hidden rounded-sm bg-muted"
         role="img"
         aria-label={ordered
           .filter((item) => item.count > 0)
@@ -91,7 +91,7 @@ export function StockStatusStrip({
             </>
           );
           const className = cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
+            "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors",
             isSelected
               ? "border-foreground/40 bg-muted"
               : "border-border hover:bg-muted/60",

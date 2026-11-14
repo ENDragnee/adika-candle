@@ -12,6 +12,14 @@ undo.
 
 ---
 
+## 2026-11-14 — Corporate polish: radius, green, favicon
+
+- **`--radius` is now 0.375rem (6px), down from 0.625rem.** Cards use `rounded-lg`. Progress bars and the stock strip are squared off (`rounded-sm`). Circles (avatars, switches, dots) stay round.
+- **`--status-good` is a calmer green**: `oklch(0.56 0.09 152)` in light mode (≈#49845a, about 4.4:1 on white) and `oklch(0.66 0.09 152)` in dark mode. This is an owner-requested exception to the dataviz skill's fixed status hexes; it is still always paired with an icon and a label.
+- **The favicon is the sidebar logo** (Phosphor Flame on the brand amber #b26500), in `src/app/icon.svg`.
+  - `favicon.ico` (16/32/48) and `apple-icon.png` (180, full-bleed) were rendered once from it with the `sharp` that Next.js already ships; no new dependency.
+  - Regenerate both if the mark changes.
+
 ## 2026-11-14 — Sidebar groups (Epic 25)
 
 - **Groups follow access level, from everyday to admin-only.** The order is Daily work → Insights → Catalog → People & access → System, with Dashboard on top and Legend at the bottom (no headings for those two). A role sees only the groups it has pages in, so the sidebar grows with the role:
