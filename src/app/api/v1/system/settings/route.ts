@@ -10,6 +10,8 @@ import {
 } from "@/features/system/validators/system.schema";
 import type { ActivityInput } from "@/lib/activity/record-activity";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
+import { BusinessDateKey } from "@/lib/business-time";
+import { DomainError } from "@/lib/server/domain-error";
 
 export const GET = CreateApiRoute({
   moduleName: "system.settings",
@@ -94,6 +96,15 @@ export const PATCH = CreateApiRoute({
     }
 
     if (body.periodLock) {
+      // Today is still being traded; the latest lockable day is yesterday.
+      const through = body.periodLock.lockedThrough;
+      if (through && through >= BusinessDateKey(new Date())) {
+        throw new DomainError(
+          "You can close the books up to yesterday, not today or later",
+          400,
+          "INVALID_LOCK_DATE",
+        );
+      }
       await SaveSystemSetting(
         "periodLock",
         SystemSettingsSchema.shape.periodLock.parse({

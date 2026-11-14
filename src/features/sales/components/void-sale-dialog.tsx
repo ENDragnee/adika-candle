@@ -46,8 +46,9 @@ export function VoidSaleDialog({
           <DialogHeader>
             <DialogTitle>Void sale {sale.referenceCode}?</DialogTitle>
             <DialogDescription>
-              The sale stays in the history, marked as voided. This can't be
-              undone — to correct a mistake, void it and record the right sale.
+              The sale stays in the history, marked as voided. Only an
+              administrator can restore it — to correct a mistake, void it and
+              record the right sale.
             </DialogDescription>
           </DialogHeader>
           <ul className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3 text-sm">

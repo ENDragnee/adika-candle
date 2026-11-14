@@ -149,3 +149,13 @@ export const VoidSaleInputSchema = z.object({
     .max(500),
 });
 export type VoidSaleInput = z.infer<typeof VoidSaleInputSchema>;
+
+// Restoring a voided sale (Epic 24, Admin).
+export const RestoreSaleInputSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Say briefly why this sale is being restored")
+    .max(500),
+});
+export type RestoreSaleInput = z.infer<typeof RestoreSaleInputSchema>;

@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  ArrowCounterClockwiseIcon,
   DotsThreeVerticalIcon,
   EyeIcon,
+  LockIcon,
   MagnifyingGlassIcon,
   ProhibitIcon,
 } from "@phosphor-icons/react";
@@ -32,6 +34,7 @@ import {
 import { ToneBadge } from "@/components/ui/tone-badge";
 import { useCustomers } from "@/features/customers/hooks/use-customers";
 import { useProducts } from "@/features/products/hooks/use-products";
+import { BusinessDateKey } from "@/lib/business-time";
 import {
   type DateRangePreset,
   type DateRangeValue,
@@ -53,6 +56,7 @@ import { useSales } from "../hooks/use-sales";
 import { PAYMENT_TYPE_META } from "../labels";
 import { FetchSales, type SalesQueryParams } from "../services/sale.service";
 import type { SaleDTO } from "../validators/sale.schema";
+import { RestoreSaleDialog } from "./restore-sale-dialog";
 import { SaleDetailsDialog } from "./sale-details-dialog";
 import { VoidSaleDialog } from "./void-sale-dialog";
 
@@ -62,17 +66,32 @@ export type SaleRange = Exclude<DateRangePreset, "custom">;
 
 const ALL = "__all__";
 
+// A sale dated on or before the lock date is in a closed period (Epic
+// 24): it can't be voided or restored, so the actions are hidden.
+function IsLocked(sale: SaleDTO, lockedThrough: string | null): boolean {
+  return (
+    lockedThrough !== null &&
+    BusinessDateKey(new Date(sale.createdAt)) <= lockedThrough
+  );
+}
+
 function SaleActions({
   sale,
   canVoid,
+  canRestore,
+  lockedThrough,
   linkBase,
 }: {
   sale: SaleDTO;
   canVoid: boolean;
+  canRestore: boolean;
+  lockedThrough: string | null;
   linkBase: string;
 }) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isVoidOpen, setIsVoidOpen] = useState(false);
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const locked = IsLocked(sale, lockedThrough);
 
   return (
     <>
@@ -87,7 +106,19 @@ function SaleActions({
             <EyeIcon />
             View details
           </DropdownMenuItem>
-          {canVoid && !sale.voidedAt && (
+          {locked && (canVoid || canRestore) && (
+            <DropdownMenuItem disabled>
+              <LockIcon />
+              Period closed
+            </DropdownMenuItem>
+          )}
+          {canRestore && sale.voidedAt && !locked && (
+            <DropdownMenuItem onSelect={() => setIsRestoreOpen(true)}>
+              <ArrowCounterClockwiseIcon />
+              Restore sale
+            </DropdownMenuItem>
+          )}
+          {canVoid && !sale.voidedAt && !locked && (
             <DropdownMenuItem
               onSelect={() => setIsVoidOpen(true)}
               className="text-destructive focus:text-destructive"
@@ -111,6 +142,13 @@ function SaleActions({
           onOpenChange={setIsVoidOpen}
         />
       )}
+      {canRestore && sale.voidedAt && (
+        <RestoreSaleDialog
+          sale={sale}
+          open={isRestoreOpen}
+          onOpenChange={setIsRestoreOpen}
+        />
+      )}
     </>
   );
 }
@@ -119,11 +157,15 @@ function BuildColumns({
   showProduct,
   showCustomer,
   canVoid,
+  canRestore,
+  lockedThrough,
   linkBase,
 }: {
   showProduct: boolean;
   showCustomer: boolean;
   canVoid: boolean;
+  canRestore: boolean;
+  lockedThrough: string | null;
   linkBase: string;
 }): DataTableColumn<SaleDTO>[] {
   return [
@@ -216,7 +258,13 @@ function BuildColumns({
       key: "actions",
       header: "",
       cell: (sale) => (
-        <SaleActions sale={sale} canVoid={canVoid} linkBase={linkBase} />
+        <SaleActions
+          sale={sale}
+          canVoid={canVoid}
+          canRestore={canRestore}
+          lockedThrough={lockedThrough}
+          linkBase={linkBase}
+        />
       ),
       className: "w-10",
     },
@@ -264,6 +312,10 @@ export function SaleList({
   customerId,
   showFilters = false,
   canVoid = false,
+  // Epic 24: Admin restore, and the closed-period date (from the System
+  // page) after which void/restore are hidden.
+  canRestore = false,
+  lockedThrough = null,
   initialRange = "all",
   linkBase = "/manager",
 }: {
@@ -272,6 +324,8 @@ export function SaleList({
   customerId?: string;
   showFilters?: boolean;
   canVoid?: boolean;
+  canRestore?: boolean;
+  lockedThrough?: string | null;
   initialRange?: SaleRange;
   linkBase?: string;
 }) {
@@ -319,6 +373,8 @@ export function SaleList({
     showProduct: !productId,
     showCustomer: !customerId,
     canVoid,
+    canRestore,
+    lockedThrough,
     linkBase,
   });
 

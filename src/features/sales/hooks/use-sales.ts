@@ -12,10 +12,15 @@ import {
   CreateSale,
   FetchSale,
   FetchSales,
+  RestoreSale,
   type SalesQueryParams,
   VoidSale,
 } from "../services/sale.service";
-import type { CreateSaleInput, VoidSaleInput } from "../validators/sale.schema";
+import type {
+  CreateSaleInput,
+  RestoreSaleInput,
+  VoidSaleInput,
+} from "../validators/sale.schema";
 
 export const salesQueryKey = (query?: SalesQueryParams) =>
   ["sales", query ?? {}] as const;
@@ -53,6 +58,19 @@ export function useCreateSale() {
       InvalidateLedgerQueries(queryClient);
       toast.success("Sale recorded");
     },
+  });
+}
+
+export function useRestoreSale(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: RestoreSaleInput) => RestoreSale(id, input),
+    onSuccess: (sale) => {
+      InvalidateLedgerQueries(queryClient);
+      toast.success(`Sale ${sale.referenceCode} restored`);
+    },
+    meta: { errorTitle: "Couldn't restore sale" },
   });
 }
 

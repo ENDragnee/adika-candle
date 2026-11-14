@@ -45,6 +45,7 @@ export const StockEntryTypeSchema = z.enum([
   "SALE",
   "ADJUSTMENT",
   "SALE_VOID",
+  "SALE_RESTORE",
 ]);
 
 export const StockLedgerEntrySchema = z.object({
