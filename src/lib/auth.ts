@@ -2,6 +2,8 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { customSession, username } from "better-auth/plugins";
 import { SESSION_MAX_AGE } from "@/configs/global-vars";
+import { IsMaintenanceExempt } from "@/features/system/server/maintenance";
+import { GetSystemSettings } from "@/features/system/server/settings";
 import {
   AuthActivityAfterHook,
   AuthActivityBeforeHook,
@@ -55,6 +57,7 @@ export const auth = betterAuth({
             role: null,
             permissions: [] as string[],
             mustChangePassword: false,
+            maintenance: false,
           },
           session,
         };
@@ -70,6 +73,27 @@ export const auth = betterAuth({
             role: dbUser.role?.name ?? null,
             permissions: [] as string[],
             mustChangePassword: true,
+            maintenance: false,
+          },
+          session,
+        };
+      }
+
+      const permissions =
+        dbUser.role?.permissions.map((permission) => permission.name) ?? [];
+
+      // Maintenance mode (Epic 24): only people who can turn it off keep
+      // working; everyone else holds no permissions and is sent to
+      // /maintenance.
+      const { maintenance } = await GetSystemSettings();
+      if (maintenance.enabled && !IsMaintenanceExempt(permissions)) {
+        return {
+          user: {
+            ...user,
+            role: dbUser.role?.name ?? null,
+            permissions: [] as string[],
+            mustChangePassword: false,
+            maintenance: true,
           },
           session,
         };
@@ -79,9 +103,9 @@ export const auth = betterAuth({
         user: {
           ...user,
           role: dbUser.role?.name ?? null,
-          permissions:
-            dbUser.role?.permissions.map((permission) => permission.name) ?? [],
+          permissions,
           mustChangePassword: false,
+          maintenance: false,
         },
         session,
       };

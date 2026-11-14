@@ -10,6 +10,9 @@ export { ROLES };
 // name, so custom roles (Epic 22) land somewhere they can actually use.
 export async function RoleRedirector(next?: string | null) {
   const session = await GetSession();
+  if (session.user.maintenance) {
+    redirect("/maintenance");
+  }
   if (session.user.mustChangePassword) {
     redirect("/account/change-password");
   }

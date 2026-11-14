@@ -2,6 +2,7 @@
 
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { useSystemSettings } from "../hooks/use-system";
+import { MaintenanceCard } from "./maintenance-card";
 import { SecurityCard } from "./security-card";
 
 // /manager/system (Epic 24): the Admin's controls, one card per power.
@@ -22,6 +23,10 @@ export function SystemConsole() {
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
       <SecurityCard settings={settings.security} />
+      <MaintenanceCard
+        key={String(settings.maintenance.enabled)}
+        settings={settings.maintenance}
+      />
     </div>
   );
 }

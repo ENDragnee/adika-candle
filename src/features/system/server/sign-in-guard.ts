@@ -1,6 +1,7 @@
 import { APIError } from "better-auth/api";
 import { RecordActivity } from "@/lib/activity/record-activity";
 import { prisma } from "@/lib/prisma";
+import { IsMaintenanceExempt } from "./maintenance";
 import { GetSystemSettings } from "./settings";
 
 // Account lockout (Epic 24), run from better-auth's sign-in hooks
@@ -27,8 +28,26 @@ export async function GuardSignIn(
   if (!username) return;
   const user = await prisma.user.findUnique({
     where: { username },
-    select: { id: true, name: true, lockedUntil: true },
+    select: {
+      id: true,
+      name: true,
+      lockedUntil: true,
+      role: { select: { permissions: { select: { name: true } } } },
+    },
   });
+
+  // Maintenance mode: only people who can turn it off may sign in. Checked
+  // for unknown usernames too, so the answer doesn't reveal which exist.
+  const { maintenance } = await GetSystemSettings();
+  const permissions =
+    user?.role?.permissions.map((permission) => permission.name) ?? [];
+  if (maintenance.enabled && !IsMaintenanceExempt(permissions)) {
+    throw new APIError("SERVICE_UNAVAILABLE", {
+      code: "MAINTENANCE",
+      message: maintenance.message,
+    });
+  }
+
   if (!user?.lockedUntil || user.lockedUntil <= new Date()) return;
 
   const minutes = MinutesLeft(user.lockedUntil);

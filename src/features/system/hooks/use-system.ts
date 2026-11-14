@@ -17,7 +17,10 @@ export function useSystemSettings() {
   });
 }
 
-export function useUpdateSystemSettings(successMessage = "Settings saved") {
+export function useUpdateSystemSettings(
+  successMessage = "Settings saved",
+  onSaved?: () => void,
+) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateSystemSettingsInput) =>
@@ -26,6 +29,7 @@ export function useUpdateSystemSettings(successMessage = "Settings saved") {
       queryClient.setQueryData([...SYSTEM_QUERY_KEY, "settings"], settings);
       queryClient.invalidateQueries({ queryKey: SYSTEM_QUERY_KEY });
       toast.success(successMessage);
+      onSaved?.();
     },
     meta: { errorTitle: "Couldn't save settings" },
   });

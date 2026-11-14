@@ -35,7 +35,13 @@ export const AuthActivityAfterHook = createAuthMiddleware(async (ctx) => {
     const username = UsernameOf(ctx.body) ?? "unknown";
     // A refusal from GuardSignIn (account already locked) isn't another
     // failed guess — it's logged there.
-    if (returned.body?.code === "ACCOUNT_LOCKED") return;
+    // Same for a maintenance-mode refusal.
+    if (
+      returned.body?.code === "ACCOUNT_LOCKED" ||
+      returned.body?.code === "MAINTENANCE"
+    ) {
+      return;
+    }
     await RecordActivity(
       {
         type: "auth",
