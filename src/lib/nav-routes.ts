@@ -121,6 +121,7 @@ export const MANAGER_ROUTES: NavRoute[] = [
     permission: ["system:manage"],
     group: "system",
   },
+  { label: "Tutorial", href: "/tutorial", permission: [], group: "help" },
   { label: "Legend", href: "/legend", permission: [], group: "help" },
 ];
 
@@ -155,6 +156,7 @@ export const INVENTORY_ROUTES: NavRoute[] = [
     permission: ["customer:read"],
     group: "operations",
   },
+  { label: "Tutorial", href: "/tutorial", permission: [], group: "help" },
   { label: "Legend", href: "/legend", permission: [], group: "help" },
 ];
 
@@ -222,8 +224,9 @@ export function HomeRouteFor(
 ): string | null {
   if (!role) return null;
   return (
-    BuildNavRoutes(role, permissions).find((route) => route.href !== "/legend")
-      ?.href ?? null
+    BuildNavRoutes(role, permissions).find(
+      (route) => route.href !== "/legend" && route.href !== "/tutorial",
+    )?.href ?? null
   );
 }
 

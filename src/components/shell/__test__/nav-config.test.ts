@@ -7,8 +7,14 @@ const labels = (role: string, permissions: string[]) =>
 describe("BuildNavItems", () => {
   it("hides Manager pages the role has no permission for", () => {
     const nav = labels("MANAGER", ["analytics:read", "sale:read"]);
-    // Sidebar-group order: Dashboard, Daily work, Insights, …, Legend.
-    expect(nav).toEqual(["Dashboard", "Sales", "Analytics", "Legend"]);
+    // Sidebar-group order: Dashboard, Daily work, Insights, …, Tutorial, Legend.
+    expect(nav).toEqual([
+      "Dashboard",
+      "Sales",
+      "Analytics",
+      "Tutorial",
+      "Legend",
+    ]);
   });
 
   it("adds Manager pages granted to another role, keeping Legend last", () => {
@@ -25,7 +31,13 @@ describe("BuildNavItems", () => {
 
   it("gives Admin the Manager area plus Sessions", () => {
     const nav = labels("ADMIN", ["analytics:read", "session:manage"]);
-    expect(nav).toEqual(["Dashboard", "Analytics", "Sessions", "Legend"]);
+    expect(nav).toEqual([
+      "Dashboard",
+      "Analytics",
+      "Sessions",
+      "Tutorial",
+      "Legend",
+    ]);
   });
 
   it("hides Sessions from a Manager without session:manage", () => {
@@ -34,8 +46,8 @@ describe("BuildNavItems", () => {
     );
   });
 
-  it("shows only Legend to a user with no permissions", () => {
-    expect(labels("INVENTORY_MANAGER", [])).toEqual(["Legend"]);
+  it("shows only Tutorial and Legend to a user with no permissions", () => {
+    expect(labels("INVENTORY_MANAGER", [])).toEqual(["Tutorial", "Legend"]);
   });
 });
 

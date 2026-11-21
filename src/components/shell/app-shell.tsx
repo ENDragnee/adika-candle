@@ -15,6 +15,7 @@ import {
   ACCOUNT_TRIGGER_TOUR_ID,
   NavTourId,
 } from "@/components/tour/tour-elements";
+import { useProductTour } from "@/components/tour/use-product-tour";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -193,6 +194,21 @@ export function AppShell({ user, children }: AppShellProps) {
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebarCollapsed();
   const { isCollapsed, toggle: toggleGroup } = useNavGroups();
+  const startTour = useProductTour(user.role, user.permissions);
+
+  // First-time sign-in automatically triggers the high-level tour.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `adika_tour_seen_${user.id}`;
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, "true");
+      const timer = setTimeout(() => {
+        startTour();
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [user.id, startTour]);
+
   // Folding only helps when there's another group to keep in view.
   const collapsible =
     navGroups.filter((group) => group.label !== null).length > 1;
