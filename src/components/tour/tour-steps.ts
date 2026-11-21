@@ -60,9 +60,9 @@ const TOPBAR_STEP: TourStepDef = {
 
 const ACCOUNT_MENU_STEP: TourStepDef = {
   id: ACCOUNT_TRIGGER_TOUR_ID,
-  title: "That's the tour",
+  title: "That's the high-level tour",
   description:
-    "Open this menu any time to restart the tour, switch theme, or sign out.",
+    "Open this menu any time to restart the tour. For in-depth tutorials on every feature—like two-way loans and advances—visit the Tutorial page.",
 };
 
 export const MANAGER_TOUR_STEPS: TourStepDef[] = [
@@ -136,8 +136,23 @@ export const MANAGER_TOUR_STEPS: TourStepDef[] = [
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
+    "/manager/sessions",
+    "Admin only: monitor active user devices and revoke sessions remotely.",
+  ),
+  NavStep(
+    MANAGER_NAV_ITEMS,
+    "/manager/system",
+    "Admin only: system lockout rules, maintenance mode, period locks, and backups.",
+  ),
+  NavStep(
+    MANAGER_NAV_ITEMS,
     "/manager/settings",
     "Manager-only: manage unit conversions and the raw-material catalog.",
+  ),
+  NavStep(
+    MANAGER_NAV_ITEMS,
+    "/tutorial",
+    "Detailed step-by-step guides for all features, including two-way loans, advance deposits, and recipes.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
@@ -187,6 +202,11 @@ export const INVENTORY_TOUR_STEPS: TourStepDef[] = [
     INVENTORY_NAV_ITEMS,
     "/inventory/customers",
     "Standing customers who can lend or borrow against future purchases.",
+  ),
+  NavStep(
+    INVENTORY_NAV_ITEMS,
+    "/tutorial",
+    "Detailed step-by-step guides for everyday workflows, customer advance deposits, credit sales, and stock acceptance.",
   ),
   NavStep(
     INVENTORY_NAV_ITEMS,
