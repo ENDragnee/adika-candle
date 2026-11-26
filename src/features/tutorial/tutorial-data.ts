@@ -154,34 +154,36 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     badge: "Core Workflow",
     requiredPermissions: ["sale:read", "sale:create", "sale:void"],
     summary:
-      "Record cash or on-account candle sales with automatic packaging conversions to KG, live price/cost snapshots, oversell confirmations, and append-only voids.",
+      "Record cash or on-account candle sales in cartons, to a named customer, with live price snapshots, oversell confirmations, and append-only voids.",
     overview:
-      "All sales are recorded through a single unified flow. Each sale snapshots the packaging unit conversion ratio, active price per kg, and active production cost per kg at the exact moment of sale. Sales are single-product transactions that update finished goods stock atomically. When stock is low, the system prompts for explicit oversell confirmation. Mistakes are never deleted; sales are voided, reversing both stock and loan balances through audit entries.",
+      "All sales are recorded through a single unified flow, always in cartons and always to a named customer (search by name, or add a new customer on the spot). Each sale snapshots the active price and cost at the exact moment of sale. Sales are single-product transactions that update finished goods stock atomically. When stock is low, the system prompts for explicit oversell confirmation. Mistakes are never deleted; sales are voided, reversing both stock and loan balances through audit entries.",
     keyRules: [
-      "Payment Types: CASH (walk-ins or standing customers) or LOAN ('On account' - requires a registered customer).",
-      "Immutable Snapshots: Price per kg, cost per kg, and packaging unit ratios are snapshotted on the sale record, never recalculated retrospectively.",
-      "Oversell Guard: Selling more than on-hand stock triggers a 409 INSUFFICIENT_STOCK warning requiring explicit operator confirmation.",
+      "Cartons only: quantities are entered in cartons (1 carton = 30 packets = 240 pieces).",
+      "Named customers: every sale has a customer. New buyers are added from the customer search in the Record Sale dialog.",
+      "Payment Types: CASH (paid now) or LOAN ('On account' - added to what the customer owes, after any credit they have).",
+      "Immutable Snapshots: price and cost are snapshotted on the sale record, never recalculated retrospectively.",
+      "Oversell Guard: Selling more than the remaining stock triggers a 409 INSUFFICIENT_STOCK warning requiring explicit operator confirmation.",
       "Void, Never Delete: Voiding a sale writes SALE_VOID stock and loan ledger entries, keeping the audit trail intact.",
       "Closed Period Lock: Sales created on or before a closed financial lock date cannot be voided or restored.",
     ],
     stepByStep: [
       {
         step: 1,
-        title: "Start a sale",
+        title: "Find the customer",
         instruction:
-          "Click 'Record sale' on the Sales page or dashboard. Select the candle product and packaging unit (e.g. Carton, Packet, Box).",
+          "Click 'Record sale'. Type the customer's name in the search box and pick them, or choose 'Add “…” as a new customer'.",
       },
       {
         step: 2,
-        title: "Choose customer and payment",
+        title: "Choose product, cartons and payment",
         instruction:
-          "Select 'Walk-in' for immediate cash, or pick a standing customer to sell on account or utilize their existing advance credit.",
+          "Select the candle product (its price per carton is shown), enter the number of cartons, and choose Cash or On account.",
       },
       {
         step: 3,
-        title: "Review breakdown and submit",
+        title: "Review and submit",
         instruction:
-          "Check the calculated weight in KG, unit price, credit redeemed, and total price. If stock is negative or insufficient, confirm oversell prompt.",
+          "Check the price per carton, credit redeemed and total. If the sale is more than what remains, confirm the oversell prompt.",
       },
       {
         step: 4,
@@ -193,12 +195,12 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     practicalExample: {
       title: "Recording a 50-carton sale with oversell confirmation",
       scenario:
-        "Customer Gondor buys 50 cartons of Spiral Candles. Stock on hand is currently only 40 cartons.",
+        "Customer Gondor buys 50 cartons of Spiral Candles. Only 40 cartons remain on record.",
       steps: [
-        "Clerk enters 50 Cartons under Gondor's account.",
-        "System alerts that requested 50 cartons exceeds the 40 cartons on hand.",
+        "Clerk searches 'Gon', picks Gondor and enters 50 cartons on account.",
+        "System alerts that 50 cartons is more than the 40 remaining.",
         "Clerk confirms physical candles are loaded on Gondor's truck and confirms oversell.",
-        "Sale completes, stock drops to -10 cartons (flagged as 'Negative' stock until production accepts new stock).",
+        "Sale completes, stock drops to -10 cartons (flagged as 'Negative' stock until a count or new production corrects it).",
       ],
       result:
         "Sale reference code generated, stock balance updated atomically, and Gondor's account updated.",
@@ -211,50 +213,51 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     badge: "Inventory",
     requiredPermissions: ["stock:read", "stock:accept", "stock:adjust"],
     summary:
-      "Accept finished candles from production, monitor real-time stock levels across units, and perform verified physical inventory adjustments.",
+      "Accept finished candles from production in cartons, see what remains in cartons, packets and pieces, and record verified stock counts.",
     overview:
-      "Finished goods inventory uses a cached balance (StockBalance) paired with an append-only ledger (StockLedgerEntry). When factory workers finish candle batches, the inventory manager accepts them into stock. Stock entries record the input unit and convert to KG. Physical stock counts write signed ADJUSTMENT entries rather than overriding tables, ensuring full traceability.",
+      "Finished goods inventory uses a cached balance (StockBalance) paired with an append-only ledger (StockLedgerEntry). When factory workers finish candle batches, the inventory manager accepts them in cartons. Each product is Normal (7 kg of wax per carton) or Plus (8.5 kg per carton); accepting stock takes that much wax off the wax balance automatically. Physical stock counts (in cartons, packets and pieces) write signed ADJUSTMENT entries rather than overriding tables, ensuring full traceability.",
     keyRules: [
-      "Atomic Updates: Balance updates compile to atomic SQL increments to prevent race conditions during concurrent sales and acceptances.",
+      "Cartons in: production is accepted in cartons only.",
+      "Remaining shown three ways: e.g. '12 ctn · 15 pkt · 3 pcs' (1 carton = 30 packets, 1 packet = 8 pieces).",
+      "Automatic wax use: accepting N cartons consumes N × 7 kg (Normal) or N × 8.5 kg (Plus) of wax.",
       "Statuses: IN_STOCK (> alert level), LOW_STOCK (<= alert level), OUT_OF_STOCK (= 0), NEGATIVE (< 0), and NOT_TRACKED.",
-      "Physical Audits: Physical counts record signed differences (e.g., -5 kg or +2 kg) with operator notes.",
-      "Conversion Truth: All products store balances internally in KG. Packaging units (Cartons, Packets) convert via UnitConversion ratios.",
+      "Physical Audits: counts record signed differences (e.g. -2 cartons) with operator notes.",
     ],
     stepByStep: [
       {
         step: 1,
         title: "Accept production batch",
         instruction:
-          "Go to Stock (/inventory/stock or /manager/stock). Click 'Accept stock'. Select the candle product, enter quantity, and choose packaging unit.",
+          "Go to Stock (/inventory/stock). Click 'Accept stock'. Select the candle product and enter the number of cartons. The wax it used is shown and recorded for you.",
       },
       {
         step: 2,
         title: "View balance and history",
         instruction:
-          "Click on any product row to see its complete stock ledger: accepts, sales, voids, and count adjustments.",
+          "Managers can click any product row to see its complete stock ledger: accepts, sales, voids, and count adjustments.",
       },
       {
         step: 3,
-        title: "Adjust stock after inventory count",
+        title: "Record a stock count",
         instruction:
-          "Managers can click 'Adjust stock' from the product menu to enter physical inventory counts, writing an audited ADJUSTMENT entry.",
+          "Managers open a product's stock page and click 'Record stock count', entering cartons, packets and pieces physically on hand.",
       },
     ],
     practicalExample: {
       title: "Accepting morning production and adjusting damaged stock",
       scenario:
-        "Factory floor delivers 200 cartons of Fluted Candles. 2 cartons were damaged in transit.",
+        "Factory floor delivers 200 cartons of a Normal candle. 2 cartons were damaged in transit.",
       steps: [
-        "Inventory clerk accepts 200 cartons, immediately raising on-hand inventory by 2,000 kg.",
-        "Manager audits floor, spots 2 crushed cartons, and performs an adjustment of -2 cartons (-20 kg) with note 'Crushed cartons discarded'.",
+        "Inventory clerk accepts 200 cartons; 1,400 kg of wax is taken off the wax balance automatically.",
+        "Manager audits the floor, spots 2 crushed cartons, and records a count of 198 cartons with note 'Crushed cartons discarded'.",
       ],
       result:
-        "Stock balance accurately shows 198 cartons (1,980 kg). Both the receipt and adjustment are permanently recorded in the ledger.",
+        "Remaining stock shows 198 cartons. Both the receipt and the correction are permanently recorded in the ledger.",
     },
   },
   {
     id: "raw-materials-recipes",
-    title: "Raw Materials, Factory Consumption & Recipes",
+    title: "Raw Materials & the Under-Production Check",
     category: "Raw Materials",
     badge: "Manufacturing",
     requiredPermissions: [
@@ -263,46 +266,46 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
       "raw-material:manage",
     ],
     summary:
-      "Track bulk raw materials (Paraffin Wax, Kir/Wick, Color Dyes), record factory consumption, and configure Bill of Materials (BOM) product recipes.",
+      "Record wax and kir deliveries; wax use follows automatically from production, and a wax count reveals any under-production.",
     overview:
-      "Production starts with raw materials. The raw materials module mirrors finished goods: cached balances (RawMaterialBalance) backed by an append-only ledger (RawMaterialLedgerEntry). Operators record received shipments (RECEIVED) and factory floor usage (CONSUMED). Each finished candle product can define a Bill of Materials recipe (ProductMaterialRequirement) specifying how many kilograms of wax and meters of wick make up each unit.",
+      "Raw materials mirror finished goods: cached balances (RawMaterialBalance) backed by an append-only ledger (RawMaterialLedgerEntry). Only deliveries (RECEIVED) are entered by hand. Wax use is never typed in: a carton is almost all wax, so accepting stock consumes 7 kg per Normal carton and 8.5 kg per Plus carton (the kir/wick is negligible). A physical wax count then shows whether more wax was really used than the cartons produced account for — under-production.",
     keyRules: [
-      "Activity Types: RECEIVED (raw material shipment arrived) and CONSUMED (materials melted/used on the factory floor).",
-      "Per-Product Recipes: Configured on the product detail page under the 'Recipe' tab.",
-      "Stock Balance Independence: Recording sales does not automatically deplete raw materials; factory workers record actual consumption runs to reflect shop-floor reality.",
-      "Material Units: Raw materials are tracked in their native measurement units (typically KG for wax/dyes, meters or kg for wicks).",
+      "Received only: staff record deliveries; consumption is automatic from accepted cartons.",
+      "Fixed rule: 200 Normal cartons = 1,400 kg of wax; 100 Plus cartons = 850 kg.",
+      "Wax counts: a count that finds less wax than recorded means wax went into something other than recorded cartons.",
+      "Under-production: Analytics → Production compares wax used against wax the produced cartons need, by day, week or month.",
     ],
     stepByStep: [
       {
         step: 1,
-        title: "Receive bulk raw materials",
+        title: "Receive raw materials",
         instruction:
-          "In Raw Materials (/materials), click 'Record activity'. Choose 'Received', select the material (e.g. Semi-Refined Paraffin Wax), and enter quantity.",
+          "In Raw Materials (/inventory/materials), click 'Receive material', select Wax or Kir, and enter the kilograms delivered.",
       },
       {
         step: 2,
-        title: "Log daily floor consumption",
+        title: "Accept production",
         instruction:
-          "At end of shift, record 'Consumed' for wax melted and wicks used during the production batch.",
+          "Accept finished cartons on the Stock page as usual — the wax they used is taken off the wax balance automatically.",
       },
       {
         step: 3,
-        title: "Configure product recipe",
+        title: "Count the wax",
         instruction:
-          "Open Products (/manager/products), click a product, select 'Recipe' tab, and click 'Add material requirement'. Define required material and ratio per unit.",
+          "A Manager opens the Wax material page and records a stock count of the wax physically left. Any difference is logged with the reason.",
       },
     ],
     practicalExample: {
-      title: "Melting 500 kg paraffin wax for Spiral Candles",
+      title: "Spotting 10 cartons of under-production",
       scenario:
-        "Morning shift melts 500 kg of paraffin wax and uses 15 kg of wick spool.",
+        "1,500 kg of wax is received. Production records 200 Normal cartons, which take 1,400 kg on paper, leaving 100 kg recorded.",
       steps: [
-        "Floor supervisor opens /inventory/materials.",
-        "Records 'Consumed' of 500 kg for Paraffin Wax #1 with note 'Shift A Spiral batch'.",
-        "Records 'Consumed' of 15 kg for Cotton Wick Spool.",
+        "At day end, the Manager counts the wax: only 30 kg is left.",
+        "The count records a −70 kg correction.",
+        "Analytics → Production shows 1,470 kg of wax used against 1,400 kg needed.",
       ],
       result:
-        "Raw material balances decrease accordingly. The production report reconciles consumed materials against candles accepted.",
+        "The Production tab flags under-production of about 10 cartons (70 kg ÷ 7 kg) for that day.",
     },
   },
   {
@@ -312,27 +315,27 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     badge: "Profitability",
     requiredPermissions: ["product:read", "product:manage"],
     summary:
-      "Set time-versioned selling prices and unit production costs to track exact profit margins across all candle products.",
+      "Set time-versioned selling prices and production costs per carton to track exact profit margins across all candle products.",
     overview:
-      "Profit tracking requires knowing both revenue and cost of goods. Adika Candle supports effective-dated Price and Cost models. When you set a new price or cost, the system closes out the prior record with an effectiveTo timestamp and creates a new active record with effectiveTo: null. Sales automatically snapshot the active cost per kg, allowing the Analytics Hub to calculate real gross margins without distorting historical sales.",
+      "Profit tracking requires knowing both revenue and cost of goods. Adika Candle supports effective-dated Price and Cost models, both entered per carton. When you set a new price or cost, the system closes out the prior record with an effectiveTo timestamp and creates a new active record with effectiveTo: null. Sales automatically snapshot the active price and cost, allowing the Analytics Hub to calculate real gross margins without distorting historical sales.",
     keyRules: [
       "Time-Versioned: Setting a new price or cost never alters old sales; past sales retain the snapshot active when they occurred.",
       "Nullable Cost: If a product has no cost set, sales can still occur. Margin reports simply exclude uncosted sales rather than reporting an artificial 100% margin.",
-      "Formula: Profit = (unitPriceAtSale - costPerKgAtSale) * quantityKg. Gross Margin % = (Profit / totalAmount) * 100.",
-      "Manager-Only: Pricing and costing are restricted to managerial permissions.",
+      "Formula: Profit = (price per carton − cost per carton) × cartons. Gross Margin % = (Profit / total) × 100.",
+      "Manager-Only: Pricing and costing are restricted to managerial permissions. The Inventory Manager sees prices only when recording a sale.",
     ],
     stepByStep: [
       {
         step: 1,
         title: "Set product selling price",
         instruction:
-          "Open product detail page. Under 'Price history', click 'Set new price'. Enter the new selling price per KG and effective date.",
+          "Open product detail page. Under 'Price history', click 'Set new price'. Enter the new selling price per carton.",
       },
       {
         step: 2,
-        title: "Set unit production cost",
+        title: "Set production cost",
         instruction:
-          "Under the 'Cost history' tab, click 'Set new cost'. Input production cost per KG (materials + direct labor).",
+          "Under the 'Cost history' tab, click 'Set new cost'. Input production cost per carton (materials + direct labor).",
       },
       {
         step: 3,
@@ -344,12 +347,12 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     practicalExample: {
       title: "Raw material price increase leads to cost adjustment",
       scenario:
-        "Wax import prices rise. Cost per kg of Standard White Candles rises from 70 ETB to 85 ETB. Selling price rises from 110 ETB to 130 ETB.",
+        "Wax import prices rise. Cost per carton of a Normal candle rises from 490 ETB to 595 ETB. Selling price rises from 770 ETB to 910 ETB.",
       steps: [
-        "Manager opens Standard White Candles detail page.",
-        "Sets new price to 130 ETB/kg and new cost to 85 ETB/kg.",
-        "Prior sales remain recorded at 110 ETB price and 70 ETB cost.",
-        "New sales record margin of 45 ETB/kg (34.6% margin).",
+        "Manager opens the product's detail page.",
+        "Sets new price to 910 ETB per carton and new cost to 595 ETB per carton.",
+        "Prior sales remain recorded at the old price and cost.",
+        "New sales record a margin of 315 ETB per carton (34.6% margin).",
       ],
       result:
         "Historical profit reports remain 100% accurate; future sales reflect updated margins.",
@@ -366,7 +369,9 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     overview:
       "The Analytics Hub (/manager/analytics) replaces old paper logsheets with automated, real-time reporting. All reporting calculations run in tested, pure math functions aligned to the business timezone (Africa/Addis_Ababa). Four tabs give complete operational visibility: Production (mirroring the paper report), Profitability (costed revenue and margins), Stock Health (low stock and negative inventory), and Best Sellers (top performers).",
     keyRules: [
-      "Factory Paper Alignment: The Production tab reproduces the paper Daily Stock Report: Opening + Received - Sold - Consumed = Closing.",
+      "Factory Paper Alignment: The Production tab reproduces the paper Daily Stock Report: Opening + Produced − Sold ± Count corrections = Closing, in cartons.",
+      "Units: reports default to cartons and can switch to packets or pieces (1 carton = 30 packets = 240 pieces).",
+      "Under-production: the Production tab compares wax used against what the cartons produced need, and flags a deficit.",
       "Timezone Standard: All calendar day, week, and month buckets calculate in Africa/Addis_Ababa (EAT) so 01:30 AM sales fall on the proper factory day.",
       "Void Exclusion: Voided sales (voidedAt != null) are strictly excluded from all revenue, volume, and margin calculations.",
       "Date Range Filter: Quick presets (Today, Yesterday, Last 7 Days, This Month) or custom calendar ranges.",
@@ -376,7 +381,7 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
         step: 1,
         title: "Review daily production balance",
         instruction:
-          "Open /manager/analytics and view the 'Production' tab. Check Opening stock, production Received, factory Sold, and Closing stock.",
+          "Open /manager/analytics and view the 'Production' tab. Check Opening, Produced, Sold and Closing cartons, and the wax under-production banner.",
       },
       {
         step: 2,
@@ -397,7 +402,7 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
         "Factory manager needs to present weekly inventory movements and sales margins to the managing director.",
       steps: [
         "Selects 'This Month' or 'Last 7 Days' on the date-range filter.",
-        "Production tab confirms 12,000 kg produced, 10,500 kg sold, closing balance matches warehouse floor.",
+        "Production tab confirms 1,700 cartons produced, 1,500 sold, no wax deficit, and the closing balance matches the warehouse floor.",
         "Profitability tab confirms gross margin averaged 32.4% over costed products.",
       ],
       result: "Data exportable or printable for factory management meetings.",

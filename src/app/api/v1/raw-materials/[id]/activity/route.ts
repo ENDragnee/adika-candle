@@ -1,4 +1,4 @@
-import { RecordMaterialActivity } from "@/features/raw-materials/server/material-movements";
+import { RecordMaterialReceipt } from "@/features/raw-materials/server/material-movements";
 import type { RecordMaterialActivityInput } from "@/features/raw-materials/validators/raw-material.schema";
 import {
   RawMaterialLedgerEntrySchema,
@@ -22,9 +22,8 @@ export const POST = CreateApiRoute<RecordMaterialActivityInput, Params>({
     const name = await MaterialName(params?.id);
     return {
       type: "materials",
-      action:
-        body.type === "RECEIVED" ? "material.receive" : "material.consume",
-      message: `${body.type === "RECEIVED" ? "Received" : "Used"} ${body.quantityKg} kg of ${name}`,
+      action: "material.receive",
+      message: `Received ${body.quantityKg} kg of ${name}`,
       entityType: "material",
       entityId: params?.id,
       entityLabel: name,
@@ -36,9 +35,8 @@ export const POST = CreateApiRoute<RecordMaterialActivityInput, Params>({
     };
   },
   handler: async (body, session, params) => {
-    const entry = await RecordMaterialActivity({
+    const entry = await RecordMaterialReceipt({
       materialId: params?.id ?? "",
-      type: body.type,
       quantityKg: body.quantityKg,
       note: body.note,
       createdById: session?.id ?? "",

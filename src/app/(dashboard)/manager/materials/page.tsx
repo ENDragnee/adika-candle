@@ -16,7 +16,7 @@ export default async function ManagerMaterialsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="Current balances across all raw materials. Record incoming or consumed material, or select a material for its full ledger." />
+      <PageHeader description="Raw material balances. Wax used in production is taken off automatically; open a material for its ledger or to record a count." />
       {permissions.includes("raw-material:record") && (
         <div className="flex justify-end">
           <RecordActivityDialog />

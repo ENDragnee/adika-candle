@@ -54,7 +54,12 @@ export const GET = CreateApiRoute({
 export const POST = CreateApiRoute({
   moduleName: "customers",
   schema: CreateCustomerInputSchema,
-  requiresAuth: { status: true, permission: "customer:manage" },
+  // customer:create lets the Inventory Manager add a customer while
+  // recording a sale, without being able to edit or deactivate customers.
+  requiresAuth: {
+    status: true,
+    permission: ["customer:manage", "customer:create"],
+  },
   responseSchema: CustomerSchema,
   activity: ({ result }) => ({
     type: "customers",

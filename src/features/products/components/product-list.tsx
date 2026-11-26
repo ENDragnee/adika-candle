@@ -68,7 +68,7 @@ const columns: DataTableColumn<ProductDTO>[] = [
   },
   {
     key: "price",
-    header: "Price / kg",
+    header: "Price / carton",
     cell: (product) =>
       product.currentPrice === null ? (
         <Missing>Not set</Missing>
@@ -79,7 +79,7 @@ const columns: DataTableColumn<ProductDTO>[] = [
   },
   {
     key: "cost",
-    header: "Cost / kg",
+    header: "Cost / carton",
     cell: (product) =>
       product.currentCost === null ? (
         <Missing>Not set</Missing>
@@ -126,8 +126,8 @@ const exportColumns: ExportColumn<ProductDTO>[] = [
   { header: "Name", value: (product) => product.name },
   { header: "SKU", value: (product) => product.sku },
   { header: "Category", value: (product) => product.category.name },
-  { header: "Price / kg", value: (product) => product.currentPrice ?? "" },
-  { header: "Cost / kg", value: (product) => product.currentCost ?? "" },
+  { header: "Price / carton", value: (product) => product.currentPrice ?? "" },
+  { header: "Cost / carton", value: (product) => product.currentCost ?? "" },
   {
     header: "Margin %",
     value: (product) => Margin(product)?.toFixed(1) ?? "",

@@ -150,11 +150,23 @@ model Category {
   @@map("category")
 }
 
+// How much a carton of the product weighs — and so how much wax it takes
+// to make (the wick is negligible). Stock and sales are counted in cartons;
+// quantities are still stored in kg (cartons × kg per carton, see
+// src/lib/packing.ts), which keeps the raw-material math exact.
+enum CartonSize {
+  NORMAL // 7 kg
+  PLUS // 8.5 kg
+}
+
 model Product {
   id                   String                       @id @default(cuid())
   name                 String
   sku                  String                       @unique
   isActive             Boolean                      @default(true)
+  // Fixed once the product has stock history — changing it would re-scale
+  // every carton count already recorded.
+  cartonSize           CartonSize                   @default(NORMAL)
   categoryId           String
   category             Category                     @relation(fields: [categoryId], references: [id])
   // Manager-editable, nullable opt-in per product (Epic 8). Null means no
@@ -211,9 +223,10 @@ model Cost {
 }
 
 // ---------------------------------------------------------------------------
-// Unit conversions — Carton/Packet/Wax/Kir → KG ratios, Manager-editable at
-// runtime. unitName is a plain string, not an enum (see docs/DECISIONS.md,
-// 2026-11-07, "UnitConversion.unitName is a string, not a Prisma enum").
+// Unit conversions — UNUSED since packing became fixed rules
+// (src/lib/packing.ts, docs/DECISIONS.md 2026-11-25). Nothing reads or
+// writes this table any more; kept only so `db push` doesn't drop data
+// without a deliberate decision. Safe to remove with the next migration.
 // ---------------------------------------------------------------------------
 
 model UnitConversion {
@@ -335,9 +348,9 @@ model RawMaterialLedgerEntry {
   @@map("raw_material_ledger_entry")
 }
 
-// Optional recipe/BOM row: "1kg of `product` requires `quantityKgPerOutputKg`
-// kg of `material`." A product with no rows here just has no computed
-// "expected output" in Epic 17 — never required for every product.
+// UNUSED since wax per carton became a fixed rule (src/lib/packing.ts,
+// docs/DECISIONS.md 2026-11-25). Kept only so `db push` doesn't drop data
+// without a deliberate decision. Safe to remove with the next migration.
 model ProductMaterialRequirement {
   id                    String      @id @default(cuid())
   productId             String

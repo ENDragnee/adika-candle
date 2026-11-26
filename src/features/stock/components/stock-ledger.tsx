@@ -8,12 +8,8 @@ import {
 import { ExportMenu } from "@/components/ui/export-menu";
 import { ToneBadge } from "@/components/ui/tone-badge";
 import type { ExportColumn } from "@/lib/export/export-column";
-import {
-  FormatDateTime,
-  FormatKg,
-  FormatNumber,
-  FormatSignedKg,
-} from "@/lib/format";
+import { FormatDateTime } from "@/lib/format";
+import { FormatPacking, FormatPackingBreakdown } from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { usePagination } from "@/lib/use-pagination";
 import { cn } from "@/lib/utils";
@@ -47,7 +43,7 @@ const columns: DataTableColumn<StockLedgerEntryDTO>[] = [
           Number(entry.quantityKg) < 0 && "text-muted-foreground",
         )}
       >
-        {FormatSignedKg(entry.quantityKg)}
+        {FormatPacking(entry.quantityCartons, "CARTON", { signed: true })}
       </span>
     ),
     className: "text-right",
@@ -55,7 +51,7 @@ const columns: DataTableColumn<StockLedgerEntryDTO>[] = [
   {
     key: "balance",
     header: "Balance after",
-    cell: (entry) => FormatKg(entry.balanceAfterKg),
+    cell: (entry) => FormatPackingBreakdown(entry.balanceAfterCartons),
     className: "text-right tabular-nums",
   },
   {
@@ -63,13 +59,8 @@ const columns: DataTableColumn<StockLedgerEntryDTO>[] = [
     header: "Details",
     cell: (entry) => (
       <span className="flex flex-col text-muted-foreground">
-        {entry.inputQuantity && entry.inputUnitName && (
-          <span>
-            {FormatNumber(entry.inputQuantity)} {entry.inputUnitName}
-          </span>
-        )}
         {entry.note && <span className="text-xs">{entry.note}</span>}
-        {!entry.note && !entry.inputQuantity && "—"}
+        {!entry.note && "—"}
       </span>
     ),
     className: "max-w-72 whitespace-normal",
@@ -88,14 +79,10 @@ const exportColumns: ExportColumn<StockLedgerEntryDTO>[] = [
     header: "What happened",
     value: (entry) => STOCK_ENTRY_META[entry.type].label,
   },
-  { header: "Change (kg)", value: (entry) => entry.quantityKg },
-  { header: "Balance after (kg)", value: (entry) => entry.balanceAfterKg },
+  { header: "Change (cartons)", value: (entry) => entry.quantityCartons },
   {
-    header: "Entered as",
-    value: (entry) =>
-      entry.inputQuantity && entry.inputUnitName
-        ? `${entry.inputQuantity} ${entry.inputUnitName}`
-        : "",
+    header: "Balance after (cartons)",
+    value: (entry) => entry.balanceAfterCartons,
   },
   { header: "Note", value: (entry) => entry.note ?? "" },
   { header: "By", value: (entry) => entry.createdByName ?? "" },

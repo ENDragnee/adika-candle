@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { ApplyMaterialDelta } from "@/lib/ledger-balance";
+import { WAX_MATERIAL_NAME } from "@/lib/packing";
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "@/lib/server/domain-error";
 
@@ -13,13 +14,53 @@ async function FindActiveMaterial(materialId: string) {
   return material;
 }
 
-// RECEIVED increases the balance, CONSUMED decreases it; quantityKg is
-// stored as a positive magnitude for both. No guard against consuming
-// more than is on hand (matching Stock) — the Dashboard flags a negative
-// balance and a stock count corrects it.
-export async function RecordMaterialActivity(input: {
+type Tx = Prisma.TransactionClient;
+
+// The material production draws from. Every carton is almost all wax (the
+// wick is negligible), so accepting N cartons consumes N × kg-per-carton
+// of it — see src/lib/packing.ts. Matched by name (WAX_MATERIAL_NAME); created
+// on first use so production never fails for want of a catalog row.
+
+export async function FindWaxMaterial(tx: Tx | typeof prisma) {
+  const existing = await tx.rawMaterial.findFirst({
+    where: { name: { equals: WAX_MATERIAL_NAME, mode: "insensitive" } },
+  });
+  return (
+    existing ?? tx.rawMaterial.create({ data: { name: WAX_MATERIAL_NAME } })
+  );
+}
+
+// Written by AcceptStock inside its own transaction. Never blocked by a
+// low or negative wax balance (matching Stock) — the Dashboard flags a
+// negative balance, and a wax count shows any gap as under-production
+// in Analytics → Production.
+export async function ConsumeWaxForProduction(
+  tx: Tx,
+  input: { quantityKg: Prisma.Decimal; note: string; createdById: string },
+) {
+  const wax = await FindWaxMaterial(tx);
+  const balanceAfterKg = await ApplyMaterialDelta(
+    tx,
+    wax.id,
+    input.quantityKg.negated(),
+  );
+  return tx.rawMaterialLedgerEntry.create({
+    data: {
+      materialId: wax.id,
+      type: "CONSUMED",
+      quantityKg: input.quantityKg,
+      balanceAfterKg,
+      note: input.note,
+      createdById: input.createdById,
+    },
+  });
+}
+
+// Raw material arriving at the factory. Consumption is never entered by
+// hand — it follows from accepted production (ConsumeWaxForProduction).
+// quantityKg is stored as a positive magnitude.
+export async function RecordMaterialReceipt(input: {
   materialId: string;
-  type: "RECEIVED" | "CONSUMED";
   quantityKg: number;
   note?: string;
   createdById: string;
@@ -33,7 +74,7 @@ export async function RecordMaterialActivity(input: {
     );
   }
   const magnitude = new Prisma.Decimal(input.quantityKg);
-  const delta = input.type === "RECEIVED" ? magnitude : magnitude.negated();
+  const delta = magnitude;
 
   return prisma.$transaction(async (tx) => {
     const balanceAfterKg = await ApplyMaterialDelta(
@@ -44,7 +85,7 @@ export async function RecordMaterialActivity(input: {
     return tx.rawMaterialLedgerEntry.create({
       data: {
         materialId: input.materialId,
-        type: input.type,
+        type: "RECEIVED",
         quantityKg: magnitude,
         balanceAfterKg,
         note: input.note,

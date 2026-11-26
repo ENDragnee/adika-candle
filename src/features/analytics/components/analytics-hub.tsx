@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { PackingUnitToggle } from "@/components/ui/packing-unit-toggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BestSellersTab } from "./best-sellers-tab";
 import { ProductionTab } from "./production-tab";
@@ -39,12 +40,16 @@ export function AnalyticsHub() {
 
   return (
     <Tabs value={tab} onValueChange={HandleChange}>
-      <TabsList>
-        <TabsTrigger value="production">Production</TabsTrigger>
-        <TabsTrigger value="profitability">Profitability</TabsTrigger>
-        <TabsTrigger value="stock-health">Stock health</TabsTrigger>
-        <TabsTrigger value="best-sellers">Best sellers</TabsTrigger>
-      </TabsList>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <TabsList>
+          <TabsTrigger value="production">Production</TabsTrigger>
+          <TabsTrigger value="profitability">Profitability</TabsTrigger>
+          <TabsTrigger value="stock-health">Stock health</TabsTrigger>
+          <TabsTrigger value="best-sellers">Best sellers</TabsTrigger>
+        </TabsList>
+        {/* Cartons by default; applies to every tab's quantities. */}
+        <PackingUnitToggle />
+      </div>
       <TabsContent value="production">
         <ProductionTab />
       </TabsContent>

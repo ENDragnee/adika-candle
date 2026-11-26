@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, FlaskIcon, ScalesIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, FlaskIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import {
   Card,
@@ -14,17 +14,10 @@ import {
 // docs/DECISIONS.md, "Epic 9 decisions".
 const SETTINGS_LINKS = [
   {
-    href: "/manager/settings/units",
-    label: "Unit conversions",
-    description:
-      "How many kilograms are in each unit you sell by — Carton, Packet, Wax, Kir.",
-    icon: ScalesIcon,
-  },
-  {
     href: "/manager/settings/materials",
     label: "Raw materials",
     description:
-      "The list of production inputs (wax, color dye) used in production tracking.",
+      "The production inputs you buy (wax, kir). Wax use is worked out from production.",
     icon: FlaskIcon,
   },
 ];

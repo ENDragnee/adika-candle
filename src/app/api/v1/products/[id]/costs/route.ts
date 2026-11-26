@@ -5,8 +5,10 @@ import {
   SetNewCostInputSchema,
   ToCostDTO,
 } from "@/features/products/validators/cost.schema";
+import { Prisma } from "@/generated/prisma/client";
 import { ProductName } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
+import { PerKg } from "@/lib/carton-decimal";
 import {
   BuildPaginationMeta,
   PaginatedResponseSchema,
@@ -25,6 +27,11 @@ export const GET = CreateApiRoute<PaginationQuery, Params>({
   responseSchema: PaginatedResponseSchema(CostSchema),
   handler: async (query, _session, params) => {
     const where = { productId: params?.id };
+    const product = await prisma.product.findUnique({
+      where: { id: params?.id },
+      select: { cartonSize: true },
+    });
+    const size = product?.cartonSize ?? "NORMAL";
 
     const [costs, total] = await Promise.all([
       prisma.cost.findMany({
@@ -35,7 +42,7 @@ export const GET = CreateApiRoute<PaginationQuery, Params>({
       prisma.cost.count({ where }),
     ]);
     return {
-      data: costs.map(ToCostDTO),
+      data: costs.map((row) => ToCostDTO(row, size)),
       pagination: BuildPaginationMeta(query, total),
     };
   },
@@ -51,11 +58,11 @@ export const POST = CreateApiRoute<SetNewCostInput, Params>({
     return {
       type: "pricing",
       action: "cost.set",
-      message: `Set the cost of ${name} to ETB ${body.amountPerKg}/kg`,
+      message: `Set the cost of ${name} to ETB ${body.amountPerCarton} per carton`,
       entityType: "product",
       entityId: params?.id,
       entityLabel: name,
-      changes: { amountPerKg: body.amountPerKg },
+      changes: { amountPerCarton: body.amountPerCarton },
     };
   },
   handler: async (body, session, params) => {
@@ -95,13 +102,16 @@ export const POST = CreateApiRoute<SetNewCostInput, Params>({
       return tx.cost.create({
         data: {
           productId,
-          amountPerKg: body.amountPerKg,
+          amountPerKg: PerKg(
+            new Prisma.Decimal(body.amountPerCarton),
+            product.cartonSize,
+          ),
           effectiveFrom: now,
           createdById,
         },
       });
     });
 
-    return ToCostDTO(cost);
+    return ToCostDTO(cost, product.cartonSize);
   },
 });

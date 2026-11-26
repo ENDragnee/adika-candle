@@ -4,7 +4,6 @@ import {
   CheckCircleIcon,
   DotsThreeVerticalIcon,
   PencilSimpleIcon,
-  PlusIcon,
   ProhibitIcon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
@@ -30,7 +29,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -52,77 +50,9 @@ import {
 import { ToneBadge } from "@/components/ui/tone-badge";
 import { LoanBalance } from "@/features/loans/components/loan-balance-badge";
 import { useListParams } from "@/lib/use-list-params";
-import {
-  useCreateCustomer,
-  useCustomers,
-  useUpdateCustomer,
-} from "../hooks/use-customers";
+import { useCustomers, useUpdateCustomer } from "../hooks/use-customers";
 import type { CustomerDTO } from "../validators/customer.schema";
-
-function CreateCustomerForm({ onSuccess }: { onSuccess: () => void }) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState("");
-  const createCustomer = useCreateCustomer();
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    await createCustomer.mutateAsync({
-      name,
-      phone: phone || undefined,
-      location: location || undefined,
-    });
-
-    setName("");
-    setPhone("");
-    setLocation("");
-    onSuccess();
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="new-customer-name" className="text-sm font-medium">
-          Name
-        </label>
-        <Input
-          id="new-customer-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="new-customer-phone" className="text-sm font-medium">
-          Phone
-        </label>
-        <Input
-          id="new-customer-phone"
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="new-customer-location" className="text-sm font-medium">
-          Location
-        </label>
-        <Input
-          id="new-customer-location"
-          value={location}
-          onChange={(event) => setLocation(event.target.value)}
-        />
-      </div>
-      <Button
-        loading={createCustomer.isPending}
-        type="submit"
-        disabled={createCustomer.isPending}
-      >
-        {createCustomer.isPending ? "Adding…" : "Add customer"}
-      </Button>
-    </form>
-  );
-}
+import { AddCustomerDialog } from "./create-customer-form";
 
 function EditCustomerForm({
   customer,
@@ -292,7 +222,6 @@ function CustomerRow({ customer }: { customer: CustomerDTO }) {
 
 export function CustomerManager() {
   const list = useListParams<"name" | "balance">("name");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: result, isLoading } = useCustomers(list.params);
   const customers = result?.data;
 
@@ -304,20 +233,7 @@ export function CustomerManager() {
           onSearch={list.setSearch}
           className="w-full sm:w-64"
         />
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusIcon data-icon="inline-start" />
-              Add customer
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add customer</DialogTitle>
-            </DialogHeader>
-            <CreateCustomerForm onSuccess={() => setIsCreateOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <AddCustomerDialog />
       </div>
       {isLoading ? (
         <TableSkeleton columns={6} mobileCard={false} />

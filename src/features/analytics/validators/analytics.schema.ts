@@ -70,7 +70,8 @@ export const AttentionItemSchema = z.object({
   subjectName: z.string(),
   href: z.string(),
   quantityKg: z.string().nullable(),
-  thresholdKg: z.string().nullable(),
+  quantityCartons: z.string().nullable(),
+  thresholdCartons: z.string().nullable(),
   daysOfCover: z.string().nullable(),
   amount: z.string().nullable(),
   lastPaymentAt: z.string().nullable(),
@@ -117,13 +118,14 @@ export const ProductProductionRowSchema = z.object({
   productId: z.string(),
   productName: z.string(),
   productSku: z.string(),
-  openingKg: z.string(),
-  receivedKg: z.string(),
-  consumedKg: z.string(),
-  adjustedKg: z.string(),
-  closingKg: z.string(),
-  expectedOutputKg: z.string().nullable(),
-  variancePercent: z.string().nullable(),
+  cartonSize: z.enum(["NORMAL", "PLUS"]),
+  openingCartons: z.string(),
+  producedCartons: z.string(),
+  soldCartons: z.string(),
+  adjustedCartons: z.string(),
+  closingCartons: z.string(),
+  // Wax the produced cartons took (kg).
+  waxKg: z.string(),
 });
 export type ProductProductionRowDTO = z.infer<
   typeof ProductProductionRowSchema
@@ -132,12 +134,26 @@ export type ProductProductionRowDTO = z.infer<
 export const ProductionTrendPointSchema = z.object({
   periodKey: z.string(),
   periodLabel: z.string(),
-  materialConsumedKg: z.string(),
-  productActualOutputKg: z.string(),
+  producedCartons: z.string(),
+  waxExpectedKg: z.string(),
+  waxActualKg: z.string(),
 });
 export type ProductionTrendPointDTO = z.infer<
   typeof ProductionTrendPointSchema
 >;
+
+// Under-production check — see ComputeWaxCheck in
+// src/features/analytics/server/production.ts.
+export const WaxCheckSchema = z.object({
+  status: z.enum(["UNDER", "OVER", "OK", "NOT_COUNTED"]),
+  expectedKg: z.string(),
+  actualKg: z.string(),
+  countCorrectionKg: z.string(),
+  gapKg: z.string(),
+  gapCartons: z.string(),
+  hasCount: z.boolean(),
+});
+export type WaxCheckDTO = z.infer<typeof WaxCheckSchema>;
 
 export const ProductionReportSchema = z.object({
   granularity: ReportKindSchema,
@@ -146,6 +162,7 @@ export const ProductionReportSchema = z.object({
   periodEnd: z.string(),
   offset: z.number().int(),
   hasNext: z.boolean(),
+  waxCheck: WaxCheckSchema.nullable(),
   materials: z.array(MaterialProductionRowSchema),
   products: z.array(ProductProductionRowSchema),
   trend: z.array(ProductionTrendPointSchema),
@@ -177,11 +194,11 @@ export const ProductMarginRowSchema = z.object({
   productId: z.string(),
   productName: z.string(),
   productSku: z.string(),
-  currentPricePerKg: z.string().nullable(),
-  currentCostPerKg: z.string().nullable(),
+  currentPricePerCarton: z.string().nullable(),
+  currentCostPerCarton: z.string().nullable(),
   currentMarginPercent: z.string().nullable(),
   realizedMarginPercent: z.string().nullable(),
-  unitsSoldKg: z.string(),
+  unitsSoldCartons: z.string(),
   revenue: z.string(),
   totalProfit: z.string().nullable(),
   uncostedSaleCount: z.number().int(),
@@ -205,10 +222,10 @@ export const StockHealthRowSchema = z.object({
   productId: z.string(),
   productName: z.string(),
   productSku: z.string(),
-  quantityKg: z.string(),
-  thresholdKg: z.string().nullable(),
+  quantityCartons: z.string(),
+  thresholdCartons: z.string().nullable(),
   status: StockStatusSchema,
-  averageDailySalesKg: z.string(),
+  averageDailySalesCartons: z.string(),
   daysOfCover: z.string().nullable(),
 });
 export type StockHealthRowDTO = z.infer<typeof StockHealthRowSchema>;
@@ -227,9 +244,9 @@ export const BestSellerRowSchema = z.object({
   productName: z.string(),
   productSku: z.string(),
   categoryName: z.string(),
-  unitsSoldKg: z.string(),
+  unitsSoldCartons: z.string(),
   revenue: z.string(),
-  priorUnitsSoldKg: z.string(),
+  priorUnitsSoldCartons: z.string(),
   priorRevenue: z.string(),
 });
 export type BestSellerRowDTO = z.infer<typeof BestSellerRowSchema>;

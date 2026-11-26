@@ -6,12 +6,15 @@ import {
   FormatNumber,
   FormatShortDate,
 } from "@/lib/format";
+import { FormatPacking } from "@/lib/packing";
 import { TrendLineChart } from "./trend-line-chart";
 
 export interface BalanceEvent {
   id: string;
   createdAt: string;
   balanceAfterKg: string;
+  // Finished-goods ledgers also carry cartons; raw materials don't.
+  balanceAfterCartons?: string;
 }
 
 // How a stock or raw-material balance moved over its most recent ledger
@@ -20,12 +23,19 @@ export interface BalanceEvent {
 // ledger's own balanceAfter snapshots, so it needs no extra endpoint.
 export function BalanceHistoryChart({
   entries,
-  thresholdKg,
+  threshold,
+  unit = "kg",
 }: {
   // Newest first, as the ledger API returns them.
   entries: BalanceEvent[];
-  thresholdKg?: string | null;
+  // Alert level, in the same unit as the chart.
+  threshold?: string | null;
+  unit?: "kg" | "cartons";
 }) {
+  const Format =
+    unit === "cartons"
+      ? (value: number | string) => FormatPacking(value)
+      : FormatKg;
   const chronological = [...entries].reverse();
 
   if (chronological.length < 2) {
@@ -42,7 +52,13 @@ export function BalanceHistoryChart({
         key: entry.id,
         label: FormatShortDate(entry.createdAt),
         tooltipLabel: FormatDateTime(entry.createdAt),
-        values: { balance: Number(entry.balanceAfterKg) },
+        values: {
+          balance: Number(
+            unit === "cartons"
+              ? (entry.balanceAfterCartons ?? 0)
+              : entry.balanceAfterKg,
+          ),
+        },
       }))}
       series={[
         {
@@ -51,13 +67,13 @@ export function BalanceHistoryChart({
           color: "var(--color-chart-series-2)",
         },
       ]}
-      valueFormatter={FormatKg}
+      valueFormatter={Format}
       axisFormatter={(value) => FormatNumber(value, 0)}
       referenceLine={
-        thresholdKg
+        threshold
           ? {
-              value: Number(thresholdKg),
-              label: `Alert level ${FormatKg(thresholdKg)}`,
+              value: Number(threshold),
+              label: `Alert level ${Format(threshold)}`,
             }
           : null
       }

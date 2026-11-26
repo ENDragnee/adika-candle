@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCategories } from "@/features/categories/hooks/use-categories";
+import { CARTON_SIZE_META, CARTON_SIZES, type CartonSize } from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useCreateProduct } from "../hooks/use-products";
 
@@ -25,12 +26,17 @@ export function CreateProductForm({ onSuccess }: { onSuccess: () => void }) {
 
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [cartonSize, setCartonSize] = useState<CartonSize>("NORMAL");
   const createProduct = useCreateProduct();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const product = await createProduct.mutateAsync({ name, categoryId });
+    const product = await createProduct.mutateAsync({
+      name,
+      categoryId,
+      cartonSize,
+    });
     onSuccess();
     router.push(`/manager/products/${product.id}`);
   }
@@ -73,6 +79,31 @@ export function CreateProductForm({ onSuccess }: { onSuccess: () => void }) {
             No active categories yet — create one first.
           </p>
         )}
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="product-carton-size" className="text-sm font-medium">
+          Carton size
+        </label>
+        <Select
+          value={cartonSize}
+          onValueChange={(value) => setCartonSize(value as CartonSize)}
+        >
+          <SelectTrigger id="product-carton-size" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CARTON_SIZES.map((size) => (
+              <SelectItem key={size} value={size}>
+                {CARTON_SIZE_META[size].label} ·{" "}
+                {CARTON_SIZE_META[size].description}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Sets how much wax each carton uses. Can't be changed once stock has
+          been recorded.
+        </p>
       </div>
       <Button
         loading={createProduct.isPending}

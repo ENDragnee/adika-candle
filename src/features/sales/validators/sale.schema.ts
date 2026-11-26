@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Customer, Product, Sale } from "@/generated/prisma/client";
+import { CartonsString, PerCarton } from "@/lib/carton-decimal";
 
 export const SalePaymentTypeSchema = z.enum(["CASH", "LOAN"]);
 
@@ -15,6 +16,9 @@ export const SaleSchema = z.object({
   inputUnitName: z.string(),
   inputRatioToKg: z.string(),
   quantityKg: z.string(),
+  // What people see: cartons sold and the price per carton.
+  cartons: z.string(),
+  pricePerCarton: z.string(),
   unitPriceAtSale: z.string(),
   totalAmount: z.string(),
   // Snapshot of the active Cost.amountPerKg at sale time (Epic 15); null if
@@ -59,6 +63,8 @@ export function ToSaleDTO(
     inputUnitName: sale.inputUnitName,
     inputRatioToKg: sale.inputRatioToKg.toString(),
     quantityKg: sale.quantityKg.toString(),
+    cartons: CartonsString(sale.quantityKg, sale.product.cartonSize),
+    pricePerCarton: PerCarton(sale.unitPriceAtSale, sale.product.cartonSize),
     unitPriceAtSale: sale.unitPriceAtSale.toString(),
     totalAmount: sale.totalAmount.toString(),
     costPerKgAtSale: sale.costPerKgAtSale?.toString() ?? null,
@@ -101,40 +107,27 @@ export const SaleQuerySchema = z.object({
 
 export type SaleQuery = z.input<typeof SaleQuerySchema>;
 
-// A walk-in sale (no customerId) can only ever be CASH — there's no
-// LoanAccount to post a SALE_ON_CREDIT transaction against. Encoded as a
-// discriminated union on paymentType (same shape as
-// CreateLoanTransactionInputSchema) so a walk-in LOAN sale is rejected by
-// the schema itself, not left to the UI. See docs/DECISIONS.md.
-const SaleProductFields = {
+// Sold in cartons only, always to a named customer — the Record Sale
+// dialog can add a new one on the spot, so there's no anonymous walk-in
+// (older sales may still have customerId null). LOAN posts to the
+// customer's account; CASH doesn't.
+export const CreateSaleInputSchema = z.object({
   productId: z.string().min(1, "Product is required"),
-  inputQuantity: z.coerce.number().positive().finite(),
-  inputUnitName: z.string().trim().min(1, "Unit is required"),
+  customerId: z.string().min(1, "Customer is required"),
+  cartons: z.coerce.number().positive().finite(),
+  paymentType: SalePaymentTypeSchema,
   // Required to record a sale that takes the product's stock below zero.
   // Without it the API answers 409 INSUFFICIENT_STOCK with the available
-  // quantity, and the Record Sale dialog asks the user to confirm. See
+  // cartons, and the Record Sale dialog asks the user to confirm. See
   // docs/DECISIONS.md, "Epic 21 decisions".
   allowOversell: z.boolean().optional(),
-};
-
-export const CreateSaleInputSchema = z.discriminatedUnion("paymentType", [
-  z.object({
-    paymentType: z.literal("CASH"),
-    customerId: z.string().min(1).optional(),
-    ...SaleProductFields,
-  }),
-  z.object({
-    paymentType: z.literal("LOAN"),
-    customerId: z.string().min(1, "Customer is required for a loan sale"),
-    ...SaleProductFields,
-  }),
-]);
+});
 
 export type CreateSaleInput = z.infer<typeof CreateSaleInputSchema>;
 
 export const SalesSummarySchema = z.object({
   saleCount: z.number().int(),
-  totalKg: z.string(),
+  totalCartons: z.string(),
   totalAmount: z.string(),
   cashAmount: z.string(),
   onAccountAmount: z.string(),

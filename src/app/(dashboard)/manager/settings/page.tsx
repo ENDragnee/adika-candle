@@ -7,7 +7,7 @@ import { CheckPermission } from "@/lib/session";
 export const instant = false;
 
 export default async function SettingsPage() {
-  const allowed = await CheckPermission("unit-conversion:manage");
+  const allowed = await CheckPermission("raw-material:manage");
 
   if (!allowed) {
     redirect("/unauthorized");
@@ -15,7 +15,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="A couple of factory-wide settings that rarely change." />
+      <PageHeader description="Factory-wide settings that rarely change." />
       <SettingsLinks />
     </div>
   );

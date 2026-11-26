@@ -1,4 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { CartonsFromKg } from "@/lib/carton-decimal";
+import { KG_PER_CARTON } from "@/lib/packing";
 import { prisma } from "@/lib/prisma";
 import { MarginPercent, ZERO } from "./decimal";
 import { BuildRangeBuckets, type PeriodBounds } from "./periods";
@@ -11,6 +13,7 @@ export interface ProfitSale {
   productName: string;
   productSku: string;
   quantityKg: Prisma.Decimal;
+  cartons: Prisma.Decimal;
   totalAmount: Prisma.Decimal;
   costPerKgAtSale: Prisma.Decimal | null;
 }
@@ -50,6 +53,7 @@ export function ComputeProfitability(input: {
   sales: ProfitSale[];
   // Trend buckets covering the range, oldest first (BuildRangeBuckets).
   buckets: PeriodBounds[];
+  // Per carton.
   currentPrices: Map<string, Prisma.Decimal>;
   currentCosts: Map<string, Prisma.Decimal>;
 }) {
@@ -61,7 +65,7 @@ export function ComputeProfitability(input: {
     Bucket & {
       productName: string;
       productSku: string;
-      unitsSoldKg: Prisma.Decimal;
+      unitsSoldCartons: Prisma.Decimal;
       uncostedSaleCount: number;
     }
   >();
@@ -80,11 +84,11 @@ export function ComputeProfitability(input: {
       ...EmptyBucket(),
       productName: sale.productName,
       productSku: sale.productSku,
-      unitsSoldKg: ZERO,
+      unitsSoldCartons: ZERO,
       uncostedSaleCount: 0,
     };
     AddSale(product, sale);
-    product.unitsSoldKg = product.unitsSoldKg.plus(sale.quantityKg);
+    product.unitsSoldCartons = product.unitsSoldCartons.plus(sale.cartons);
     byProduct.set(sale.productId, product);
 
     if (sale.costPerKgAtSale === null) {
@@ -115,13 +119,13 @@ export function ComputeProfitability(input: {
         productId,
         productName: bucket.productName,
         productSku: bucket.productSku,
-        currentPricePerKg: price?.toString() ?? null,
-        currentCostPerKg: cost?.toString() ?? null,
+        currentPricePerCarton: price?.toDecimalPlaces(2).toString() ?? null,
+        currentCostPerCarton: cost?.toDecimalPlaces(2).toString() ?? null,
         // What the margin would be on a sale made today.
         currentMarginPercent: price && cost ? MarginPercent(price, cost) : null,
         // What the margin actually was on this window's costed sales.
         realizedMarginPercent: MarginPercent(bucket.costedRevenue, bucket.cost),
-        unitsSoldKg: bucket.unitsSoldKg.toString(),
+        unitsSoldCartons: bucket.unitsSoldCartons.toString(),
         revenue: bucket.revenue.toString(),
         totalProfit: ProfitOf(bucket),
         uncostedSaleCount: bucket.uncostedSaleCount,
@@ -160,6 +164,14 @@ export async function BuildProfitability(range: { from: string; to: string }) {
   });
 
   const productIds = [...new Set(sales.map((sale) => sale.productId))];
+  const sizeOf = new Map(
+    sales.map((sale) => [sale.productId, sale.product.cartonSize]),
+  );
+  const PerCartonOf = (row: {
+    productId: string;
+    amountPerKg: Prisma.Decimal;
+  }) =>
+    row.amountPerKg.times(KG_PER_CARTON[sizeOf.get(row.productId) ?? "NORMAL"]);
   const [activePrices, activeCosts] = await Promise.all([
     prisma.price.findMany({
       where: { productId: { in: productIds }, effectiveTo: null },
@@ -177,12 +189,15 @@ export async function BuildProfitability(range: { from: string; to: string }) {
       productName: sale.product.name,
       productSku: sale.product.sku,
       quantityKg: sale.quantityKg,
+      cartons: CartonsFromKg(sale.quantityKg, sale.product.cartonSize),
       totalAmount: sale.totalAmount,
       costPerKgAtSale: sale.costPerKgAtSale,
     })),
     currentPrices: new Map(
-      activePrices.map((p) => [p.productId, p.amountPerKg]),
+      activePrices.map((p) => [p.productId, PerCartonOf(p)]),
     ),
-    currentCosts: new Map(activeCosts.map((c) => [c.productId, c.amountPerKg])),
+    currentCosts: new Map(
+      activeCosts.map((c) => [c.productId, PerCartonOf(c)]),
+    ),
   });
 }

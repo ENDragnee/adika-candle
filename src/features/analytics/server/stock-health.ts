@@ -4,17 +4,19 @@ import {
   type StockStatus,
 } from "@/features/stock/stock-status";
 import { TrailingWindowStart } from "@/lib/business-time";
+import { KgToCartons } from "@/lib/packing";
 import { prisma } from "@/lib/prisma";
 
 export const STOCK_VELOCITY_WINDOW_DAYS = 30;
 
+// All quantities in cartons of the product (stored kg ÷ kg per carton).
 export interface StockHealthInputRow {
   productId: string;
   productName: string;
   productSku: string;
-  quantityKg: number;
-  thresholdKg: number | null;
-  soldKg: number; // net of voids, over the velocity window
+  quantityCartons: number;
+  thresholdCartons: number | null;
+  soldCartons: number; // net of voids, over the velocity window
 }
 
 export function ComputeStockHealth(
@@ -22,24 +24,25 @@ export function ComputeStockHealth(
   windowDays = STOCK_VELOCITY_WINDOW_DAYS,
 ) {
   const result = rows.map((row) => {
-    const status = ClassifyStock(row.quantityKg, row.thresholdKg);
-    const averageDailySalesKg = row.soldKg / windowDays;
+    const status = ClassifyStock(row.quantityCartons, row.thresholdCartons);
+    const averageDailySalesCartons = row.soldCartons / windowDays;
     // Days of cover only means something when there's stock to cover with
     // and sales to cover. Before Epic 21 a negative balance produced
     // "-5.0 days".
     const daysOfCover =
-      row.quantityKg > 0 && averageDailySalesKg > 0
-        ? (row.quantityKg / averageDailySalesKg).toFixed(1)
+      row.quantityCartons > 0 && averageDailySalesCartons > 0
+        ? (row.quantityCartons / averageDailySalesCartons).toFixed(1)
         : null;
 
     return {
       productId: row.productId,
       productName: row.productName,
       productSku: row.productSku,
-      quantityKg: String(row.quantityKg),
-      thresholdKg: row.thresholdKg === null ? null : String(row.thresholdKg),
+      quantityCartons: String(row.quantityCartons),
+      thresholdCartons:
+        row.thresholdCartons === null ? null : String(row.thresholdCartons),
       status,
-      averageDailySalesKg: averageDailySalesKg.toFixed(3),
+      averageDailySalesCartons: averageDailySalesCartons.toFixed(3),
       daysOfCover,
     };
   });
@@ -66,21 +69,24 @@ export async function LoadStockHealthInput(now = new Date()) {
       _sum: { quantityKg: true },
     }),
   ]);
-  const soldByProduct = new Map(
+  const soldKgByProduct = new Map(
     sold.map((row) => [row.productId, Number(row._sum.quantityKg ?? 0)]),
   );
 
-  return products.map((product) => ({
-    productId: product.id,
-    productName: product.name,
-    productSku: product.sku,
-    quantityKg: Number(product.stockBalance?.quantityKg ?? 0),
-    thresholdKg:
-      product.lowStockThresholdKg === null
-        ? null
-        : Number(product.lowStockThresholdKg),
-    soldKg: soldByProduct.get(product.id) ?? 0,
-  }));
+  return products.map((product) => {
+    const Cartons = (kg: number) => KgToCartons(kg, product.cartonSize);
+    return {
+      productId: product.id,
+      productName: product.name,
+      productSku: product.sku,
+      quantityCartons: Cartons(Number(product.stockBalance?.quantityKg ?? 0)),
+      thresholdCartons:
+        product.lowStockThresholdKg === null
+          ? null
+          : Cartons(Number(product.lowStockThresholdKg)),
+      soldCartons: Cartons(soldKgByProduct.get(product.id) ?? 0),
+    };
+  });
 }
 
 export async function BuildStockHealth(now = new Date()) {

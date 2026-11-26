@@ -13,7 +13,7 @@ export const LEGEND_SECTIONS: LegendSection[] = [
   { id: "sales", label: "Sales, voids, and overselling" },
   { id: "loan-balance", label: "Customer balances" },
   { id: "ledger-entries", label: "Stock history entries" },
-  { id: "unit-conversions", label: "Unit conversions" },
+  { id: "packing", label: "Cartons, packets and pieces" },
   { id: "stock-health", label: "Stock statuses" },
   { id: "roles", label: "Manager vs Inventory Manager" },
 ];

@@ -16,9 +16,20 @@ control), **Manager** (analytics, stock, sales, loans, users, permissions,
 categories, products, pricing) and **Inventory Manager** (accept/sell
 stock). Standard customers (Merkato, Gondor, Moges, Mekele) can lend/borrow
 items or money against future purchases (loans). Pricing is variable over
-time and manager-only. Measurement unit is KG; Carton/Packet/Wax/Kir have
-fixed conversion ratios (see conversation history / future `docs/` notes —
-not yet encoded in the schema).
+time and manager-only.
+
+**Units (2026-11-25):** people enter stock and sales in **cartons only**;
+remaining stock reads as cartons · packets · pieces (1 carton = 30 packets
+= 240 pieces) and reports toggle between the three. Each product is
+`NORMAL` (7 kg of wax per carton) or `PLUS` (8.5 kg). Quantities, prices
+and costs are still *stored* per kg and converted at the API boundary —
+use `src/lib/packing.ts` (client-safe) and `src/lib/carton-decimal.ts`
+(Decimal), never hand-rolled ratios. Accepting stock consumes the wax
+automatically; a wax count drives the under-production check in
+Analytics → Production. Sales always have a named customer. The Inventory
+Manager sees prices but no money overview. Unit conversions and recipes
+were removed (their tables are unused leftovers). See `docs/DECISIONS.md`.
+New permission `customer:create` — re-run `pnpm db:seed`.
 
 **Status:** The full business-domain build (Epics 1–8) is done and
 verified, and so is the UI/UX overhaul (Epics 9–12) — see

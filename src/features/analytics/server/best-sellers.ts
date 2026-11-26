@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { AddBusinessDays, StartOfBusinessDate } from "@/lib/business-time";
+import { CartonsFromKg } from "@/lib/carton-decimal";
 import { prisma } from "@/lib/prisma";
 import { ZERO } from "./decimal";
 
@@ -31,7 +32,7 @@ export async function BuildBestSellers(range: { from: string; to: string }) {
     productName: string;
     productSku: string;
     categoryName: string;
-    unitsSoldKg: Prisma.Decimal;
+    unitsSoldCartons: Prisma.Decimal;
     revenue: Prisma.Decimal;
   }
   const current = new Map<string, Bucket>();
@@ -43,10 +44,12 @@ export async function BuildBestSellers(range: { from: string; to: string }) {
       productName: sale.product.name,
       productSku: sale.product.sku,
       categoryName: sale.product.category.name,
-      unitsSoldKg: ZERO,
+      unitsSoldCartons: ZERO,
       revenue: ZERO,
     };
-    bucket.unitsSoldKg = bucket.unitsSoldKg.plus(sale.quantityKg);
+    bucket.unitsSoldCartons = bucket.unitsSoldCartons.plus(
+      CartonsFromKg(sale.quantityKg, sale.product.cartonSize),
+    );
     bucket.revenue = bucket.revenue.plus(sale.totalAmount);
     target.set(sale.productId, bucket);
   }
@@ -66,16 +69,18 @@ export async function BuildBestSellers(range: { from: string; to: string }) {
     productName: bucket.productName,
     productSku: bucket.productSku,
     categoryName: bucket.categoryName,
-    unitsSoldKg: bucket.unitsSoldKg.toString(),
+    unitsSoldCartons: bucket.unitsSoldCartons.toString(),
     revenue: bucket.revenue.toString(),
-    priorUnitsSoldKg: priorBucket?.unitsSoldKg.toString() ?? "0",
+    priorUnitsSoldCartons: priorBucket?.unitsSoldCartons.toString() ?? "0",
     priorRevenue: priorBucket?.revenue.toString() ?? "0",
   });
 
   return {
     periodDays: days,
     byQuantity: [...rows]
-      .sort((a, b) => b.bucket.unitsSoldKg.comparedTo(a.bucket.unitsSoldKg))
+      .sort((a, b) =>
+        b.bucket.unitsSoldCartons.comparedTo(a.bucket.unitsSoldCartons),
+      )
       .slice(0, BEST_SELLERS_LIMIT)
       .map(ToRow),
     byRevenue: [...rows]

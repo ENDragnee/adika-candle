@@ -1,6 +1,7 @@
 import {
   StockLedgerEntrySchema,
   ToStockLedgerEntryDTO,
+  WITH_CARTON_SIZE_INCLUDE,
 } from "@/features/stock/validators/stock.schema";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import {
@@ -27,6 +28,7 @@ export const GET = CreateApiRoute<PaginationQuery, Params>({
       prisma.stockLedgerEntry.findMany({
         where,
         orderBy: { createdAt: "desc" },
+        include: WITH_CARTON_SIZE_INCLUDE,
         ...ToSkipTake(query),
       }),
       prisma.stockLedgerEntry.count({ where }),

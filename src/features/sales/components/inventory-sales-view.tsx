@@ -9,7 +9,11 @@ export function InventorySalesView({ createdById }: { createdById?: string }) {
       <div className="flex justify-end">
         <RecordSaleDialog />
       </div>
-      <SaleList createdById={createdById} linkBase="/inventory" />
+      <SaleList
+        createdById={createdById}
+        linkBase="/inventory"
+        showMoneySummary={false}
+      />
     </div>
   );
 }

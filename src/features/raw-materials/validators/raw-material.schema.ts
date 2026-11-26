@@ -131,17 +131,13 @@ export function ToRawMaterialLedgerEntryDTO(
   };
 }
 
-// RECEIVED/CONSUMED only. Corrections (ADJUSTMENT) go through the separate
+// RECEIVED only — consumption follows from accepted production
+// (ConsumeWaxForProduction), never typed in. Corrections (ADJUSTMENT) go through the separate
 // stock-count endpoint (POST /api/v1/raw-materials/[id]/count, Epic 21),
 // which needs the stricter stock:adjust permission.
 export const RecordMaterialActivityInputSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("RECEIVED"),
-    quantityKg: z.coerce.number().positive().finite(),
-    note: z.string().trim().max(500).optional(),
-  }),
-  z.object({
-    type: z.literal("CONSUMED"),
     quantityKg: z.coerce.number().positive().finite(),
     note: z.string().trim().max(500).optional(),
   }),

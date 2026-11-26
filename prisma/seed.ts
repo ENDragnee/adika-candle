@@ -1,4 +1,3 @@
-import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { GenerateCode } from "@/lib/generate-code";
 import { prisma } from "@/lib/prisma";
@@ -13,14 +12,13 @@ const MODULE_PERMISSIONS: Record<string, string[]> = {
   product: ["product:read", "product:manage"],
   category: ["category:manage"],
   stock: ["stock:read", "stock:accept", "stock:adjust"],
-  customer: ["customer:read", "customer:manage"],
+  customer: ["customer:read", "customer:create", "customer:manage"],
   loan: ["loan:record", "loan:manage"],
   sale: ["sale:create", "sale:read", "sale:void", "sale:restore"],
   user: ["user:manage"],
   role: ["role:manage"],
   session: ["session:manage"],
   system: ["system:manage"],
-  "unit-conversion": ["unit-conversion:manage"],
   "raw-material": [
     "raw-material:read",
     "raw-material:record",
@@ -38,13 +36,26 @@ const INVENTORY_MANAGER_PERMISSIONS = [
   "sale:create",
   "sale:read",
   "customer:read",
+  // Add customers from the Record Sale dialog instead of selling to an
+  // anonymous walk-in.
+  "customer:create",
   "loan:record",
-  // Epic 14: record Received/Consumed activity against raw materials.
+  // Epic 14: record raw materials received (use in production is automatic).
   "raw-material:read",
   "raw-material:record",
 ];
 
+// Permissions for features that were removed. Deleted on seed so the
+// Roles page doesn't list toggles that no longer do anything.
+const OBSOLETE_PERMISSIONS = ["unit-conversion:manage"];
+const OBSOLETE_MODULES = ["unit-conversion"];
+
 async function seedModulesAndPermissions() {
+  await prisma.permission.deleteMany({
+    where: { name: { in: OBSOLETE_PERMISSIONS } },
+  });
+  await prisma.module.deleteMany({ where: { name: { in: OBSOLETE_MODULES } } });
+
   const allPermissionNames: string[] = [];
 
   for (const [moduleName, permissionNames] of Object.entries(
@@ -126,62 +137,27 @@ async function seedRoles(allPermissionNames: string[]) {
 }
 
 // ---------------------------------------------------------------------------
-// Catalog reference data. KG is the base (SI) unit for every quantity;
-// each selling unit converts to kg by its ratio.
+// Catalog reference data. Packing (cartons/packets/pieces) and kg per
+// carton are fixed rules in src/lib/packing.ts, not data.
 // ---------------------------------------------------------------------------
-
-// Packing: 1 carton = 30 packets, 1 packet = 8 pieces. A standard carton
-// weighs 7 kg; a Plus (No. 8) carton weighs 8.5 kg. Unit ratios are global,
-// not per product, so Plus gets its own carton/packet/piece units.
-// Packet and piece ratios are derived (carton ÷ 30, ÷ 8) with Decimal
-// division, so 30 packets add back up to exactly one carton's weight.
-const PACKETS_PER_CARTON = 30;
-const PIECES_PER_PACKET = 8;
-
-function PackingUnits(prefix: string, cartonKg: string) {
-  const carton = new Prisma.Decimal(cartonKg);
-  const packet = carton.dividedBy(PACKETS_PER_CARTON);
-  const piece = packet.dividedBy(PIECES_PER_PACKET);
-  return [
-    { unitName: `${prefix}CARTON`, ratioToKg: carton },
-    { unitName: `${prefix}PACKET`, ratioToKg: packet },
-    { unitName: `${prefix}PIECE`, ratioToKg: piece },
-  ];
-}
-
-const UNIT_CONVERSIONS: { unitName: string; ratioToKg: Prisma.Decimal }[] = [
-  ...PackingUnits("", "7"),
-  ...PackingUnits("PLUS ", "8.5"),
-];
 
 // Production inputs, tracked in kg. "Kir" is the candle yarn (wick).
 const RAW_MATERIALS = ["Wax", "Kir (yarn)"];
 
 const CANDLE_CATEGORY = "Candles";
 
-// The factory's candle lines. No prices or costs are seeded — those are
-// set per product by a Manager (pricing is variable over time).
-const CANDLE_PRODUCTS = [
-  "No. 6",
-  "Maral No. 7",
-  "Plus No. 8",
-  "Small",
-  "Medium",
-  "Big",
-  "Color",
+// The factory's candle lines and their carton size (Plus cartons are
+// 8.5 kg, the rest 7 kg). No prices or costs are seeded — those are set
+// per product by a Manager (pricing is variable over time).
+const CANDLE_PRODUCTS: { name: string; cartonSize: "NORMAL" | "PLUS" }[] = [
+  { name: "No. 6", cartonSize: "NORMAL" },
+  { name: "Maral No. 7", cartonSize: "NORMAL" },
+  { name: "Plus No. 8", cartonSize: "PLUS" },
+  { name: "Small", cartonSize: "NORMAL" },
+  { name: "Medium", cartonSize: "NORMAL" },
+  { name: "Big", cartonSize: "NORMAL" },
+  { name: "Color", cartonSize: "NORMAL" },
 ];
-
-// Idempotent: creates missing units only. An existing unit is left as is,
-// so re-seeding never overwrites a ratio or status a Manager has changed.
-async function seedUnitConversions() {
-  for (const unit of UNIT_CONVERSIONS) {
-    await prisma.unitConversion.upsert({
-      where: { unitName: unit.unitName },
-      update: {},
-      create: unit,
-    });
-  }
-}
 
 // The factory's standing customers (they can buy on account or pay in
 // advance — see Customer/LoanAccount in schema.prisma).
@@ -222,18 +198,29 @@ async function seedCandleCatalog() {
     },
   });
 
-  for (const name of CANDLE_PRODUCTS) {
+  for (const { name, cartonSize } of CANDLE_PRODUCTS) {
     // Product.name isn't unique (only sku is), so match on name within the
     // category to stay idempotent.
     const existing = await prisma.product.findFirst({
       where: { name, categoryId: category.id },
     });
-    if (existing) continue;
+    if (existing) {
+      // Carton size was added after these products existed; their stored
+      // kg already came from the matching carton weight, so correcting the
+      // size here keeps the carton counts right.
+      if (existing.cartonSize !== cartonSize) {
+        await prisma.product.update({
+          where: { id: existing.id },
+          data: { cartonSize },
+        });
+      }
+      continue;
+    }
 
     const sku = GenerateCode();
     if (!sku) throw new Error(`Couldn't generate a SKU for ${name}`);
     await prisma.product.create({
-      data: { name, sku, categoryId: category.id },
+      data: { name, sku, cartonSize, categoryId: category.id },
     });
   }
 }
@@ -297,7 +284,6 @@ function SeedAccount(
 async function main() {
   const allPermissionNames = await seedModulesAndPermissions();
   await seedRoles(allPermissionNames);
-  await seedUnitConversions();
   await seedRawMaterials();
   await seedCustomers();
   await seedCandleCatalog();
