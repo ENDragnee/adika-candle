@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/data-table";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ExportMenu } from "@/components/ui/export-menu";
+import { usePackingUnit } from "@/components/ui/packing-unit-toggle";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { type DateRangeValue, ResolveDateRange } from "@/lib/date-range";
 import type { ExportColumn } from "@/lib/export/export-column";
-import { FormatKg, FormatMoney } from "@/lib/format";
+import { FormatMoney } from "@/lib/format";
+import { FormatPacking, type PackingUnit } from "@/lib/packing";
 import { cn } from "@/lib/utils";
 import { useBestSellers } from "../hooks/use-analytics";
 import type { BestSellerRowDTO } from "../validators/analytics.schema";
@@ -47,9 +49,10 @@ function TrendIndicator({
 }
 
 function BuildColumns(
-  valueKey: "unitsSoldKg" | "revenue",
-  priorKey: "priorUnitsSoldKg" | "priorRevenue",
+  valueKey: "unitsSoldCartons" | "revenue",
+  priorKey: "priorUnitsSoldCartons" | "priorRevenue",
   valueHeader: string,
+  unit: PackingUnit = "CARTON",
 ): DataTableColumn<BestSellerRowDTO>[] {
   return [
     {
@@ -72,7 +75,7 @@ function BuildColumns(
       cell: (row) =>
         valueKey === "revenue"
           ? FormatMoney(row.revenue)
-          : FormatKg(row.unitsSoldKg),
+          : FormatPacking(row.unitsSoldCartons, unit),
       className: "text-right tabular-nums",
     },
     {
@@ -88,7 +91,6 @@ function BuildColumns(
   ];
 }
 
-const quantityColumns = BuildColumns("unitsSoldKg", "priorUnitsSoldKg", "Sold");
 const revenueColumns = BuildColumns("revenue", "priorRevenue", "Revenue");
 
 function FormatTrendValue(current: number, prior: number): string {
@@ -98,8 +100,8 @@ function FormatTrendValue(current: number, prior: number): string {
 }
 
 function BuildExportColumns(
-  valueKey: "unitsSoldKg" | "revenue",
-  priorKey: "priorUnitsSoldKg" | "priorRevenue",
+  valueKey: "unitsSoldCartons" | "revenue",
+  priorKey: "priorUnitsSoldCartons" | "priorRevenue",
   valueHeader: string,
 ): ExportColumn<BestSellerRowDTO>[] {
   return [
@@ -118,9 +120,9 @@ function BuildExportColumns(
 }
 
 const quantityExportColumns = BuildExportColumns(
-  "unitsSoldKg",
-  "priorUnitsSoldKg",
-  "Units sold (kg)",
+  "unitsSoldCartons",
+  "priorUnitsSoldCartons",
+  "Cartons sold",
 );
 const revenueExportColumns = BuildExportColumns(
   "revenue",
@@ -129,6 +131,13 @@ const revenueExportColumns = BuildExportColumns(
 );
 
 export function BestSellersTab() {
+  const unit = usePackingUnit((state) => state.unit);
+  const quantityColumns = BuildColumns(
+    "unitsSoldCartons",
+    "priorUnitsSoldCartons",
+    "Sold",
+    unit,
+  );
   const [range, setRange] = useState<DateRangeValue>({ preset: "7d" });
   const { data, isLoading } = useBestSellers(ResolveDateRange(range), true);
 
@@ -136,7 +145,7 @@ export function BestSellersTab() {
     (row) => ({
       key: row.productId,
       label: row.productName,
-      value: Number(row.unitsSoldKg),
+      value: Number(row.unitsSoldCartons),
       color: "var(--color-chart-series-1)",
     }),
   );
@@ -179,7 +188,10 @@ export function BestSellersTab() {
         {isLoading || !data ? (
           <CardSkeleton />
         ) : (
-          <RankedBarChart data={quantityChartData} valueFormatter={FormatKg} />
+          <RankedBarChart
+            data={quantityChartData}
+            valueFormatter={(value) => FormatPacking(value, unit)}
+          />
         )}
         {isLoading || !data ? (
           <TableSkeleton columns={quantityColumns.length} />

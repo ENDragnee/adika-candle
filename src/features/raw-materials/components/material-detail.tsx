@@ -87,6 +87,7 @@ export function MaterialDetail({
         </div>
         {canAdjust && (
           <StockCountDialog
+            kind="kg"
             itemName={balance.materialName}
             currentKg={balance.quantityKg}
             onSubmit={(input) => recordCount.mutateAsync(input)}

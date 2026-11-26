@@ -87,7 +87,8 @@ const typeDefs = /* GraphQL */ `
     subjectName: String!
     href: String!
     quantityKg: String
-    thresholdKg: String
+    quantityCartons: String
+    thresholdCartons: String
     daysOfCover: String
     amount: String
     lastPaymentAt: String
@@ -136,25 +137,49 @@ const typeDefs = /* GraphQL */ `
     closingKg: String!
   }
 
+  enum CartonSize {
+    NORMAL
+    PLUS
+  }
+
+  # Finished goods in cartons; waxKg is the wax the produced cartons took.
   type ProductProductionRow {
     productId: String!
     productName: String!
     productSku: String!
-    openingKg: String!
-    receivedKg: String!
-    consumedKg: String!
-    adjustedKg: String!
-    closingKg: String!
-    # Both null when the product has no recipe — never blocks the row.
-    expectedOutputKg: String
-    variancePercent: String
+    cartonSize: CartonSize!
+    openingCartons: String!
+    producedCartons: String!
+    soldCartons: String!
+    adjustedCartons: String!
+    closingCartons: String!
+    waxKg: String!
+  }
+
+  enum WaxCheckStatus {
+    UNDER
+    OVER
+    OK
+    NOT_COUNTED
+  }
+
+  # Wax the output accounts for vs. wax actually used (from counts).
+  type WaxCheck {
+    status: WaxCheckStatus!
+    expectedKg: String!
+    actualKg: String!
+    countCorrectionKg: String!
+    gapKg: String!
+    gapCartons: String!
+    hasCount: Boolean!
   }
 
   type ProductionTrendPoint {
     periodKey: String!
     periodLabel: String!
-    materialConsumedKg: String!
-    productActualOutputKg: String!
+    producedCartons: String!
+    waxExpectedKg: String!
+    waxActualKg: String!
   }
 
   type ProductionReport {
@@ -164,6 +189,7 @@ const typeDefs = /* GraphQL */ `
     periodEnd: String!
     offset: Int!
     hasNext: Boolean!
+    waxCheck: WaxCheck
     materials: [MaterialProductionRow!]!
     products: [ProductProductionRow!]!
     trend: [ProductionTrendPoint!]!
@@ -191,11 +217,11 @@ const typeDefs = /* GraphQL */ `
     productId: String!
     productName: String!
     productSku: String!
-    currentPricePerKg: String
-    currentCostPerKg: String
+    currentPricePerCarton: String
+    currentCostPerCarton: String
     currentMarginPercent: String
     realizedMarginPercent: String
-    unitsSoldKg: String!
+    unitsSoldCartons: String!
     revenue: String!
     totalProfit: String
     uncostedSaleCount: Int!
@@ -212,10 +238,10 @@ const typeDefs = /* GraphQL */ `
     productId: String!
     productName: String!
     productSku: String!
-    quantityKg: String!
-    thresholdKg: String
+    quantityCartons: String!
+    thresholdCartons: String
     status: StockStatus!
-    averageDailySalesKg: String!
+    averageDailySalesCartons: String!
     daysOfCover: String
   }
 
@@ -230,9 +256,9 @@ const typeDefs = /* GraphQL */ `
     productName: String!
     productSku: String!
     categoryName: String!
-    unitsSoldKg: String!
+    unitsSoldCartons: String!
     revenue: String!
-    priorUnitsSoldKg: String!
+    priorUnitsSoldCartons: String!
     priorRevenue: String!
   }
 

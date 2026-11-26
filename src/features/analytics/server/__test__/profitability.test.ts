@@ -17,6 +17,7 @@ function Sale(overrides: Partial<ProfitSale>): ProfitSale {
     productName: "Candle",
     productSku: "SKU1",
     quantityKg: D(10),
+    cartons: D(10 / 7),
     totalAmount: D(1000),
     costPerKgAtSale: D(60),
     ...overrides,

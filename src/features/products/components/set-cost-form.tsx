@@ -21,8 +21,8 @@ export function SetCostForm({
       currentPrice={currentPrice}
       currentCost={currentCost}
       isPending={setCost.isPending}
-      onConfirm={async (amountPerKg) => {
-        await setCost.mutateAsync({ amountPerKg });
+      onConfirm={async (amountPerCarton) => {
+        await setCost.mutateAsync({ amountPerCarton });
         onSuccess();
       }}
     />

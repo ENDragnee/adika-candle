@@ -6,15 +6,15 @@ import {
 import { ProductName } from "@/lib/activity/names";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import {
-  type StockCountInput,
-  StockCountInputSchema,
+  type ProductStockCountInput,
+  ProductStockCountInputSchema,
 } from "@/lib/schemas/stock-count.schema";
 
 type Params = { productId: string };
 
-export const POST = CreateApiRoute<StockCountInput, Params>({
+export const POST = CreateApiRoute<ProductStockCountInput, Params>({
   moduleName: "stock.count",
-  schema: StockCountInputSchema,
+  schema: ProductStockCountInputSchema,
   requiresAuth: { status: true, permission: "stock:adjust" },
   responseSchema: StockLedgerEntrySchema,
   activity: async ({ body, result, params }) => {
@@ -22,14 +22,14 @@ export const POST = CreateApiRoute<StockCountInput, Params>({
     return {
       type: "stock",
       action: "stock.count",
-      message: `Recorded a stock count of ${body.countedKg} kg for ${name} (${Number(result.quantityKg) >= 0 ? "+" : ""}${result.quantityKg} kg)`,
+      message: `Recorded a stock count of ${body.countedCartons} ctn for ${name} (${Number(result.quantityCartons) >= 0 ? "+" : ""}${result.quantityCartons} ctn)`,
       severity: "WARN",
       entityType: "product",
       entityId: params?.productId,
       entityLabel: name,
       changes: {
-        countedKg: body.countedKg,
-        correctionKg: result.quantityKg,
+        countedCartons: body.countedCartons,
+        correctionCartons: result.quantityCartons,
         reason: body.reason,
       },
     };
@@ -37,7 +37,7 @@ export const POST = CreateApiRoute<StockCountInput, Params>({
   handler: async (body, session, params) => {
     const entry = await RecordStockCount({
       productId: params?.productId ?? "",
-      countedKg: body.countedKg,
+      countedCartons: body.countedCartons,
       reason: body.reason,
       createdById: session?.id ?? "",
     });

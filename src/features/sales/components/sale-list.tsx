@@ -41,13 +41,8 @@ import {
   ResolveDateRange,
 } from "@/lib/date-range";
 import type { ExportColumn } from "@/lib/export/export-column";
-import {
-  FormatDateTime,
-  FormatKg,
-  FormatMoney,
-  FormatNumber,
-  Pluralize,
-} from "@/lib/format";
+import { FormatDateTime, FormatMoney, Pluralize } from "@/lib/format";
+import { FormatPacking } from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useDebounce } from "@/lib/use-debounce";
 import { usePagination } from "@/lib/use-pagination";
@@ -212,9 +207,9 @@ function BuildColumns({
       header: "Quantity",
       cell: (sale) => (
         <span className="flex flex-col tabular-nums">
-          <span>{FormatKg(sale.quantityKg)}</span>
+          <span>{FormatPacking(sale.cartons)}</span>
           <span className="text-xs text-muted-foreground">
-            {FormatNumber(sale.inputQuantity)} {sale.inputUnitName}
+            {FormatMoney(sale.pricePerCarton)} / carton
           </span>
         </span>
       ),
@@ -277,10 +272,8 @@ const exportColumns: ExportColumn<SaleDTO>[] = [
   { header: "Product", value: (sale) => sale.productName },
   { header: "SKU", value: (sale) => sale.productSku },
   { header: "Customer", value: (sale) => sale.customerName ?? "Walk-in" },
-  { header: "Quantity", value: (sale) => sale.inputQuantity },
-  { header: "Unit", value: (sale) => sale.inputUnitName },
-  { header: "Weight (kg)", value: (sale) => sale.quantityKg },
-  { header: "Price / kg", value: (sale) => sale.unitPriceAtSale },
+  { header: "Cartons", value: (sale) => sale.cartons },
+  { header: "Price / carton", value: (sale) => sale.pricePerCarton },
   { header: "Total", value: (sale) => sale.totalAmount },
   {
     header: "Payment",
@@ -318,7 +311,10 @@ export function SaleList({
   lockedThrough = null,
   initialRange = "all",
   linkBase = "/manager",
+  // The Inventory Manager sees each sale's price but no money totals.
+  showMoneySummary = true,
 }: {
+  showMoneySummary?: boolean;
   createdById?: string;
   productId?: string;
   customerId?: string;
@@ -515,20 +511,30 @@ export function SaleList({
             label="Sales"
             value={Pluralize(summary.saleCount, "sale")}
           />
-          <SummaryStat label="Weight" value={FormatKg(summary.totalKg)} />
-          <SummaryStat label="Cash" value={FormatMoney(summary.cashAmount)} />
           <SummaryStat
-            label="On account"
-            value={FormatMoney(summary.onAccountAmount)}
+            label="Cartons"
+            value={FormatPacking(summary.totalCartons)}
           />
-          <div className="col-span-2 flex items-baseline justify-between border-t border-border pt-2 sm:col-span-4">
-            <span className="text-sm text-muted-foreground">
-              Total{status !== "ACTIVE" && " (voided sales excluded)"}
-            </span>
-            <span className="text-lg font-semibold tabular-nums">
-              {FormatMoney(summary.totalAmount)}
-            </span>
-          </div>
+          {showMoneySummary && (
+            <>
+              <SummaryStat
+                label="Cash"
+                value={FormatMoney(summary.cashAmount)}
+              />
+              <SummaryStat
+                label="On account"
+                value={FormatMoney(summary.onAccountAmount)}
+              />
+              <div className="col-span-2 flex items-baseline justify-between border-t border-border pt-2 sm:col-span-4">
+                <span className="text-sm text-muted-foreground">
+                  Total{status !== "ACTIVE" && " (voided sales excluded)"}
+                </span>
+                <span className="text-lg font-semibold tabular-nums">
+                  {FormatMoney(summary.totalAmount)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       )}
 

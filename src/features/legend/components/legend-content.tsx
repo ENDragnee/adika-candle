@@ -73,8 +73,8 @@ export function LegendContent() {
             closing figure and every movement in the period.
           </DefinitionRow>
           <DefinitionRow term="Received">
-            Stock accepted (finished goods) or materials received during the
-            period.
+            Cartons accepted from production (finished goods) or materials
+            received during the period.
           </DefinitionRow>
           <DefinitionRow term="Used / Sold">
             Raw materials used in production, or finished goods sold (net of any
@@ -95,7 +95,7 @@ export function LegendContent() {
 
       <section id="sales" className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-foreground">
-          2. Sales: cash vs on account, walk-in vs named customer
+          2. Sales: cash vs on account
         </h2>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
           <p>
@@ -112,10 +112,10 @@ export function LegendContent() {
             what they owe.
           </p>
           <p>
-            A sale can be for a named customer (a standing account such as
-            Merkato, Gondor, Moges, Mekele) or a{" "}
-            <strong className="text-foreground">walk-in</strong> buyer with no
-            account. Walk-in sales are always cash.
+            Every sale is for a named customer (a standing account such as
+            Merkato, Gondor, Moges, Mekele). Search for them by name in the
+            Record Sale dialog; someone new can be added right there. Sales are
+            always entered in cartons.
           </p>
           <p>
             If a sale would take a product's recorded stock below zero, the app
@@ -227,26 +227,32 @@ export function LegendContent() {
         </div>
       </section>
 
-      <section id="unit-conversions" className="flex flex-col gap-3">
+      <section id="packing" className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-foreground">
-          5. Unit conversions
+          5. Cartons, packets and pieces
         </h2>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
           <p>
-            Everything is measured in KG internally, but staff work in Carton,
-            Packet, Wax, or Kir. Each unit has a <code>ratioToKg</code> (how
-            many KG one unit equals), editable by a Manager under Settings →
-            Unit conversions.
+            Stock is accepted and sold in{" "}
+            <strong className="text-foreground">cartons</strong> only. One
+            carton holds 30 packets; one packet holds 8 pieces (240 pieces per
+            carton). Remaining stock is shown split into all three, e.g.{" "}
+            <code>12 ctn · 15 pkt · 3 pcs</code>, and reports can switch between
+            cartons, packets and pieces.
           </p>
           <p>
-            <strong className="text-foreground">
-              A sale or stock entry snapshots the ratio at the moment it's
-              recorded
-            </strong>{" "}
-            — the input quantity, unit name, and ratio are all stored on the
-            transaction itself. Editing a unit's ratio later only affects future
-            transactions; it never rewrites or changes the totals of anything
-            already recorded.
+            Each product is either{" "}
+            <strong className="text-foreground">Normal</strong> (7 kg of wax per
+            carton) or <strong className="text-foreground">Plus</strong> (8.5 kg
+            per carton). Accepting stock takes that much wax off the wax balance
+            automatically — 200 Normal cartons use 1,400 kg — so nobody records
+            wax use by hand. The wick (kir) is negligible.
+          </p>
+          <p>
+            A wax count that finds less wax than recorded shows up in Analytics
+            → Production as{" "}
+            <strong className="text-foreground">under-production</strong>: wax
+            was used but the cartons it should have made weren't recorded.
           </p>
         </div>
       </section>
@@ -328,14 +334,14 @@ export function LegendContent() {
             </CardHeader>
             <CardContent>
               <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                <li>Accept stock and record sales (cash or on account).</li>
                 <li>
-                  Record raw material activity (Received/Consumed) against the
-                  catalog a Manager maintains.
+                  Accept stock and record sales in cartons (cash or on account).
+                  Sees prices, but no money totals or reports.
                 </li>
+                <li>Record raw material deliveries. Wax use is automatic.</li>
                 <li>
-                  View customers and record their payments — day-to-day account
-                  activity, not corrections.
+                  View and add customers, and record their payments — day-to-day
+                  account activity, not corrections.
                 </li>
                 <li>
                   Read-only access to the product catalog, just enough to pick a

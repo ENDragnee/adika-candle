@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { ToneColor } from "@/components/ui/tone-badge";
 import { FormatDate, FormatKg, FormatMoney, FormatNumber } from "@/lib/format";
+import { FormatPacking, FormatPackingBreakdown } from "@/lib/packing";
 import type {
   AttentionItemDTO,
   AttentionKind,
@@ -34,7 +35,7 @@ const COPY: Record<
 > = {
   NEGATIVE_STOCK: (item) => ({
     title: `${item.subjectName} shows negative stock`,
-    detail: `Recorded balance is ${FormatKg(item.quantityKg)} — more was sold than was ever accepted.`,
+    detail: `Recorded balance is ${FormatPackingBreakdown(item.quantityCartons)} — more was sold than was ever accepted.`,
     action: "Count stock",
   }),
   OUT_OF_STOCK: (item) => ({
@@ -44,7 +45,7 @@ const COPY: Record<
   }),
   LOW_STOCK: (item) => ({
     title: `${item.subjectName} is running low`,
-    detail: `${FormatKg(item.quantityKg)} left, below the ${FormatKg(item.thresholdKg)} alert level${
+    detail: `${FormatPackingBreakdown(item.quantityCartons)} left, below the ${FormatPacking(item.thresholdCartons)} alert level${
       item.daysOfCover
         ? ` — about ${FormatNumber(item.daysOfCover, 0)} days at the current pace`
         : ""

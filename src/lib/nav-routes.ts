@@ -94,7 +94,7 @@ export const MANAGER_ROUTES: NavRoute[] = [
   {
     label: "Settings",
     href: "/manager/settings",
-    permission: ["unit-conversion:manage", "raw-material:manage"],
+    permission: ["raw-material:manage"],
     group: "catalog",
   },
   {

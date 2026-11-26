@@ -94,6 +94,7 @@ export const POST = CreateApiRoute({
           data: {
             name: body.name,
             categoryId: body.categoryId,
+            cartonSize: body.cartonSize,
             sku: GenerateSku(),
           },
           include: ACTIVE_PRICE_INCLUDE,

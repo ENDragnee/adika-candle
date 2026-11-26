@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/data-table";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { Input } from "@/components/ui/input";
+import { usePackingUnit } from "@/components/ui/packing-unit-toggle";
 import { Section } from "@/components/ui/section";
 import {
   Select,
@@ -31,16 +32,21 @@ import {
   type StockStatus,
 } from "@/features/stock/stock-status";
 import type { ExportColumn } from "@/lib/export/export-column";
-import { FormatKg, FormatNumber } from "@/lib/format";
+import { FormatNumber } from "@/lib/format";
+import {
+  FormatPacking,
+  FormatPackingBreakdown,
+  type PackingUnit,
+} from "@/lib/packing";
 import { useStockHealth } from "../hooks/use-analytics";
 import type { StockHealthRowDTO } from "../validators/analytics.schema";
 
-type SortKey = "urgency" | "daysOfCover" | "quantityKg" | "productName";
+type SortKey = "urgency" | "daysOfCover" | "quantityCartons" | "productName";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "urgency", label: "Most urgent first" },
   { value: "daysOfCover", label: "Fewest days left" },
-  { value: "quantityKg", label: "Least on hand" },
+  { value: "quantityCartons", label: "Least remaining" },
   { value: "productName", label: "Name" },
 ];
 
@@ -67,62 +73,75 @@ function DaysOfCover({ value }: { value: string | null }) {
   );
 }
 
-const columns: DataTableColumn<StockHealthRowDTO>[] = [
-  {
-    key: "name",
-    header: "Product",
-    cell: (row) => (
-      <Link
-        href={`/manager/stock/${row.productId}`}
-        className="underline-offset-4 hover:underline"
-      >
-        {row.productName}{" "}
-        <span className="text-muted-foreground">{row.productSku}</span>
-      </Link>
-    ),
-  },
-  {
-    key: "status",
-    header: "Status",
-    cell: (row) => <StockStatusBadge status={row.status} />,
-  },
-  {
-    key: "quantity",
-    header: "On hand",
-    cell: (row) => FormatKg(row.quantityKg),
-    className: "text-right tabular-nums",
-  },
-  {
-    key: "threshold",
-    header: "Alert level",
-    cell: (row) =>
-      row.thresholdKg === null ? "Not set" : FormatKg(row.thresholdKg),
-    className: "text-right tabular-nums text-muted-foreground",
-  },
-  {
-    key: "velocity",
-    header: "Sells per day",
-    cell: (row) =>
-      Number(row.averageDailySalesKg) === 0
-        ? "—"
-        : FormatKg(row.averageDailySalesKg),
-    className: "text-right tabular-nums text-muted-foreground",
-  },
-  {
-    key: "cover",
-    header: "Stock lasts",
-    cell: (row) => <DaysOfCover value={row.daysOfCover} />,
-    className: "text-right",
-  },
-];
+function BuildColumns(unit: PackingUnit): DataTableColumn<StockHealthRowDTO>[] {
+  return [
+    {
+      key: "name",
+      header: "Product",
+      cell: (row) => (
+        <Link
+          href={`/manager/stock/${row.productId}`}
+          className="underline-offset-4 hover:underline"
+        >
+          {row.productName}{" "}
+          <span className="text-muted-foreground">{row.productSku}</span>
+        </Link>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (row) => <StockStatusBadge status={row.status} />,
+    },
+    {
+      key: "quantity",
+      header: "Remaining",
+      cell: (row) =>
+        unit === "CARTON"
+          ? FormatPackingBreakdown(row.quantityCartons)
+          : FormatPacking(row.quantityCartons, unit),
+      className: "text-right tabular-nums",
+    },
+    {
+      key: "threshold",
+      header: "Alert level",
+      cell: (row) =>
+        row.thresholdCartons === null
+          ? "Not set"
+          : FormatPacking(row.thresholdCartons, unit),
+      className: "text-right tabular-nums text-muted-foreground",
+    },
+    {
+      key: "velocity",
+      header: "Sells per day",
+      cell: (row) =>
+        Number(row.averageDailySalesCartons) === 0
+          ? "—"
+          : FormatPacking(row.averageDailySalesCartons, unit),
+      className: "text-right tabular-nums text-muted-foreground",
+    },
+    {
+      key: "cover",
+      header: "Stock lasts",
+      cell: (row) => <DaysOfCover value={row.daysOfCover} />,
+      className: "text-right",
+    },
+  ];
+}
 
 const exportColumns: ExportColumn<StockHealthRowDTO>[] = [
   { header: "Product", value: (row) => row.productName },
   { header: "SKU", value: (row) => row.productSku },
   { header: "Status", value: (row) => STOCK_STATUS_META[row.status].label },
-  { header: "On hand (kg)", value: (row) => row.quantityKg },
-  { header: "Alert level (kg)", value: (row) => row.thresholdKg ?? "" },
-  { header: "Sells per day (kg)", value: (row) => row.averageDailySalesKg },
+  { header: "Remaining (cartons)", value: (row) => row.quantityCartons },
+  {
+    header: "Alert level (cartons)",
+    value: (row) => row.thresholdCartons ?? "",
+  },
+  {
+    header: "Sells per day (cartons)",
+    value: (row) => row.averageDailySalesCartons,
+  },
   { header: "Days of stock left", value: (row) => row.daysOfCover ?? "" },
 ];
 
@@ -143,6 +162,8 @@ export function StockHealthTab() {
   >(() => InitialStatus(searchParams.get("status")));
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("urgency");
+  const unit = usePackingUnit((state) => state.unit);
+  const columns = BuildColumns(unit);
 
   const filteredRows = useMemo(() => {
     if (!data) return [];
@@ -167,7 +188,7 @@ export function StockHealthTab() {
       if (sortKey === "urgency") {
         return (
           (URGENCY.get(a.status) ?? 0) - (URGENCY.get(b.status) ?? 0) ||
-          Number(a.quantityKg) - Number(b.quantityKg)
+          Number(a.quantityCartons) - Number(b.quantityCartons)
         );
       }
       // Rows with no figure sort last.

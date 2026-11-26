@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/data-table";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ExportMenu } from "@/components/ui/export-menu";
+import { usePackingUnit } from "@/components/ui/packing-unit-toggle";
 import { Section } from "@/components/ui/section";
 import {
   Select,
@@ -29,11 +30,11 @@ import { type DateRangeValue, ResolveDateRange } from "@/lib/date-range";
 import type { ExportColumn } from "@/lib/export/export-column";
 import {
   FormatCompactNumber,
-  FormatKg,
   FormatMoney,
   FormatPercent,
   Pluralize,
 } from "@/lib/format";
+import { FormatPacking, type PackingUnit } from "@/lib/packing";
 import { useProfitability } from "../hooks/use-analytics";
 import type { ProductMarginRowDTO } from "../validators/analytics.schema";
 import { StatTile } from "./stat-tile";
@@ -76,82 +77,92 @@ function MarginCell({ value }: { value: string | null }) {
   );
 }
 
-const columns: DataTableColumn<ProductMarginRowDTO>[] = [
-  {
-    key: "name",
-    header: "Product",
-    cell: (row) => (
-      <span className="flex items-center gap-1.5">
-        <Link
-          href={`/manager/products/${row.productId}`}
-          className="underline-offset-4 hover:underline"
-        >
-          {row.productName}
-        </Link>
-        {row.uncostedSaleCount > 0 && (
-          <WarningIcon
-            className="size-3.5"
-            style={{ color: "var(--color-status-warning)" }}
-            aria-label={`${Pluralize(row.uncostedSaleCount, "sale")} without cost data`}
+function BuildColumns(
+  unit: PackingUnit,
+): DataTableColumn<ProductMarginRowDTO>[] {
+  return [
+    {
+      key: "name",
+      header: "Product",
+      cell: (row) => (
+        <span className="flex items-center gap-1.5">
+          <Link
+            href={`/manager/products/${row.productId}`}
+            className="underline-offset-4 hover:underline"
           >
-            <title>
-              {Pluralize(row.uncostedSaleCount, "sale")} had no cost on record
-              and are left out of profit and margin
-            </title>
-          </WarningIcon>
-        )}
-      </span>
-    ),
-  },
-  {
-    key: "revenue",
-    header: "Revenue",
-    cell: (row) => FormatMoney(row.revenue),
-    className: "text-right tabular-nums",
-  },
-  {
-    key: "units",
-    header: "Sold",
-    cell: (row) => FormatKg(row.unitsSoldKg),
-    className: "text-right tabular-nums",
-  },
-  {
-    key: "profit",
-    header: "Profit",
-    cell: (row) => FormatMoney(row.totalProfit),
-    className: "text-right font-medium tabular-nums",
-  },
-  {
-    key: "margin",
-    header: "Margin (actual)",
-    cell: (row) => <MarginCell value={row.realizedMarginPercent} />,
-  },
-  {
-    key: "current",
-    header: "Today's price / cost",
-    cell: (row) => (
-      <span className="text-muted-foreground tabular-nums">
-        {FormatMoney(row.currentPricePerKg)} /{" "}
-        {FormatMoney(row.currentCostPerKg)}
-        {row.currentMarginPercent !== null &&
-          ` · ${FormatPercent(row.currentMarginPercent)}`}
-      </span>
-    ),
-  },
-];
+            {row.productName}
+          </Link>
+          {row.uncostedSaleCount > 0 && (
+            <WarningIcon
+              className="size-3.5"
+              style={{ color: "var(--color-status-warning)" }}
+              aria-label={`${Pluralize(row.uncostedSaleCount, "sale")} without cost data`}
+            >
+              <title>
+                {Pluralize(row.uncostedSaleCount, "sale")} had no cost on record
+                and are left out of profit and margin
+              </title>
+            </WarningIcon>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: "revenue",
+      header: "Revenue",
+      cell: (row) => FormatMoney(row.revenue),
+      className: "text-right tabular-nums",
+    },
+    {
+      key: "units",
+      header: "Sold",
+      cell: (row) => FormatPacking(row.unitsSoldCartons, unit),
+      className: "text-right tabular-nums",
+    },
+    {
+      key: "profit",
+      header: "Profit",
+      cell: (row) => FormatMoney(row.totalProfit),
+      className: "text-right font-medium tabular-nums",
+    },
+    {
+      key: "margin",
+      header: "Margin (actual)",
+      cell: (row) => <MarginCell value={row.realizedMarginPercent} />,
+    },
+    {
+      key: "current",
+      header: "Today's price / cost per carton",
+      cell: (row) => (
+        <span className="text-muted-foreground tabular-nums">
+          {FormatMoney(row.currentPricePerCarton)} /{" "}
+          {FormatMoney(row.currentCostPerCarton)}
+          {row.currentMarginPercent !== null &&
+            ` · ${FormatPercent(row.currentMarginPercent)}`}
+        </span>
+      ),
+    },
+  ];
+}
 
 const exportColumns: ExportColumn<ProductMarginRowDTO>[] = [
   { header: "Product", value: (row) => row.productName },
   { header: "SKU", value: (row) => row.productSku },
   { header: "Revenue", value: (row) => row.revenue },
-  { header: "Sold (kg)", value: (row) => row.unitsSoldKg },
+  { header: "Cartons sold", value: (row) => row.unitsSoldCartons },
   { header: "Profit", value: (row) => row.totalProfit ?? "" },
   {
     header: "Actual margin %",
     value: (row) => row.realizedMarginPercent ?? "",
   },
-  { header: "Current price / kg", value: (row) => row.currentPricePerKg ?? "" },
-  { header: "Current cost / kg", value: (row) => row.currentCostPerKg ?? "" },
+  {
+    header: "Current price / carton",
+    value: (row) => row.currentPricePerCarton ?? "",
+  },
+  {
+    header: "Current cost / carton",
+    value: (row) => row.currentCostPerCarton ?? "",
+  },
   {
     header: "Current margin %",
     value: (row) => row.currentMarginPercent ?? "",
@@ -170,6 +181,8 @@ export function ProfitabilityTab() {
   const [range, setRange] = useState<DateRangeValue>({ preset: "30d" });
   const { data, isLoading } = useProfitability(ResolveDateRange(range), true);
   const [sortKey, setSortKey] = useState<SortKey>("totalProfit");
+  const unit = usePackingUnit((state) => state.unit);
+  const columns = BuildColumns(unit);
 
   const sortedProducts = useMemo(() => {
     if (!data) return [];

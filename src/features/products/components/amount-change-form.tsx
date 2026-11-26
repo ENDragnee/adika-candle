@@ -26,7 +26,7 @@ export function AmountChangeForm({
   currentPrice: string | null;
   currentCost: string | null;
   isPending: boolean;
-  onConfirm: (amountPerKg: number) => Promise<unknown>;
+  onConfirm: (amountPerCarton: number) => Promise<unknown>;
 }) {
   const [amount, setAmount] = useState("");
   const [reviewing, setReviewing] = useState(false);
@@ -58,7 +58,7 @@ export function AmountChangeForm({
       {!reviewing ? (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`new-${kind}`} className="text-sm font-medium">
-            New {kind} per kg (ETB)
+            New {kind} per carton (ETB)
           </label>
           <Input
             id={`new-${kind}`}
@@ -73,7 +73,7 @@ export function AmountChangeForm({
           />
           <p className="text-xs text-muted-foreground">
             Current:{" "}
-            {current === null ? "not set" : `${FormatMoney(current)} / kg`}
+            {current === null ? "not set" : `${FormatMoney(current)} / carton`}
             {kind === "price"
               ? ". Sales already recorded keep the price they were sold at."
               : ". Sales already recorded keep the cost they were recorded with."}
@@ -103,7 +103,7 @@ export function AmountChangeForm({
           </div>
           {marginAfter !== null && (
             <p className="text-sm">
-              Margin per kg:{" "}
+              Margin:{" "}
               {marginBefore !== null && (
                 <>
                   <span className="tabular-nums">

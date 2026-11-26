@@ -4,13 +4,17 @@ vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
 import { ComputeStockHealth } from "../stock-health";
 
-const Row = (quantityKg: number, thresholdKg: number | null, soldKg = 0) => ({
-  productId: `p${quantityKg}`,
+const Row = (
+  quantityCartons: number,
+  thresholdCartons: number | null,
+  soldCartons = 0,
+) => ({
+  productId: `p${quantityCartons}`,
   productName: "Candle",
   productSku: "S",
-  quantityKg,
-  thresholdKg,
-  soldKg,
+  quantityCartons,
+  thresholdCartons,
+  soldCartons,
 });
 
 describe("ComputeStockHealth", () => {
@@ -21,7 +25,7 @@ describe("ComputeStockHealth", () => {
   });
 
   it("computes days of cover from velocity", () => {
-    // 60 kg over 30 days = 2 kg/day; 20 kg on hand = 10 days.
+    // 60 cartons over 30 days = 2 a day; 20 on hand = 10 days.
     const { rows } = ComputeStockHealth([Row(20, 5, 60)]);
     expect(rows[0].daysOfCover).toBe("10.0");
   });

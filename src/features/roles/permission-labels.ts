@@ -43,7 +43,6 @@ export const MODULE_LABELS: Record<string, ModuleLabel> = {
   role: { label: "Roles", icon: ShieldCheckIcon },
   session: { label: "Sessions", icon: DevicesIcon },
   system: { label: "System", icon: ShieldStarIcon },
-  "unit-conversion": { label: "Unit settings", icon: GearSixIcon },
   "raw-material": { label: "Raw materials", icon: FlaskIcon },
 };
 
@@ -97,9 +96,13 @@ export const PERMISSION_LABELS: Record<string, PermissionLabel> = {
     label: "View customers",
     description: "See the customer list and their loan balances.",
   },
+  "customer:create": {
+    label: "Add customers",
+    description: "Add a new customer, e.g. while recording a sale.",
+  },
   "customer:manage": {
     label: "Manage customers",
-    description: "Add and edit customer details.",
+    description: "Add, edit and deactivate customers.",
   },
   "loan:record": {
     label: "Record loan repayments",
@@ -142,18 +145,13 @@ export const PERMISSION_LABELS: Record<string, PermissionLabel> = {
     description:
       "Change what each role is allowed to do — the page you're on right now.",
   },
-  "unit-conversion:manage": {
-    label: "Manage unit settings",
-    description:
-      "Edit the Carton/Packet/Wax/Kir conversions used across stock and sales.",
-  },
   "raw-material:read": {
     label: "View raw materials",
     description: "See the raw material catalog and current balances.",
   },
   "raw-material:record": {
-    label: "Record raw material activity",
-    description: "Log raw materials received or used up.",
+    label: "Receive raw materials",
+    description: "Log raw materials arriving. Use in production is automatic.",
   },
   "raw-material:manage": {
     label: "Manage raw materials",

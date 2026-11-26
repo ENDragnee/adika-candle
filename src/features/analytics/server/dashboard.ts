@@ -27,8 +27,11 @@ export interface AttentionItem {
   severity: AttentionSeverity;
   subjectName: string;
   href: string;
+  // Raw materials, in kg.
   quantityKg: string | null;
-  thresholdKg: string | null;
+  // Finished goods, in cartons.
+  quantityCartons: string | null;
+  thresholdCartons: string | null;
   daysOfCover: string | null;
   amount: string | null;
   lastPaymentAt: string | null;
@@ -43,7 +46,8 @@ function Item(
 ): AttentionItem {
   return {
     quantityKg: null,
-    thresholdKg: null,
+    quantityCartons: null,
+    thresholdCartons: null,
     daysOfCover: null,
     amount: null,
     lastPaymentAt: null,
@@ -220,8 +224,8 @@ export async function BuildManagerDashboard(now = new Date()) {
             : "warning",
         subjectName: row.productName,
         href: `/manager/stock/${row.productId}`,
-        quantityKg: row.quantityKg,
-        thresholdKg: row.thresholdKg,
+        quantityCartons: row.quantityCartons,
+        thresholdCartons: row.thresholdCartons,
         daysOfCover: row.daysOfCover,
       }),
     );

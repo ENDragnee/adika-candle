@@ -90,7 +90,7 @@ export const MANAGER_TOUR_STEPS: TourStepDef[] = [
   NavStep(
     MANAGER_NAV_ITEMS,
     "/manager/products",
-    "The product catalog — pricing, cost history, and recipes all live on a product's own detail page.",
+    "The product catalog — carton size, pricing and cost history all live on a product's own detail page.",
   ),
   {
     id: "create-product-trigger",
@@ -147,12 +147,12 @@ export const MANAGER_TOUR_STEPS: TourStepDef[] = [
   NavStep(
     MANAGER_NAV_ITEMS,
     "/manager/settings",
-    "Manager-only: manage unit conversions and the raw-material catalog.",
+    "Manager-only: manage the raw-material catalog.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
     "/tutorial",
-    "Detailed step-by-step guides for all features, including two-way loans, advance deposits, and recipes.",
+    "Detailed step-by-step guides for all features, including two-way loans, advance deposits, and the wax under-production check.",
   ),
   NavStep(
     MANAGER_NAV_ITEMS,
@@ -184,7 +184,7 @@ export const INVENTORY_TOUR_STEPS: TourStepDef[] = [
   NavStep(
     INVENTORY_NAV_ITEMS,
     "/inventory/materials",
-    "Raw-material balances — record received or consumed activity here.",
+    "Raw-material balances — record wax and kir deliveries here. Wax used in production is taken off automatically.",
   ),
   NavStep(
     INVENTORY_NAV_ITEMS,

@@ -12,6 +12,49 @@ undo.
 
 ---
 
+## 2026-11-25 — Cartons only, automatic wax use, under-production check
+
+Requested simplification: stock and sales are entered in cartons only;
+packets and pieces exist only for reading quantities back.
+
+- **Storage stays in kg.** `Product.cartonSize` (`NORMAL` = 7 kg, `PLUS` =
+  8.5 kg, `src/lib/packing.ts`) converts at the API boundary. Every
+  existing ledger row and balance stays valid, and the stored kg is
+  exactly the wax those cartons took, so wax use needs no extra table.
+  Considered: renaming every `quantityKg` column to cartons — a large,
+  data-migrating change for no gain in behaviour. Consequence: carton
+  size is locked once a product has stock history (409
+  `CARTON_SIZE_LOCKED`), since changing it re-scales every carton count.
+- **Prices and costs are entered and shown per carton**, still stored per
+  kg (`PerCarton`/`PerKg` in `src/lib/carton-decimal.ts`). `ProductDTO`'s
+  `currentPrice`/`currentCost` are now per carton.
+- **Unit conversions and recipes are gone from the app.** Fixed rules
+  replace them (1 carton = 30 packets = 240 pieces; wax per carton by
+  size). The `UnitConversion` and `ProductMaterialRequirement` tables are
+  left in the schema, unused, so `db push` never drops data silently —
+  remove them in a deliberate migration.
+- **Wax consumption is automatic.** `AcceptStock` writes a `CONSUMED` entry
+  on the material named "Wax" (`WAX_MATERIAL_NAME`, created if missing) in
+  the same transaction. Manual "Consumed" entry was removed; staff record
+  deliveries only. Kir is negligible and not consumed.
+- **Under-production = wax counts.** With consumption automatic, recorded
+  wax use always equals what the output needs, so a deficit can only show
+  up through a physical wax count. `ComputeWaxCheck` compares actual use
+  (consumed − count corrections) with expected (accepted kg): `UNDER` /
+  `OVER` beyond max(1 kg, 0.5%), `OK` with a count, `NOT_COUNTED` without.
+  Older periods with hand-typed consumption are compared the same way.
+- **Sales need a named customer.** Walk-in is gone from new sales (old
+  rows keep `customerId` null); the Record Sale dialog searches customers
+  server-side and can add one. New `customer:create` permission (Inventory
+  Manager has it) allows adding but not editing customers. The
+  `unit-conversion:manage` permission is deleted by the seed.
+- **Inventory Manager sees no money overview.** Their dashboard is
+  remaining stock + today's produced/sold cartons (`GET
+  /api/v1/stock/summary`); their sales list hides cash/on-account totals.
+  Per-sale prices stay visible.
+- **Reports default to cartons** with a shared Cartons/Packets/Pieces
+  toggle (`PackingUnitToggle`, Zustand, not persisted).
+
 ## 2026-11-14 — Corporate polish: radius, green, favicon
 
 - **`--radius` is now 0.375rem (6px), down from 0.625rem.** Cards use `rounded-lg`. Progress bars and the stock strip are squared off (`rounded-sm`). Circles (avatars, switches, dots) stay round.

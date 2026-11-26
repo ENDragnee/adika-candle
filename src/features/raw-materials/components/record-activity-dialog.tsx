@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { RecordActivityForm } from "./record-activity-form";
 
-// "Record activity" (received / consumed) button + dialog. Shared by the
+// "Receive material" button + dialog. Shared by the
 // Inventory Manager's and the Manager's materials pages — anyone holding
 // raw-material:record can use it.
 export function RecordActivityDialog() {
@@ -23,12 +23,12 @@ export function RecordActivityDialog() {
       <DialogTrigger asChild>
         <Button>
           <PlusIcon data-icon="inline-start" />
-          Record activity
+          Receive material
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Record activity</DialogTitle>
+          <DialogTitle>Receive raw material</DialogTitle>
         </DialogHeader>
         <RecordActivityForm onSuccess={() => setOpen(false)} />
       </DialogContent>

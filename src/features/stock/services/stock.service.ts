@@ -1,11 +1,12 @@
 import { axiosInstance } from "@/lib/axios";
 import type { Paginated, PaginationParams } from "@/lib/pagination";
-import type { StockCountInput } from "@/lib/schemas/stock-count.schema";
+import type { ProductStockCountInput } from "@/lib/schemas/stock-count.schema";
 import type {
   AcceptStockInput,
   StockBalanceDTO,
   StockBalanceQuery,
   StockLedgerEntryDTO,
+  StockSummaryDTO,
 } from "../validators/stock.schema";
 
 export type StockBalancesQueryParams = StockBalanceQuery & PaginationParams;
@@ -43,11 +44,18 @@ export async function AcceptStock(
 
 export async function RecordStockCount(
   productId: string,
-  input: StockCountInput,
+  input: ProductStockCountInput,
 ): Promise<StockLedgerEntryDTO> {
   const { data } = await axiosInstance.post<StockLedgerEntryDTO>(
     `/api/v1/stock/${productId}/count`,
     input,
+  );
+  return data;
+}
+
+export async function FetchStockSummary(): Promise<StockSummaryDTO> {
+  const { data } = await axiosInstance.get<StockSummaryDTO>(
+    "/api/v1/stock/summary",
   );
   return data;
 }

@@ -1,15 +1,13 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
-import { SaleList } from "@/features/sales/components/sale-list";
-import { StockBalanceList } from "@/features/stock/components/stock-balance-list";
-import { CheckPermission, GetApiSession } from "@/lib/session";
+import { InventoryDashboard } from "@/features/stock/components/inventory-dashboard";
+import { CheckPermission } from "@/lib/session";
 
 // Reads the session directly — not a candidate for instant navigation.
 export const instant = false;
 
-// Simple enough to stay pure REST — reuses the same hooks/components as
-// /inventory/sales and /manager/stock rather than a new GraphQL
-// aggregation. See docs/DECISIONS.md, "Epic 8 decisions".
+// Remaining stock and today's movement, in cartons — no money overview
+// for the Inventory Manager (prices appear only when recording a sale).
 export default async function InventoryDashboardPage() {
   const allowed = await CheckPermission("stock:read");
 
@@ -17,25 +15,10 @@ export default async function InventoryDashboardPage() {
     redirect("/unauthorized");
   }
 
-  const session = await GetApiSession();
-
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader description="Your recent sales and current stock levels." />
-
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold">My recent sales</h2>
-        <SaleList
-          createdById={session?.user?.id}
-          initialRange="today"
-          linkBase="/inventory"
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold">Stock levels</h2>
-        <StockBalanceList />
-      </div>
+      <PageHeader description="What's left in stock and what moved today, in cartons." />
+      <InventoryDashboard />
     </div>
   );
 }

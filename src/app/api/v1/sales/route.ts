@@ -10,6 +10,7 @@ import {
 import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { AddBusinessDays, StartOfBusinessDate } from "@/lib/business-time";
+import { CartonsFromKg } from "@/lib/carton-decimal";
 import {
   BuildPaginationMeta,
   PaginatedResponseSchema,
@@ -58,7 +59,7 @@ export const GET = CreateApiRoute({
       AND: [where, { voidedAt: null }],
     };
 
-    const [sales, total, totals, byPayment] = await Promise.all([
+    const [sales, total, totals, byPayment, byProduct] = await Promise.all([
       prisma.sale.findMany({
         where,
         include: WITH_SALE_RELATIONS_INCLUDE,
@@ -69,14 +70,36 @@ export const GET = CreateApiRoute({
       prisma.sale.aggregate({
         where: summaryWhere,
         _count: true,
-        _sum: { quantityKg: true, totalAmount: true },
+        _sum: { totalAmount: true },
       }),
       prisma.sale.groupBy({
         by: ["paymentType"],
         where: summaryWhere,
         _sum: { totalAmount: true },
       }),
+      // Cartons are per product (a Plus carton is heavier), so the kg total
+      // is split by product before converting.
+      prisma.sale.groupBy({
+        by: ["productId"],
+        where: summaryWhere,
+        _sum: { quantityKg: true },
+      }),
     ]);
+    const sizes = await prisma.product.findMany({
+      where: { id: { in: byProduct.map((row) => row.productId) } },
+      select: { id: true, cartonSize: true },
+    });
+    const sizeOf = new Map(sizes.map((row) => [row.id, row.cartonSize]));
+    const totalCartons = byProduct.reduce(
+      (sum, row) =>
+        sum.plus(
+          CartonsFromKg(
+            row._sum.quantityKg ?? new Prisma.Decimal(0),
+            sizeOf.get(row.productId) ?? "NORMAL",
+          ),
+        ),
+      new Prisma.Decimal(0),
+    );
     const userNames = await LoadUserNames(
       sales.flatMap((sale) => [sale.createdById, sale.voidedById]),
     );
@@ -91,7 +114,7 @@ export const GET = CreateApiRoute({
       pagination: BuildPaginationMeta(query, total),
       summary: {
         saleCount: totals._count,
-        totalKg: (totals._sum.quantityKg ?? 0).toString(),
+        totalCartons: totalCartons.toString(),
         totalAmount: (totals._sum.totalAmount ?? 0).toString(),
         cashAmount: SumFor("CASH"),
         onAccountAmount: SumFor("LOAN"),
@@ -108,13 +131,13 @@ export const POST = CreateApiRoute({
   activity: ({ result }) => ({
     type: "sales",
     action: "sale.create",
-    message: `Sold ${result.quantityKg} kg of ${result.productName} for ETB ${result.totalAmount}${result.customerName ? ` to ${result.customerName}` : ""}${result.paymentType === "LOAN" ? " on account" : ""}`,
+    message: `Sold ${result.cartons} ctn of ${result.productName} for ETB ${result.totalAmount}${result.customerName ? ` to ${result.customerName}` : ""}${result.paymentType === "LOAN" ? " on account" : ""}`,
     entityType: "sale",
     entityId: result.id,
     entityLabel: result.referenceCode,
     changes: {
       product: result.productName,
-      quantityKg: result.quantityKg,
+      cartons: result.cartons,
       totalAmount: result.totalAmount,
       paymentType: result.paymentType,
       customer: result.customerName,

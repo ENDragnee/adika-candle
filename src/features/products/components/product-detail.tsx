@@ -34,7 +34,6 @@ import {
 import { CardSkeleton, DetailSkeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCategories } from "@/features/categories/hooks/use-categories";
-import { RecipeEditor } from "@/features/raw-materials/components/recipe-editor";
 import { SaleList } from "@/features/sales/components/sale-list";
 import { useSales } from "@/features/sales/hooks/use-sales";
 import { StockStatusBadge } from "@/features/stock/components/stock-status-badge";
@@ -45,7 +44,14 @@ import {
   BusinessDateKey,
   StartOfBusinessDay,
 } from "@/lib/business-time";
-import { FormatKg, FormatMoney, FormatPercent } from "@/lib/format";
+import { FormatMoney, FormatPercent } from "@/lib/format";
+import {
+  CARTON_SIZE_META,
+  CARTON_SIZES,
+  type CartonSize,
+  FormatPacking,
+  FormatPackingBreakdown,
+} from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useProduct, useUpdateProduct } from "../hooks/use-products";
 import { CostHistory } from "./cost-history";
@@ -57,13 +63,17 @@ function EditProductForm({
   productId,
   name: initialName,
   categoryId: initialCategoryId,
-  lowStockThresholdKg: initialLowStockThresholdKg,
+  cartonSize: initialCartonSize,
+  sizeLocked,
+  lowStockThresholdCartons: initialThreshold,
   onSuccess,
 }: {
   productId: string;
   name: string;
   categoryId: string;
-  lowStockThresholdKg: string | null;
+  cartonSize: CartonSize;
+  sizeLocked: boolean;
+  lowStockThresholdCartons: string | null;
   onSuccess: () => void;
 }) {
   const { data: categoriesResult } = useCategories({
@@ -73,17 +83,17 @@ function EditProductForm({
   const updateProduct = useUpdateProduct(productId);
   const [name, setName] = useState(initialName);
   const [categoryId, setCategoryId] = useState(initialCategoryId);
-  const [lowStockThresholdKg, setLowStockThresholdKg] = useState(
-    initialLowStockThresholdKg ?? "",
+  const [cartonSize, setCartonSize] = useState(initialCartonSize);
+  const [threshold, setThreshold] = useState(
+    initialThreshold === null ? "" : String(Number(initialThreshold)),
   );
 
   const handleSave = async () => {
     await updateProduct.mutateAsync({
       name,
       categoryId,
-      lowStockThresholdKg: lowStockThresholdKg.trim()
-        ? Number(lowStockThresholdKg)
-        : null,
+      ...(!sizeLocked && { cartonSize }),
+      lowStockThresholdCartons: threshold.trim() ? Number(threshold) : null,
     });
     onSuccess();
   };
@@ -119,10 +129,40 @@ function EditProductForm({
       </div>
       <div className="flex flex-col gap-1">
         <label
+          htmlFor="edit-product-carton-size"
+          className="text-sm font-medium"
+        >
+          Carton size
+        </label>
+        <Select
+          value={cartonSize}
+          onValueChange={(value) => setCartonSize(value as CartonSize)}
+          disabled={sizeLocked}
+        >
+          <SelectTrigger id="edit-product-carton-size" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CARTON_SIZES.map((size) => (
+              <SelectItem key={size} value={size}>
+                {CARTON_SIZE_META[size].label} ·{" "}
+                {CARTON_SIZE_META[size].description}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {sizeLocked && (
+          <p className="text-xs text-muted-foreground">
+            Fixed: this product already has stock history.
+          </p>
+        )}
+      </div>
+      <div className="flex flex-col gap-1">
+        <label
           htmlFor="edit-product-low-stock-threshold"
           className="text-sm font-medium"
         >
-          Low-stock alert threshold (kg)
+          Low-stock alert (cartons)
         </label>
         <Input
           id="edit-product-low-stock-threshold"
@@ -130,8 +170,8 @@ function EditProductForm({
           min="0"
           step="any"
           placeholder="No alert"
-          value={lowStockThresholdKg}
-          onChange={(event) => setLowStockThresholdKg(event.target.value)}
+          value={threshold}
+          onChange={(event) => setThreshold(event.target.value)}
         />
         <p className="text-xs text-muted-foreground">
           Flagged on the Manager dashboard when stock falls below this. Leave
@@ -192,7 +232,16 @@ function ProductOverview({
         <dd className="text-sm font-medium">{product.category.name}</dd>
       </div>
       <div className="flex justify-between border-b border-border pb-2">
-        <dt className="text-sm text-muted-foreground">Current price / kg</dt>
+        <dt className="text-sm text-muted-foreground">Carton size</dt>
+        <dd className="text-sm font-medium">
+          {CARTON_SIZE_META[product.cartonSize].label} ·{" "}
+          {CARTON_SIZE_META[product.cartonSize].description}
+        </dd>
+      </div>
+      <div className="flex justify-between border-b border-border pb-2">
+        <dt className="text-sm text-muted-foreground">
+          Current price / carton
+        </dt>
         <dd className="text-sm font-medium">
           {FormatMoney(product.currentPrice)}
         </dd>
@@ -202,8 +251,8 @@ function ProductOverview({
           Low-stock alert threshold
         </dt>
         <dd className="text-sm font-medium">
-          {product.lowStockThresholdKg
-            ? FormatKg(product.lowStockThresholdKg)
+          {product.lowStockThresholdCartons
+            ? FormatPacking(product.lowStockThresholdCartons)
             : "Not set"}
         </dd>
       </div>
@@ -268,7 +317,9 @@ function ProductOverview({
                 productId={productId}
                 name={product.name}
                 categoryId={product.categoryId}
-                lowStockThresholdKg={product.lowStockThresholdKg}
+                cartonSize={product.cartonSize}
+                sizeLocked={product.hasStockHistory}
+                lowStockThresholdCartons={product.lowStockThresholdCartons}
                 onSuccess={() => setIsEditOpen(false)}
               />
             </DialogContent>
@@ -341,8 +392,8 @@ function CostHistoryTab({
               <DialogHeader>
                 <DialogTitle>Set new cost</DialogTitle>
                 <DialogDescription>
-                  What 1 kg of {product?.name} costs to make. Used for profit
-                  and margin.
+                  What one carton of {product?.name} costs to make. Used for
+                  profit and margin.
                 </DialogDescription>
               </DialogHeader>
               <SetCostForm
@@ -360,7 +411,7 @@ function CostHistoryTab({
   );
 }
 
-const TABS = ["overview", "sales", "prices", "costs", "recipe"] as const;
+const TABS = ["overview", "sales", "prices", "costs"] as const;
 type Tab = (typeof TABS)[number];
 
 function SummaryFact({
@@ -409,8 +460,8 @@ function ProductSummary({ productId }: { productId: string }) {
   }
 
   const status = ClassifyStock(
-    Number(balance.quantityKg),
-    balance.thresholdKg === null ? null : Number(balance.thresholdKg),
+    Number(balance.quantityCartons),
+    balance.thresholdCartons === null ? null : Number(balance.thresholdCartons),
   );
   const price =
     product.currentPrice === null ? null : Number(product.currentPrice);
@@ -428,20 +479,20 @@ function ProductSummary({ productId }: { productId: string }) {
         className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <SummaryFact
-          label="On hand"
+          label="Remaining"
           hint={<StockStatusBadge status={status} />}
         >
-          {FormatKg(balance.quantityKg)}
+          {FormatPackingBreakdown(balance.quantityCartons)}
         </SummaryFact>
       </Link>
       <SummaryFact
-        label="Price / kg"
+        label="Price / carton"
         hint={price === null ? "Not set — can't be sold" : undefined}
       >
         {FormatMoney(product.currentPrice)}
       </SummaryFact>
       <SummaryFact
-        label="Cost / kg"
+        label="Cost / carton"
         hint={cost === null ? "Not set" : undefined}
       >
         {FormatMoney(product.currentCost)}
@@ -456,7 +507,7 @@ function ProductSummary({ productId }: { productId: string }) {
         label="Sold, last 30 days"
         hint={sales ? FormatMoney(sales.summary.totalAmount) : undefined}
       >
-        {sales ? FormatKg(sales.summary.totalKg) : "…"}
+        {sales ? FormatPacking(sales.summary.totalCartons) : "…"}
       </SummaryFact>
     </div>
   );
@@ -502,7 +553,6 @@ export function ProductDetail({
           <TabsTrigger value="sales">Sales</TabsTrigger>
           <TabsTrigger value="prices">Price history</TabsTrigger>
           <TabsTrigger value="costs">Cost history</TabsTrigger>
-          <TabsTrigger value="recipe">Recipe</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
           <ProductOverview productId={productId} canManage={canManage} />
@@ -515,9 +565,6 @@ export function ProductDetail({
         </TabsContent>
         <TabsContent value="costs">
           <CostHistoryTab productId={productId} canManage={canManage} />
-        </TabsContent>
-        <TabsContent value="recipe">
-          <RecipeEditor productId={productId} canManage={canManage} />
         </TabsContent>
       </Tabs>
     </div>

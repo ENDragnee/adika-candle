@@ -17,14 +17,13 @@ export const POST = CreateApiRoute({
     return {
       type: "stock",
       action: "stock.accept",
-      message: `Accepted ${body.quantity} ${body.unitName} (${result.quantityKg} kg) of ${name}`,
+      message: `Accepted ${body.cartons} ctn of ${name} (${result.quantityKg} kg of wax used)`,
       entityType: "product",
       entityId: body.productId,
       entityLabel: name,
       changes: {
-        quantity: body.quantity,
-        unit: body.unitName,
-        quantityKg: result.quantityKg,
+        cartons: body.cartons,
+        waxKg: result.quantityKg,
         note: body.note,
       },
     };
@@ -32,8 +31,7 @@ export const POST = CreateApiRoute({
   handler: async (body, session) => {
     const entry = await AcceptStock({
       productId: body.productId,
-      quantity: body.quantity,
-      unitName: body.unitName,
+      cartons: body.cartons,
       note: body.note,
       createdById: session?.id ?? "",
     });

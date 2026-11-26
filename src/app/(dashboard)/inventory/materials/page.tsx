@@ -15,7 +15,7 @@ export default async function InventoryMaterialsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="Current balances across all raw materials. Record incoming or consumed activity below." />
+      <PageHeader description="Raw material balances. Record deliveries here — wax used in production is taken off automatically." />
       <InventoryMaterialsView />
     </div>
   );

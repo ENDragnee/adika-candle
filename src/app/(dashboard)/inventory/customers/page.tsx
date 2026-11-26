@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
 import { CustomerList } from "@/features/customers/components/customer-list";
-import { CheckPermission } from "@/lib/session";
+import { CheckAnyPermission, CheckPermission } from "@/lib/session";
 
 // Reads the session directly — not a candidate for instant navigation.
 export const instant = false;
@@ -13,10 +13,18 @@ export default async function InventoryCustomersPage() {
     redirect("/unauthorized");
   }
 
+  const canCreate = await CheckAnyPermission([
+    "customer:create",
+    "customer:manage",
+  ]);
+
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader description="Directory and loan balance lookup." />
-      <CustomerList detailHrefBase="/inventory/customers" />
+      <PageHeader description="Your customers and what they owe." />
+      <CustomerList
+        detailHrefBase="/inventory/customers"
+        canCreate={canCreate}
+      />
     </div>
   );
 }

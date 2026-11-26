@@ -59,7 +59,8 @@ const MANAGER_DASHBOARD_QUERY = /* GraphQL */ `
         subjectName
         href
         quantityKg
-        thresholdKg
+        quantityCartons
+        thresholdCartons
         daysOfCover
         amount
         lastPaymentAt
@@ -123,6 +124,15 @@ const PRODUCTION_REPORT_QUERY = /* GraphQL */ `
       periodEnd
       offset
       hasNext
+      waxCheck {
+        status
+        expectedKg
+        actualKg
+        countCorrectionKg
+        gapKg
+        gapCartons
+        hasCount
+      }
       materials {
         materialId
         materialName
@@ -136,19 +146,20 @@ const PRODUCTION_REPORT_QUERY = /* GraphQL */ `
         productId
         productName
         productSku
-        openingKg
-        receivedKg
-        consumedKg
-        adjustedKg
-        closingKg
-        expectedOutputKg
-        variancePercent
+        cartonSize
+        openingCartons
+        producedCartons
+        soldCartons
+        adjustedCartons
+        closingCartons
+        waxKg
       }
       trend {
         periodKey
         periodLabel
-        materialConsumedKg
-        productActualOutputKg
+        producedCartons
+        waxExpectedKg
+        waxActualKg
       }
     }
   }
@@ -195,11 +206,11 @@ const PROFITABILITY_QUERY = /* GraphQL */ `
         productId
         productName
         productSku
-        currentPricePerKg
-        currentCostPerKg
+        currentPricePerCarton
+        currentCostPerCarton
         currentMarginPercent
         realizedMarginPercent
-        unitsSoldKg
+        unitsSoldCartons
         revenue
         totalProfit
         uncostedSaleCount
@@ -230,10 +241,10 @@ const STOCK_HEALTH_QUERY = /* GraphQL */ `
         productId
         productName
         productSku
-        quantityKg
-        thresholdKg
+        quantityCartons
+        thresholdCartons
         status
-        averageDailySalesKg
+        averageDailySalesCartons
         daysOfCover
       }
     }
@@ -257,9 +268,9 @@ const BEST_SELLERS_QUERY = /* GraphQL */ `
         productName
         productSku
         categoryName
-        unitsSoldKg
+        unitsSoldCartons
         revenue
-        priorUnitsSoldKg
+        priorUnitsSoldCartons
         priorRevenue
       }
       byRevenue {
@@ -267,9 +278,9 @@ const BEST_SELLERS_QUERY = /* GraphQL */ `
         productName
         productSku
         categoryName
-        unitsSoldKg
+        unitsSoldCartons
         revenue
-        priorUnitsSoldKg
+        priorUnitsSoldCartons
         priorRevenue
       }
     }

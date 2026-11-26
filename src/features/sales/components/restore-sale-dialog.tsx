@@ -11,7 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { FormatKg, FormatMoney } from "@/lib/format";
+import { FormatMoney } from "@/lib/format";
+import { FormatPacking } from "@/lib/packing";
 import { useRestoreSale } from "../hooks/use-sales";
 import type { SaleDTO } from "../validators/sale.schema";
 
@@ -50,7 +51,7 @@ export function RestoreSaleDialog({
           </DialogHeader>
           <ul className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3 text-sm">
             <li>
-              <span className="font-medium">{FormatKg(sale.quantityKg)}</span>{" "}
+              <span className="font-medium">{FormatPacking(sale.cartons)}</span>{" "}
               of {sale.productName} is taken out of stock again.
             </li>
             {sale.paymentType === "LOAN" && sale.customerName && (

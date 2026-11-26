@@ -13,8 +13,8 @@ import type { PriceDTO } from "../validators/price.schema";
 const columns: DataTableColumn<PriceDTO>[] = [
   {
     key: "amount",
-    header: "Amount / kg",
-    cell: (price) => FormatMoney(price.amountPerKg),
+    header: "Per carton",
+    cell: (price) => FormatMoney(price.amountPerCarton),
   },
   {
     key: "from",

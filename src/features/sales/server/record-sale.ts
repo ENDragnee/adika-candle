@@ -1,10 +1,8 @@
-import {
-  convertToKg,
-  UnknownUnitError,
-} from "@/features/unit-conversions/services/convert-to-kg.service";
 import { Prisma } from "@/generated/prisma/client";
+import { CartonsString, KgFromCartons } from "@/lib/carton-decimal";
 import { GenerateCode } from "@/lib/generate-code";
 import { ApplyLoanDelta, ApplyStockDelta } from "@/lib/ledger-balance";
+import { KG_PER_CARTON } from "@/lib/packing";
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "@/lib/server/domain-error";
 import {
@@ -97,7 +95,7 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
     );
   }
 
-  const [activePrice, activeCost, unit, customer] = await Promise.all([
+  const [activePrice, activeCost, customer] = await Promise.all([
     prisma.price.findFirst({
       where: { productId: input.productId, effectiveTo: null },
     }),
@@ -106,12 +104,7 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
     prisma.cost.findFirst({
       where: { productId: input.productId, effectiveTo: null },
     }),
-    prisma.unitConversion.findUnique({
-      where: { unitName: input.inputUnitName },
-    }),
-    input.customerId
-      ? prisma.customer.findUnique({ where: { id: input.customerId } })
-      : Promise.resolve(null),
+    prisma.customer.findUnique({ where: { id: input.customerId } }),
   ]);
 
   if (!activePrice) {
@@ -121,10 +114,10 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
       "NO_PRICE",
     );
   }
-  if (input.customerId && !customer) {
+  if (!customer) {
     throw new DomainError("Customer not found", 404, "NOT_FOUND");
   }
-  if (customer && !customer.isActive) {
+  if (!customer.isActive) {
     throw new DomainError(
       "This customer is inactive",
       400,
@@ -132,28 +125,13 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
     );
   }
 
-  let quantityKgNumber: number;
-  try {
-    quantityKgNumber = await convertToKg(
-      input.inputUnitName,
-      input.inputQuantity,
-    );
-  } catch (err) {
-    if (err instanceof UnknownUnitError) {
-      throw new DomainError(err.message, 400, "UNKNOWN_UNIT");
-    }
-    throw err;
-  }
-  if (!unit) {
-    throw new DomainError(
-      `Unknown or inactive unit: ${input.inputUnitName}`,
-      400,
-      "UNKNOWN_UNIT",
-    );
-  }
-
-  const quantityKg = new Prisma.Decimal(quantityKgNumber);
-  const totalAmount = quantityKg.times(activePrice.amountPerKg);
+  const cartons = new Prisma.Decimal(input.cartons);
+  const kgPerCarton = KG_PER_CARTON[product.cartonSize];
+  const quantityKg = KgFromCartons(cartons, product.cartonSize);
+  // cartons × price per carton, to the cent — the figure the seller quoted.
+  const totalAmount = quantityKg
+    .times(activePrice.amountPerKg)
+    .toDecimalPlaces(2);
 
   // Re-runs the whole transaction on a referenceCode collision — see
   // docs/DECISIONS.md, "Epic 6 decisions".
@@ -171,8 +149,8 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
               409,
               "INSUFFICIENT_STOCK",
               {
-                availableKg: available.toString(),
-                requestedKg: quantityKg.toString(),
+                availableCartons: CartonsString(available, product.cartonSize),
+                requestedCartons: cartons.toString(),
               },
             );
           }
@@ -187,10 +165,10 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
           data: {
             referenceCode,
             productId: input.productId,
-            customerId: customer?.id ?? null,
-            inputQuantity: input.inputQuantity,
-            inputUnitName: input.inputUnitName,
-            inputRatioToKg: unit.ratioToKg,
+            customerId: customer.id,
+            inputQuantity: cartons,
+            inputUnitName: "CARTON",
+            inputRatioToKg: kgPerCarton,
             quantityKg,
             unitPriceAtSale: activePrice.amountPerKg,
             totalAmount,
@@ -211,9 +189,9 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
             type: "SALE",
             quantityKg: quantityKg.negated(),
             balanceAfterKg,
-            inputQuantity: input.inputQuantity,
-            inputUnitName: input.inputUnitName,
-            inputRatioToKg: unit.ratioToKg,
+            inputQuantity: cartons,
+            inputUnitName: "CARTON",
+            inputRatioToKg: kgPerCarton,
             saleId: sale.id,
             createdById,
           },

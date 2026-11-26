@@ -66,7 +66,7 @@ const ALL_MANAGER = [
   "loan:manage",
   "user:manage",
   "role:manage",
-  "unit-conversion:manage",
+  "raw-material:manage",
 ];
 
 describe("GroupNavItems", () => {

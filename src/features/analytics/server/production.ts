@@ -1,4 +1,9 @@
 import type { Prisma } from "@/generated/prisma/client";
+import {
+  type CartonSize,
+  KG_PER_CARTON,
+  WAX_MATERIAL_NAME,
+} from "@/lib/packing";
 import { prisma } from "@/lib/prisma";
 import { InPeriod, Sum, ZERO } from "./decimal";
 import {
@@ -58,6 +63,59 @@ function OpeningClosing<T>(
   return { opening: closing.minus(within), closing };
 }
 
+// |actual − expected| wax within this is normal noise (scale rounding,
+// a few spoiled candles), not a deficit: 0.5% of the expected wax, and
+// never less than 1 kg.
+const WAX_TOLERANCE_RATIO = 0.005;
+const WAX_TOLERANCE_MIN_KG = 1;
+
+export type WaxCheckStatus = "UNDER" | "OVER" | "OK" | "NOT_COUNTED";
+
+// Under-production check (2026-11-25). Each carton takes a fixed amount
+// of wax (7 kg Normal, 8.5 kg Plus — src/lib/packing.ts), so the cartons
+// produced say how much wax *should* have gone; accepting stock takes
+// exactly that off the wax balance. What wax *actually* went is only
+// known from a physical wax count: a count that finds less wax than
+// recorded means more was used than the output accounts for — under-
+// production (or waste/loss). Before automatic consumption, CONSUMED
+// entries were typed in, so older periods compare those against output
+// the same way.
+export function ComputeWaxCheck(input: {
+  expectedKg: Prisma.Decimal; // wax the accepted cartons account for
+  producedCartons: Prisma.Decimal;
+  consumedKg: Prisma.Decimal; // CONSUMED entries in the period
+  countCorrectionKg: Prisma.Decimal; // signed ADJUSTMENT sum
+  hasCount: boolean;
+}) {
+  // A count that finds less wax (negative correction) means that much
+  // more was used.
+  const actualKg = input.consumedKg.minus(input.countCorrectionKg);
+  const gapKg = actualKg.minus(input.expectedKg);
+  const kgPerCarton = input.producedCartons.greaterThan(0)
+    ? input.expectedKg.dividedBy(input.producedCartons)
+    : KG_PER_CARTON.NORMAL;
+  const gapCartons = gapKg.dividedBy(kgPerCarton);
+  const tolerance = Math.max(
+    WAX_TOLERANCE_MIN_KG,
+    input.expectedKg.toNumber() * WAX_TOLERANCE_RATIO,
+  );
+  const withinTolerance = gapKg.abs().toNumber() <= tolerance;
+
+  let status: WaxCheckStatus;
+  if (withinTolerance) status = input.hasCount ? "OK" : "NOT_COUNTED";
+  else status = gapKg.greaterThan(0) ? "UNDER" : "OVER";
+
+  return {
+    status,
+    expectedKg: input.expectedKg.toString(),
+    actualKg: actualKg.toString(),
+    countCorrectionKg: input.countCorrectionKg.toString(),
+    gapKg: gapKg.toString(),
+    gapCartons: gapCartons.toDecimalPlaces(6).toString(),
+    hasCount: input.hasCount,
+  };
+}
+
 export function ComputeProductionReport(input: {
   granularity: ReportGranularity | "CUSTOM";
   // Trend buckets, oldest first.
@@ -70,20 +128,26 @@ export function ComputeProductionReport(input: {
     id: string;
     name: string;
     sku: string;
+    cartonSize: CartonSize;
     balanceKg: Prisma.Decimal;
   }[];
   materialEntries: MaterialMovement[];
   stockEntries: StockMovement[];
-  requirements: {
-    productId: string;
-    materialId: string;
-    quantityKgPerOutputKg: Prisma.Decimal;
-  }[];
   offset: number;
 }) {
   const { periods, materialEntries, stockEntries } = input;
   const period = input.period ?? periods[periods.length - 1];
-  const materialConsumed = new Map<string, Prisma.Decimal>();
+  const sizeOf = new Map(
+    input.products.map((product) => [product.id, product.cartonSize]),
+  );
+  // Stock is stored in kg; every finished-goods figure is reported in
+  // cartons of that product.
+  const ToCartons = (productId: string, kg: Prisma.Decimal) =>
+    kg.dividedBy(KG_PER_CARTON[sizeOf.get(productId) ?? "NORMAL"]);
+  const wax = input.materials.find(
+    (material) =>
+      material.name.toLowerCase() === WAX_MATERIAL_NAME.toLowerCase(),
+  );
 
   const materials = input.materials.map((material) => {
     const entries = materialEntries.filter(
@@ -111,7 +175,6 @@ export function ComputeProductionReport(input: {
       MaterialDelta,
       (entry) => entry.createdAt,
     );
-    materialConsumed.set(material.id, consumed);
 
     return {
       materialId: material.id,
@@ -158,66 +221,67 @@ export function ComputeProductionReport(input: {
       (entry) => entry.quantityKg,
       (entry) => entry.createdAt,
     );
-
-    // "Expected output" is bottlenecked by whichever required material
-    // would run out soonest — see docs/DECISIONS.md, "Epic 17 decisions"
-    // (raw-material consumption isn't attributed per product, so this is
-    // an estimate when a material is shared across recipes).
-    const recipe = input.requirements.filter(
-      (requirement) => requirement.productId === product.id,
-    );
-    let expectedOutputKg: string | null = null;
-    let variancePercent: string | null = null;
-
-    if (recipe.length > 0) {
-      const expected = recipe
-        .map((requirement) =>
-          (materialConsumed.get(requirement.materialId) ?? ZERO).dividedBy(
-            requirement.quantityKgPerOutputKg,
-          ),
-        )
-        .reduce((min, value) => (value.lessThan(min) ? value : min));
-      expectedOutputKg = expected.toString();
-      if (expected.greaterThan(0)) {
-        variancePercent = received
-          .minus(expected)
-          .dividedBy(expected)
-          .times(100)
-          .toFixed(1);
-      }
-    }
+    const Cartons = (kg: Prisma.Decimal) =>
+      ToCartons(product.id, kg).toDecimalPlaces(6).toString();
 
     return {
       productId: product.id,
       productName: product.name,
       productSku: product.sku,
-      openingKg: opening.toString(),
-      receivedKg: received.toString(),
-      consumedKg: consumed.toString(),
-      adjustedKg: adjusted.toString(),
-      closingKg: closing.toString(),
-      expectedOutputKg,
-      variancePercent,
+      cartonSize: product.cartonSize,
+      openingCartons: Cartons(opening),
+      producedCartons: Cartons(received),
+      soldCartons: Cartons(consumed),
+      adjustedCartons: Cartons(adjusted),
+      closingCartons: Cartons(closing),
+      // Produced kg is the wax those cartons took.
+      waxKg: received.toString(),
     };
   });
 
-  const trend = periods.map((bounds) => ({
-    periodKey: bounds.key,
-    periodLabel: bounds.label,
-    materialConsumedKg: Sum(
-      materialEntries.filter(
-        (entry) =>
-          entry.type === "CONSUMED" && InPeriod(entry.createdAt, bounds),
+  function WaxCheckFor(bounds: PeriodBounds) {
+    const accepted = stockEntries.filter(
+      (entry) => entry.type === "ACCEPT" && InPeriod(entry.createdAt, bounds),
+    );
+    const waxEntries = wax
+      ? materialEntries.filter(
+          (entry) =>
+            entry.materialId === wax.id && InPeriod(entry.createdAt, bounds),
+        )
+      : [];
+    const counts = waxEntries.filter((entry) => entry.type === "ADJUSTMENT");
+    return ComputeWaxCheck({
+      expectedKg: Sum(accepted, (entry) => entry.quantityKg),
+      producedCartons: Sum(accepted, (entry) =>
+        ToCartons(entry.productId, entry.quantityKg),
       ),
-      (entry) => entry.quantityKg,
-    ).toString(),
-    productActualOutputKg: Sum(
-      stockEntries.filter(
-        (entry) => entry.type === "ACCEPT" && InPeriod(entry.createdAt, bounds),
+      consumedKg: Sum(
+        waxEntries.filter((entry) => entry.type === "CONSUMED"),
+        (entry) => entry.quantityKg,
       ),
-      (entry) => entry.quantityKg,
-    ).toString(),
-  }));
+      countCorrectionKg: Sum(counts, (entry) => entry.quantityKg),
+      hasCount: counts.length > 0,
+    });
+  }
+
+  const trend = periods.map((bounds) => {
+    const check = WaxCheckFor(bounds);
+    return {
+      periodKey: bounds.key,
+      periodLabel: bounds.label,
+      producedCartons: Sum(
+        stockEntries.filter(
+          (entry) =>
+            entry.type === "ACCEPT" && InPeriod(entry.createdAt, bounds),
+        ),
+        (entry) => ToCartons(entry.productId, entry.quantityKg),
+      )
+        .toDecimalPlaces(6)
+        .toString(),
+      waxExpectedKg: check.expectedKg,
+      waxActualKg: check.actualKg,
+    };
+  });
 
   return {
     granularity: input.granularity,
@@ -226,6 +290,8 @@ export function ComputeProductionReport(input: {
     periodEnd: period.end.toISOString(),
     offset: input.offset,
     hasNext: input.granularity !== "CUSTOM" && input.offset < 0,
+    // Null when there's no Wax material to check against.
+    waxCheck: wax ? WaxCheckFor(period) : null,
     materials,
     products,
     trend,
@@ -247,7 +313,7 @@ export async function BuildProductionReport(
   // movement after it.
   const since = periods[0].start;
 
-  const [materials, products, materialEntries, stockEntries, requirements] =
+  const [materials, products, materialEntries, stockEntries] =
     await Promise.all([
       prisma.rawMaterial.findMany({
         where: { isActive: true },
@@ -265,7 +331,6 @@ export async function BuildProductionReport(
       prisma.stockLedgerEntry.findMany({
         where: { createdAt: { gte: since } },
       }),
-      prisma.productMaterialRequirement.findMany(),
     ]);
 
   return ComputeProductionReport({
@@ -282,10 +347,10 @@ export async function BuildProductionReport(
       id: product.id,
       name: product.name,
       sku: product.sku,
+      cartonSize: product.cartonSize,
       balanceKg: product.stockBalance?.quantityKg ?? ZERO,
     })),
     materialEntries,
     stockEntries,
-    requirements,
   });
 }

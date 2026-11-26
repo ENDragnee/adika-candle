@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { PaginationParams } from "@/lib/pagination";
 import { InvalidateLedgerQueries } from "@/lib/query-invalidation";
-import type { StockCountInput } from "@/lib/schemas/stock-count.schema";
+import type { ProductStockCountInput } from "@/lib/schemas/stock-count.schema";
 import {
   AcceptStock,
   FetchProductLedger,
   FetchStockBalances,
+  FetchStockSummary,
   RecordStockCount,
   type StockBalancesQueryParams,
 } from "../services/stock.service";
@@ -26,6 +27,13 @@ export function useStockBalances(params: StockBalancesQueryParams = {}) {
   return useQuery({
     queryKey: stockBalancesQueryKey(params),
     queryFn: () => FetchStockBalances(params),
+  });
+}
+
+export function useStockSummary() {
+  return useQuery({
+    queryKey: ["stock", "summary"],
+    queryFn: FetchStockSummary,
   });
 }
 
@@ -57,7 +65,8 @@ export function useRecordStockCount(productId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: StockCountInput) => RecordStockCount(productId, input),
+    mutationFn: (input: ProductStockCountInput) =>
+      RecordStockCount(productId, input),
     onSuccess: () => {
       InvalidateLedgerQueries(queryClient);
       toast.success("Stock count recorded");

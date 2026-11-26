@@ -9,13 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ToneBadge } from "@/components/ui/tone-badge";
-import {
-  FormatDateTime,
-  FormatKg,
-  FormatMoney,
-  FormatNumber,
-  FormatPercent,
-} from "@/lib/format";
+import { FormatDateTime, FormatMoney, FormatPercent } from "@/lib/format";
+import { FormatPacking, FormatPackingBreakdown } from "@/lib/packing";
 import { PAYMENT_TYPE_META } from "../labels";
 import type { SaleDTO } from "../validators/sale.schema";
 
@@ -102,11 +97,13 @@ export function SaleDetailsDialog({
             )}
           </Row>
           <Row label="Quantity">
-            {FormatNumber(sale.inputQuantity)} {sale.inputUnitName} ×{" "}
-            {FormatNumber(sale.inputRatioToKg)} kg = {FormatKg(sale.quantityKg)}
+            {FormatPacking(sale.cartons)}{" "}
+            <span className="text-muted-foreground">
+              ({FormatPackingBreakdown(sale.cartons)})
+            </span>
           </Row>
           <Row label="Price at sale">
-            {FormatMoney(sale.unitPriceAtSale)} / kg
+            {FormatMoney(sale.pricePerCarton)} / carton
           </Row>
           <Row label="Payment">{PAYMENT_TYPE_META[sale.paymentType].label}</Row>
           <Row label="Total">

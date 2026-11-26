@@ -17,10 +17,13 @@ import { usePagination } from "@/lib/use-pagination";
 import { useCustomers } from "../hooks/use-customers";
 import { FetchCustomers } from "../services/customer.service";
 import type { CustomerDTO } from "../validators/customer.schema";
+import { AddCustomerDialog } from "./create-customer-form";
 
 export function CustomerList({
   detailHrefBase,
+  canCreate = false,
 }: {
+  canCreate?: boolean;
   // Links customer names to `${detailHrefBase}/${customerId}`. Both the
   // Manager and Inventory Manager detail pages use this list, just with
   // different base paths.
@@ -110,17 +113,20 @@ export function CustomerList({
           placeholder="Search by name…"
           className="max-w-sm"
         />
-        <ExportMenu
-          filename="customers"
-          title="Customers"
-          columns={exportColumns}
-          rows={() =>
-            FetchCustomers({
-              pageSize: MAX_PAGE_SIZE,
-              ...(debouncedSearch && { search: debouncedSearch }),
-            }).then((result) => result.data)
-          }
-        />
+        <div className="flex items-center gap-2">
+          {canCreate && <AddCustomerDialog />}
+          <ExportMenu
+            filename="customers"
+            title="Customers"
+            columns={exportColumns}
+            rows={() =>
+              FetchCustomers({
+                pageSize: MAX_PAGE_SIZE,
+                ...(debouncedSearch && { search: debouncedSearch }),
+              }).then((result) => result.data)
+            }
+          />
+        </div>
       </div>
       <DataTable
         columns={columns}

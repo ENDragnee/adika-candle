@@ -11,41 +11,39 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useProducts } from "@/features/products/hooks/use-products";
-import { useUnitConversions } from "@/features/unit-conversions/hooks/use-unit-conversions";
+import { FormatKg } from "@/lib/format";
+import { CARTON_SIZE_META, CartonsToKg } from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useAcceptStock } from "../hooks/use-stock";
 
+// Stock from production, in cartons. The wax it used is taken off the Wax
+// balance automatically (shown below so nobody records it twice).
 export function AcceptStockForm({ onSuccess }: { onSuccess: () => void }) {
   const { data: productsResult, isLoading: productsLoading } = useProducts({
     pageSize: MAX_PAGE_SIZE,
   });
-  const { data: unitsResult, isLoading: unitsLoading } = useUnitConversions({
-    pageSize: MAX_PAGE_SIZE,
-  });
   const activeProducts =
     productsResult?.data.filter((product) => product.isActive) ?? [];
-  const activeUnits = unitsResult?.data.filter((unit) => unit.isActive) ?? [];
 
   const [productId, setProductId] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unitName, setUnitName] = useState("");
+  const [cartons, setCartons] = useState("");
   const [note, setNote] = useState("");
   const acceptStock = useAcceptStock();
+
+  const product = activeProducts.find((item) => item.id === productId);
+  const cartonCount = Number(cartons);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     await acceptStock.mutateAsync({
       productId,
-      quantity: Number(quantity),
-      unitName,
+      cartons: cartonCount,
       note: note.trim() ? note.trim() : undefined,
     });
 
     onSuccess();
   }
-
-  const isReady = !productsLoading && !unitsLoading;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -56,59 +54,41 @@ export function AcceptStockForm({ onSuccess }: { onSuccess: () => void }) {
         <Select
           value={productId}
           onValueChange={setProductId}
-          disabled={!isReady}
+          disabled={productsLoading}
         >
           <SelectTrigger id="accept-stock-product" className="w-full">
             <SelectValue placeholder="Select a product" />
           </SelectTrigger>
           <SelectContent>
-            {activeProducts.map((product) => (
-              <SelectItem key={product.id} value={product.id}>
-                {product.name} ({product.sku})
+            {activeProducts.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {item.name} · {CARTON_SIZE_META[item.cartonSize].label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-      <div className="flex gap-2">
-        <div className="flex flex-1 flex-col gap-1">
-          <label
-            htmlFor="accept-stock-quantity"
-            className="text-sm font-medium"
-          >
-            Quantity
-          </label>
-          <Input
-            id="accept-stock-quantity"
-            type="number"
-            step="any"
-            min="0"
-            value={quantity}
-            onChange={(event) => setQuantity(event.target.value)}
-            required
-          />
-        </div>
-        <div className="flex flex-1 flex-col gap-1">
-          <label htmlFor="accept-stock-unit" className="text-sm font-medium">
-            Unit
-          </label>
-          <Select
-            value={unitName}
-            onValueChange={setUnitName}
-            disabled={!isReady}
-          >
-            <SelectTrigger id="accept-stock-unit" className="w-full">
-              <SelectValue placeholder="Select a unit" />
-            </SelectTrigger>
-            <SelectContent>
-              {activeUnits.map((unit) => (
-                <SelectItem key={unit.id} value={unit.unitName}>
-                  {unit.unitName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="accept-stock-cartons" className="text-sm font-medium">
+          Cartons
+        </label>
+        <Input
+          id="accept-stock-cartons"
+          type="number"
+          step="any"
+          min="0"
+          inputMode="decimal"
+          value={cartons}
+          onChange={(event) => setCartons(event.target.value)}
+          required
+        />
+        {product && cartonCount > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Uses {FormatKg(CartonsToKg(cartonCount, product.cartonSize))} of wax
+            ({CARTON_SIZE_META[product.cartonSize].description}) — taken off the
+            wax balance automatically.
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="accept-stock-note" className="text-sm font-medium">
@@ -120,19 +100,14 @@ export function AcceptStockForm({ onSuccess }: { onSuccess: () => void }) {
           onChange={(event) => setNote(event.target.value)}
         />
       </div>
-      {!unitsLoading && activeUnits.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No active units yet — ask a Manager to set one up under Settings.
-        </p>
-      )}
       <Button
         loading={acceptStock.isPending}
         type="submit"
         disabled={
           acceptStock.isPending ||
-          !isReady ||
-          activeProducts.length === 0 ||
-          activeUnits.length === 0
+          productsLoading ||
+          !product ||
+          !(cartonCount > 0)
         }
         className="mt-1"
       >

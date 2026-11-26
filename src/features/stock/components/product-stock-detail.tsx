@@ -10,7 +10,8 @@ import { Section } from "@/components/ui/section";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { BalanceHistoryChart } from "@/features/analytics/components/balance-history-chart";
 import { useProduct } from "@/features/products/hooks/use-products";
-import { FormatKg, FormatRelative } from "@/lib/format";
+import { FormatRelative } from "@/lib/format";
+import { FormatPacking, FormatPackingBreakdown } from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 import {
@@ -74,8 +75,8 @@ export function ProductStockDetail({
   }
 
   const status = ClassifyStock(
-    Number(balance.quantityKg),
-    balance.thresholdKg === null ? null : Number(balance.thresholdKg),
+    Number(balance.quantityCartons),
+    balance.thresholdCartons === null ? null : Number(balance.thresholdCartons),
   );
 
   return (
@@ -94,8 +95,9 @@ export function ProductStockDetail({
           </Button>
           {canAdjust && (
             <StockCountDialog
+              kind="packing"
               itemName={balance.productName}
-              currentKg={balance.quantityKg}
+              currentCartons={balance.quantityCartons}
               onSubmit={(input) => recordCount.mutateAsync(input)}
               isPending={recordCount.isPending}
             />
@@ -104,15 +106,15 @@ export function ProductStockDetail({
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Fact label="On hand">
+        <Fact label="Remaining">
           <span
             className={cn(Number(balance.quantityKg) < 0 && "text-destructive")}
           >
-            {FormatKg(balance.quantityKg)}
+            {FormatPackingBreakdown(balance.quantityCartons)}
           </span>
         </Fact>
         <Fact label="Low-stock alert level">
-          {balance.thresholdKg === null ? (
+          {balance.thresholdCartons === null ? (
             <Link
               href={`/manager/products/${productId}`}
               className="text-sm font-medium underline-offset-4 hover:underline"
@@ -120,7 +122,7 @@ export function ProductStockDetail({
               Not set — set one
             </Link>
           ) : (
-            FormatKg(balance.thresholdKg)
+            FormatPacking(balance.thresholdCartons)
           )}
         </Fact>
         <Fact label="Last movement">
@@ -136,7 +138,8 @@ export function ProductStockDetail({
           <CardContent>
             <BalanceHistoryChart
               entries={recent?.data ?? []}
-              thresholdKg={balance.thresholdKg}
+              threshold={balance.thresholdCartons}
+              unit="cartons"
             />
           </CardContent>
         </Card>

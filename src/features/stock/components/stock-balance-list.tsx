@@ -9,7 +9,8 @@ import {
 import { ExportMenu } from "@/components/ui/export-menu";
 import { ListSearch } from "@/components/ui/list-search";
 import type { ExportColumn } from "@/lib/export/export-column";
-import { FormatKg, FormatRelative } from "@/lib/format";
+import { FormatRelative } from "@/lib/format";
+import { FormatPacking, FormatPackingBreakdown } from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useListParams } from "@/lib/use-list-params";
 import { cn } from "@/lib/utils";
@@ -21,8 +22,8 @@ import { STOCK_STATUS_META, StockStatusBadge } from "./stock-status-badge";
 
 function StatusOf(balance: StockBalanceDTO) {
   return ClassifyStock(
-    Number(balance.quantityKg),
-    balance.thresholdKg === null ? null : Number(balance.thresholdKg),
+    Number(balance.quantityCartons),
+    balance.thresholdCartons === null ? null : Number(balance.thresholdCartons),
   );
 }
 
@@ -68,7 +69,7 @@ export function StockBalanceList({
     },
     {
       key: "quantity",
-      header: "On hand",
+      header: "Remaining",
       sortKey: "quantity",
       cell: (balance) => (
         <span
@@ -77,7 +78,7 @@ export function StockBalanceList({
             Number(balance.quantityKg) < 0 && "text-destructive",
           )}
         >
-          {FormatKg(balance.quantityKg)}
+          {FormatPackingBreakdown(balance.quantityCartons)}
         </span>
       ),
       className: "text-right",
@@ -86,9 +87,9 @@ export function StockBalanceList({
       key: "threshold",
       header: "Alert level",
       cell: (balance) =>
-        balance.thresholdKg === null
+        balance.thresholdCartons === null
           ? "Not set"
-          : FormatKg(balance.thresholdKg),
+          : FormatPacking(balance.thresholdCartons),
       className: "text-right tabular-nums text-muted-foreground",
     },
     {
@@ -109,10 +110,17 @@ export function StockBalanceList({
       header: "Status",
       value: (balance) => STOCK_STATUS_META[StatusOf(balance)].label,
     },
-    { header: "On hand (kg)", value: (balance) => balance.quantityKg },
     {
-      header: "Alert level (kg)",
-      value: (balance) => balance.thresholdKg ?? "",
+      header: "Remaining (cartons)",
+      value: (balance) => balance.quantityCartons,
+    },
+    {
+      header: "Remaining",
+      value: (balance) => FormatPackingBreakdown(balance.quantityCartons),
+    },
+    {
+      header: "Alert level (cartons)",
+      value: (balance) => balance.thresholdCartons ?? "",
     },
     { header: "Last movement", value: (balance) => balance.updatedAt ?? "" },
   ];
