@@ -1,3 +1,4 @@
+import { CanSeeCost } from "@/features/products/cost-access";
 import { RecordSale } from "@/features/sales/server/record-sale";
 import {
   CreateSaleInputSchema,
@@ -52,7 +53,7 @@ export const GET = CreateApiRoute({
   responseSchema: PaginatedResponseSchema(SaleSchema).extend({
     summary: SalesSummarySchema,
   }),
-  handler: async (query) => {
+  handler: async (query, session) => {
     const where = BuildWhere(query);
     // Totals always describe live sales — a voided sale never counts as
     // money taken, even when the list is showing voided rows.
@@ -111,7 +112,9 @@ export const GET = CreateApiRoute({
       ).toString();
 
     return {
-      data: sales.map((sale) => ToSaleDTO(sale, userNames)),
+      data: sales.map((sale) =>
+        ToSaleDTO(sale, userNames, CanSeeCost(session?.permissions)),
+      ),
       pagination: BuildPaginationMeta(query, total),
       summary: {
         saleCount: totals._count,
@@ -151,6 +154,10 @@ export const POST = CreateApiRoute({
     // requiresAuth.status guarantees a session id here.
     const createdById = session?.id ?? "";
     const sale = await RecordSale(body, createdById);
-    return ToSaleDTO(sale, await LoadUserNames([sale.createdById]));
+    return ToSaleDTO(
+      sale,
+      await LoadUserNames([sale.createdById]),
+      CanSeeCost(session?.permissions),
+    );
   },
 });

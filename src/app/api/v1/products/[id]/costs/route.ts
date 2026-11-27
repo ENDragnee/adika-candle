@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CanSeeCost, COST_PERMISSION } from "@/features/products/cost-access";
 import type { SetNewCostInput } from "@/features/products/validators/cost.schema";
 import {
   CostSchema,
@@ -23,7 +24,9 @@ type Params = { id: string };
 export const GET = CreateApiRoute<PaginationQuery, Params>({
   moduleName: "products.costs",
   schema: PaginationQuerySchema,
-  requiresAuth: { status: true, permission: "product:manage" },
+  // Cost history is cost data: product:cost, not product:manage (the
+  // Inventory Manager holds neither, but a custom role might hold one).
+  requiresAuth: { status: true, permission: COST_PERMISSION },
   responseSchema: PaginatedResponseSchema(CostSchema),
   handler: async (query, _session, params) => {
     const where = { productId: params?.id };
@@ -66,6 +69,18 @@ export const POST = CreateApiRoute<SetNewCostInput, Params>({
     };
   },
   handler: async (body, session, params) => {
+    // Setting a cost needs product:manage *and* product:cost —
+    // requiresAuth's string[] means any-of, so the second is checked here.
+    if (!CanSeeCost(session?.permissions)) {
+      return NextResponse.json(
+        {
+          error: "You don't have permission to do this.",
+          code: "FORBIDDEN",
+        },
+        { status: 403 },
+      );
+    }
+
     const productId = params?.id;
 
     if (!productId) {

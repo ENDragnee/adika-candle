@@ -82,12 +82,14 @@ function SaleActions({
   canRestore,
   lockedThrough,
   linkBase,
+  canSeeCost,
 }: {
   sale: SaleDTO;
   canVoid: boolean;
   canRestore: boolean;
   lockedThrough: string | null;
   linkBase: string;
+  canSeeCost: boolean;
 }) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isVoidOpen, setIsVoidOpen] = useState(false);
@@ -135,6 +137,7 @@ function SaleActions({
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         linkBase={linkBase}
+        canSeeCost={canSeeCost}
       />
       {canVoid && (
         <VoidSaleDialog
@@ -161,6 +164,7 @@ function BuildColumns({
   canRestore,
   lockedThrough,
   linkBase,
+  canSeeCost,
   mode,
 }: {
   showProduct: boolean;
@@ -169,6 +173,7 @@ function BuildColumns({
   canRestore: boolean;
   lockedThrough: string | null;
   linkBase: string;
+  canSeeCost: boolean;
   mode: SaleUnitMode;
 }): DataTableColumn<SaleDTO>[] {
   return [
@@ -267,6 +272,7 @@ function BuildColumns({
           canRestore={canRestore}
           lockedThrough={lockedThrough}
           linkBase={linkBase}
+          canSeeCost={canSeeCost}
         />
       ),
       className: "w-10",
@@ -327,8 +333,12 @@ export function SaleList({
   linkBase = "/manager",
   // The Inventory Manager sees each sale's price but no money totals.
   showMoneySummary = true,
+  // product:cost: shows each sale's profit in its details. Off by default;
+  // the API sends no cost without it anyway.
+  canSeeCost = false,
 }: {
   showMoneySummary?: boolean;
+  canSeeCost?: boolean;
   createdById?: string;
   productId?: string;
   customerId?: string;
@@ -387,6 +397,7 @@ export function SaleList({
     canRestore,
     lockedThrough,
     linkBase,
+    canSeeCost,
     mode,
   });
 

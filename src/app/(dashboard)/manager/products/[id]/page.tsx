@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ProductDetail } from "@/features/products/components/product-detail";
+import { COST_PERMISSION } from "@/features/products/cost-access";
 import { CheckPermission } from "@/lib/session";
 
 // Reads the session directly — not a candidate for instant navigation.
@@ -16,12 +17,17 @@ export default async function ProductDetailPage(
   }
 
   const canManage = await CheckPermission("product:manage");
+  const canSeeCost = await CheckPermission(COST_PERMISSION);
   const { id } = await props.params;
 
   // ProductDetail reads ?tab= via useSearchParams.
   return (
     <Suspense>
-      <ProductDetail productId={id} canManage={canManage} />
+      <ProductDetail
+        productId={id}
+        canManage={canManage}
+        canSeeCost={canSeeCost}
+      />
     </Suspense>
   );
 }

@@ -1,3 +1,4 @@
+import { CanSeeCost } from "@/features/products/cost-access";
 import { RestoreSale } from "@/features/sales/server/restore-sale";
 import {
   type RestoreSaleInput,
@@ -33,6 +34,10 @@ export const POST = CreateApiRoute<RestoreSaleInput, Params, SaleDTO>({
       body.reason,
       session?.id ?? "",
     );
-    return ToSaleDTO(sale, await LoadUserNames([sale.createdById]));
+    return ToSaleDTO(
+      sale,
+      await LoadUserNames([sale.createdById]),
+      CanSeeCost(session?.permissions),
+    );
   },
 });

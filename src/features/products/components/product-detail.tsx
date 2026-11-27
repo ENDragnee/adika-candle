@@ -53,6 +53,7 @@ import {
   FormatPackingBreakdown,
 } from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
+import { cn } from "@/lib/utils";
 import { useProduct, useUpdateProduct } from "../hooks/use-products";
 import { CostHistory } from "./cost-history";
 import { PriceHistory } from "./price-history";
@@ -437,7 +438,13 @@ function SummaryFact({
 // "How is this product doing?" in one strip (Epic 21): stock on hand with
 // its status, price, cost, margin, and the last 30 days' sales — before,
 // answering that meant visiting Stock, Analytics and Sales separately.
-function ProductSummary({ productId }: { productId: string }) {
+function ProductSummary({
+  productId,
+  canSeeCost,
+}: {
+  productId: string;
+  canSeeCost: boolean;
+}) {
   const { data: product } = useProduct(productId);
   const { data: stock } = useStockBalances({ productId });
   const { data: sales } = useSales({
@@ -447,14 +454,18 @@ function ProductSummary({ productId }: { productId: string }) {
   });
   const balance = stock?.data[0];
 
+  // Without product:cost the cost and margin cards are left out.
+  const gridClass = cn(
+    "grid grid-cols-2 gap-3",
+    canSeeCost ? "lg:grid-cols-5" : "lg:grid-cols-3",
+  );
+
   if (!product || !balance) {
     return (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <CardSkeleton />
-        <CardSkeleton />
-        <CardSkeleton />
-        <CardSkeleton />
-        <CardSkeleton />
+      <div className={gridClass}>
+        {(canSeeCost ? [1, 2, 3, 4, 5] : [1, 2, 3]).map((slot) => (
+          <CardSkeleton key={slot} />
+        ))}
       </div>
     );
   }
@@ -473,7 +484,7 @@ function ProductSummary({ productId }: { productId: string }) {
       : null;
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div className={gridClass}>
       <Link
         href={`/manager/stock/${productId}`}
         className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -491,18 +502,24 @@ function ProductSummary({ productId }: { productId: string }) {
       >
         {FormatMoney(product.currentPrice)}
       </SummaryFact>
-      <SummaryFact
-        label="Cost / carton"
-        hint={cost === null ? "Not set" : undefined}
-      >
-        {FormatMoney(product.currentCost)}
-      </SummaryFact>
-      <SummaryFact
-        label="Margin"
-        hint={margin !== null && margin < 0 ? "Selling below cost" : undefined}
-      >
-        {FormatPercent(margin)}
-      </SummaryFact>
+      {canSeeCost && (
+        <>
+          <SummaryFact
+            label="Cost / carton"
+            hint={cost === null ? "Not set" : undefined}
+          >
+            {FormatMoney(product.currentCost)}
+          </SummaryFact>
+          <SummaryFact
+            label="Margin"
+            hint={
+              margin !== null && margin < 0 ? "Selling below cost" : undefined
+            }
+          >
+            {FormatPercent(margin)}
+          </SummaryFact>
+        </>
+      )}
       <SummaryFact
         label="Sold, last 30 days"
         hint={sales ? FormatMoney(sales.summary.totalAmount) : undefined}
@@ -516,18 +533,22 @@ function ProductSummary({ productId }: { productId: string }) {
 export function ProductDetail({
   productId,
   canManage,
+  canSeeCost,
 }: {
   productId: string;
   canManage: boolean;
+  // product:cost (see ../cost-access.ts). Price stays visible either way.
+  canSeeCost: boolean;
 }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const requested = searchParams.get("tab");
   // The tab lives in ?tab= so the Dashboard can link straight to e.g.
   // "Set price" for a product that has none.
-  const tab: Tab = TABS.includes(requested as Tab)
-    ? (requested as Tab)
-    : "overview";
+  const tab: Tab =
+    TABS.includes(requested as Tab) && (canSeeCost || requested !== "costs")
+      ? (requested as Tab)
+      : "overview";
   const { data: product } = useProduct(productId);
   usePageHeader({
     title: product?.name ?? null,
@@ -539,7 +560,7 @@ export function ProductDetail({
 
   return (
     <div className="flex flex-col gap-6">
-      <ProductSummary productId={productId} />
+      <ProductSummary productId={productId} canSeeCost={canSeeCost} />
       <Tabs
         value={tab}
         onValueChange={(value) =>
@@ -552,20 +573,26 @@ export function ProductDetail({
           <TabsTrigger value="overview">Details</TabsTrigger>
           <TabsTrigger value="sales">Sales</TabsTrigger>
           <TabsTrigger value="prices">Price history</TabsTrigger>
-          <TabsTrigger value="costs">Cost history</TabsTrigger>
+          {canSeeCost && <TabsTrigger value="costs">Cost history</TabsTrigger>}
         </TabsList>
         <TabsContent value="overview">
           <ProductOverview productId={productId} canManage={canManage} />
         </TabsContent>
         <TabsContent value="sales">
-          <SaleList productId={productId} initialRange="30d" />
+          <SaleList
+            productId={productId}
+            initialRange="30d"
+            canSeeCost={canSeeCost}
+          />
         </TabsContent>
         <TabsContent value="prices">
           <PriceHistoryTab productId={productId} canManage={canManage} />
         </TabsContent>
-        <TabsContent value="costs">
-          <CostHistoryTab productId={productId} canManage={canManage} />
-        </TabsContent>
+        {canSeeCost && (
+          <TabsContent value="costs">
+            <CostHistoryTab productId={productId} canManage={canManage} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

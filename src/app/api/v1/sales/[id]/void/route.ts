@@ -1,3 +1,4 @@
+import { CanSeeCost } from "@/features/products/cost-access";
 import { VoidSale } from "@/features/sales/server/void-sale";
 import {
   type SaleDTO,
@@ -35,6 +36,7 @@ export const POST = CreateApiRoute<VoidSaleInput, Params, SaleDTO>({
     return ToSaleDTO(
       sale,
       await LoadUserNames([sale.createdById, sale.voidedById]),
+      CanSeeCost(session?.permissions),
     );
   },
 });
