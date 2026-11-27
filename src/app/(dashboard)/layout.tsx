@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { PageTransition } from "@/components/motion/page-transition";
+import { FeatureFlagProvider } from "@/components/providers/feature-flag-provider";
 import { AppShell } from "@/components/shell/app-shell";
 import { MaintenanceBanner } from "@/features/system/components/maintenance-banner";
 import { GetSystemSettings } from "@/features/system/server/settings";
+import { GetSaleUnitMode } from "@/lib/feature-flags/server";
 import { GetSession } from "@/lib/session";
 
 // Reads the session directly — not a candidate for instant navigation.
@@ -24,14 +26,19 @@ export default async function DashboardLayout({
     redirect("/account/change-password");
   }
 
-  const { maintenance } = await GetSystemSettings();
+  const [{ maintenance }, saleUnitMode] = await Promise.all([
+    GetSystemSettings(),
+    GetSaleUnitMode(),
+  ]);
 
   // Nav items are derived from the user's permissions inside AppShell
   // (BuildNavItems) — passing the user is enough.
   return (
-    <AppShell user={session.user}>
-      {maintenance.enabled && <MaintenanceBanner />}
-      <PageTransition>{children}</PageTransition>
-    </AppShell>
+    <FeatureFlagProvider flags={{ saleUnitMode }}>
+      <AppShell user={session.user}>
+        {maintenance.enabled && <MaintenanceBanner />}
+        <PageTransition>{children}</PageTransition>
+      </AppShell>
+    </FeatureFlagProvider>
   );
 }

@@ -1,8 +1,10 @@
 import { BUSINESS_LOCALE } from "@/configs/global-vars";
+import type { SaleUnitMode } from "@/lib/feature-flags/flags";
 
-// Packing math for the whole app. Cartons are the only unit people enter
-// (accepting stock, selling); packets and pieces exist only for reading
-// quantities back. Quantities are stored in kg — cartons × the product's
+// Packing math for the whole app. Stock is accepted in cartons; sales are
+// entered in cartons, packets or both, as the sale-unit-mode flag allows.
+// Pieces exist only for reading quantities back. Quantities are stored in
+// kg — cartons × the product's
 // kg per carton — so a carton of Plus and a carton of Normal stay
 // distinct, and the kg figure doubles as the wax it took to make them.
 // Client-safe: no Prisma imports.
@@ -122,4 +124,29 @@ export function PackingToCartons(parts: {
     parts.packets / PACKETS_PER_CARTON +
     parts.pieces / PIECES_PER_CARTON
   );
+}
+
+// A quantity in the unit sales are entered in: packets when the mode is
+// packets only ("45 pkt"), otherwise cartons with leftover packets
+// ("1 ctn · 15 pkt").
+export function FormatSaleUnits(
+  cartons: NumericInput,
+  mode: SaleUnitMode,
+): string {
+  return mode === "PACKET"
+    ? FormatPacking(cartons, "PACKET")
+    : FormatPackingBreakdown(cartons);
+}
+
+// How much one sale was, from its own snapshot rather than today's mode,
+// so a sale reads the same after the Admin switches units. Carton sales
+// stay "3 ctn" (even fractional ones); packet or mixed sales follow
+// FormatSaleUnits.
+export function FormatSaleQuantity(
+  sale: { cartons: NumericInput; inputUnitName: string },
+  mode: SaleUnitMode,
+): string {
+  return sale.inputUnitName === "PACKET"
+    ? FormatSaleUnits(sale.cartons, mode)
+    : FormatPacking(sale.cartons);
 }
