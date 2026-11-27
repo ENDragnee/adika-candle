@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CanSeeCost } from "@/features/products/cost-access";
 import {
   ACTIVE_PRICE_INCLUDE,
   CreateProductInputSchema,
@@ -38,7 +39,7 @@ export const GET = CreateApiRoute({
   schema: ProductsQuerySchema,
   requiresAuth: { status: true, permission: "product:read" },
   responseSchema: PaginatedResponseSchema(ProductSchema),
-  handler: async (query) => {
+  handler: async (query, session) => {
     const where: Prisma.ProductWhereInput | undefined = query.search
       ? {
           OR: [
@@ -57,7 +58,9 @@ export const GET = CreateApiRoute({
       prisma.product.count({ where }),
     ]);
     return {
-      data: products.map(ToProductDTO),
+      data: products.map((product) =>
+        ToProductDTO(product, CanSeeCost(session?.permissions)),
+      ),
       pagination: BuildPaginationMeta(query, total),
     };
   },
@@ -76,7 +79,7 @@ export const POST = CreateApiRoute({
     entityId: result.id,
     entityLabel: result.name,
   }),
-  handler: async (body) => {
+  handler: async (body, session) => {
     const category = await prisma.category.findUnique({
       where: { id: body.categoryId },
     });
@@ -99,7 +102,7 @@ export const POST = CreateApiRoute({
           },
           include: ACTIVE_PRICE_INCLUDE,
         });
-        return ToProductDTO(product);
+        return ToProductDTO(product, CanSeeCost(session?.permissions));
       } catch (err) {
         const isSkuCollision =
           err instanceof Prisma.PrismaClientKnownRequestError &&

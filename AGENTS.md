@@ -31,6 +31,16 @@ Manager sees prices but no money overview. Unit conversions and recipes
 were removed (their tables are unused leftovers). See `docs/DECISIONS.md`.
 New permission `customer:create` — re-run `pnpm db:seed`.
 
+**Cost visibility (2026-11-27):** cost, margin and profit need
+`product:cost` ("View costs"). The Inventory Manager doesn't have it and
+sees prices only. The server enforces it: `ToProductDTO`/`ToSaleDTO` take
+a required `showCost` (`CanSeeCost` in
+`src/features/products/cost-access.ts`) and null `currentCost` /
+`costPerKgAtSale` without it. The cost endpoints and the GraphQL
+`profitability` query refuse the request. Pages pass `canSeeCost` to the
+components that show cost. Any new route or view that exposes cost must
+do the same. Re-run `pnpm db:seed`.
+
 **Status:** The full business-domain build (Epics 1–8) is done and
 verified, and so is the UI/UX overhaul (Epics 9–12) — see
 `docs/epics/README.md`. Design System Foundation (Epic 9): warm accent

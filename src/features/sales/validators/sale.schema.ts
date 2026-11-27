@@ -23,7 +23,8 @@ export const SaleSchema = z.object({
   totalAmount: z.string(),
   // Snapshot of the active Cost.amountPerKg at sale time (Epic 15); null if
   // no Cost had ever been set for this product. Margin isn't computable for
-  // that one sale — not an error, never backfilled.
+  // that one sale — not an error, never backfilled. Also null for callers
+  // without product:cost (2026-11-27).
   costPerKgAtSale: z.string().nullable(),
   paymentType: SalePaymentTypeSchema,
   createdById: z.string(),
@@ -47,9 +48,12 @@ type SaleWithRelations = Sale & { product: Product; customer: Customer | null };
 // isn't a Prisma relation — see LoadUserNames).
 export type UserNameMap = Map<string, string>;
 
+// `showCost` is CanSeeCost(session permissions). Without product:cost the
+// sale's cost snapshot is left out (null), so no profit can be derived.
 export function ToSaleDTO(
   sale: SaleWithRelations,
-  userNames: UserNameMap = new Map(),
+  userNames: UserNameMap,
+  showCost: boolean,
 ): SaleDTO {
   return {
     id: sale.id,
@@ -67,7 +71,9 @@ export function ToSaleDTO(
     pricePerCarton: PerCarton(sale.unitPriceAtSale, sale.product.cartonSize),
     unitPriceAtSale: sale.unitPriceAtSale.toString(),
     totalAmount: sale.totalAmount.toString(),
-    costPerKgAtSale: sale.costPerKgAtSale?.toString() ?? null,
+    costPerKgAtSale: showCost
+      ? (sale.costPerKgAtSale?.toString() ?? null)
+      : null,
     paymentType: sale.paymentType,
     createdById: sale.createdById,
     createdByName: userNames.get(sale.createdById) ?? null,

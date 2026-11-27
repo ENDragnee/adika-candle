@@ -9,7 +9,9 @@ import { ROLES } from "@/lib/redirector";
 const MODULE_PERMISSIONS: Record<string, string[]> = {
   analytics: ["analytics:read"],
   activity: ["activity:read"],
-  product: ["product:read", "product:manage"],
+  // product:cost — see costs and anything derived from them (margin,
+  // profit). The Inventory Manager doesn't get it: they see prices only.
+  product: ["product:read", "product:manage", "product:cost"],
   category: ["category:manage"],
   stock: ["stock:read", "stock:accept", "stock:adjust"],
   customer: ["customer:read", "customer:create", "customer:manage"],

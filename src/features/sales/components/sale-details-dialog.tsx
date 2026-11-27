@@ -36,12 +36,15 @@ export function SaleDetailsDialog({
   open,
   onOpenChange,
   linkBase,
+  canSeeCost,
 }: {
   sale: SaleDTO;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // "/manager" or "/inventory" — where product/customer links point.
   linkBase: string;
+  // product:cost. Without it the API sends no cost, and Profit is hidden.
+  canSeeCost: boolean;
 }) {
   const cost =
     sale.costPerKgAtSale === null
@@ -111,7 +114,7 @@ export function SaleDetailsDialog({
               {FormatMoney(sale.totalAmount)}
             </span>
           </Row>
-          {linkBase === "/manager" && (
+          {canSeeCost && (
             <Row label="Profit">
               {profit === null ? (
                 <span className="text-muted-foreground">No cost on record</span>

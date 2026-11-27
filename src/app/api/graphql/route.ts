@@ -1,3 +1,4 @@
+import { GraphQLError } from "graphql";
 import { createSchema, createYoga } from "graphql-yoga";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -13,6 +14,7 @@ import {
   DEFAULT_PROFITABILITY_WINDOW_DAYS,
 } from "@/features/analytics/server/profitability";
 import { BuildStockHealth } from "@/features/analytics/server/stock-health";
+import { CanSeeCost } from "@/features/products/cost-access";
 import { CreateGraphqlRoute } from "@/lib/api-handlers/graphql.handler";
 import {
   AddBusinessDays,
@@ -324,7 +326,17 @@ const resolvers = {
     dashboard: CreateGraphqlRoute({
       moduleName: "dashboard",
       requiresAuth: { status: true, permission: "analytics:read" },
-      handler: async () => BuildManagerDashboard(),
+      handler: async (_parent, _args, context) => {
+        const dashboard = await BuildManagerDashboard();
+        // "Has no cost" items point at cost data the viewer can't open.
+        if (CanSeeCost(context.session?.permissions)) return dashboard;
+        return {
+          ...dashboard,
+          attention: dashboard.attention.filter(
+            (item) => item.kind !== "NO_COST",
+          ),
+        };
+      },
     }),
     productionReport: CreateGraphqlRoute({
       moduleName: "analytics.productionReport",
@@ -355,10 +367,17 @@ const resolvers = {
       moduleName: "analytics.profitability",
       schema: RangeArgsSchema.superRefine(CheckRange),
       requiresAuth: { status: true, permission: "analytics:read" },
-      handler: async (_parent, args: RangeArgs) =>
-        BuildProfitability(
+      // Profit and margin are cost data: analytics:read alone isn't enough.
+      handler: async (_parent, args: RangeArgs, context) => {
+        if (!CanSeeCost(context.session?.permissions)) {
+          throw new GraphQLError("Forbidden", {
+            extensions: { code: "FORBIDDEN", http: { status: 403 } },
+          });
+        }
+        return BuildProfitability(
           ResolveRangeArgs(args, DEFAULT_PROFITABILITY_WINDOW_DAYS),
-        ),
+        );
+      },
     }),
     stockHealth: CreateGraphqlRoute({
       moduleName: "analytics.stockHealth",

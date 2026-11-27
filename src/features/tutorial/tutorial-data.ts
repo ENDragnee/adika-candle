@@ -161,7 +161,7 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
       "Cartons only: quantities are entered in cartons (1 carton = 30 packets = 240 pieces).",
       "Named customers: every sale has a customer. New buyers are added from the customer search in the Record Sale dialog.",
       "Payment Types: CASH (paid now) or LOAN ('On account' - added to what the customer owes, after any credit they have).",
-      "Immutable Snapshots: price and cost are snapshotted on the sale record, never recalculated retrospectively.",
+      "Immutable Snapshots: the price (and, for margin reports, the cost) is snapshotted on the sale record, never recalculated retrospectively. Only roles with 'View costs' see a sale's cost and profit.",
       "Oversell Guard: Selling more than the remaining stock triggers a 409 INSUFFICIENT_STOCK warning requiring explicit operator confirmation.",
       "Void, Never Delete: Voiding a sale writes SALE_VOID stock and loan ledger entries, keeping the audit trail intact.",
       "Closed Period Lock: Sales created on or before a closed financial lock date cannot be voided or restored.",
@@ -313,7 +313,9 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     title: "Product Pricing, Unit Costing & Profit Margins",
     category: "Pricing & Costing",
     badge: "Profitability",
-    requiredPermissions: ["product:read", "product:manage"],
+    // Cost and margin are hidden from anyone without product:cost, so the
+    // section is too (product:read alone isn't enough).
+    requiredPermissions: ["product:manage", "product:cost"],
     summary:
       "Set time-versioned selling prices and production costs per carton to track exact profit margins across all candle products.",
     overview:
@@ -322,7 +324,7 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
       "Time-Versioned: Setting a new price or cost never alters old sales; past sales retain the snapshot active when they occurred.",
       "Nullable Cost: If a product has no cost set, sales can still occur. Margin reports simply exclude uncosted sales rather than reporting an artificial 100% margin.",
       "Formula: Profit = (price per carton − cost per carton) × cartons. Gross Margin % = (Profit / total) × 100.",
-      "Manager-Only: Pricing and costing are restricted to managerial permissions. The Inventory Manager sees prices only when recording a sale.",
+      "Manager-Only: Setting prices needs 'Manage products'; seeing costs, margins and profit needs 'View costs' (product:cost). The Inventory Manager sees prices only — never costs or margins, in the app or the API.",
     ],
     stepByStep: [
       {

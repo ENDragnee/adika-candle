@@ -312,7 +312,10 @@ export function LegendContent() {
               <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
                 <li>Full access to everything Inventory Manager can do.</li>
                 <li>Categories, products, and pricing.</li>
-                <li>Product cost entry and margin/profitability analytics.</li>
+                <li>
+                  Product costs, margins, and profitability analytics (the
+                  &ldquo;View costs&rdquo; permission).
+                </li>
                 <li>Raw material catalog and recipe (BOM) setup.</li>
                 <li>
                   Stock counts, voiding sales, and correcting customer balances.
@@ -345,7 +348,8 @@ export function LegendContent() {
                 </li>
                 <li>
                   Read-only access to the product catalog, just enough to pick a
-                  product when recording a sale or accepting stock.
+                  product when recording a sale or accepting stock. Products
+                  show their price only — never cost or margin.
                 </li>
                 <li>
                   No access to pricing, costs, analytics, raw material catalog

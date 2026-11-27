@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CanSeeCost } from "@/features/products/cost-access";
 import type {
   ProductDTO,
   UpdateProductInput,
@@ -21,7 +22,7 @@ export const GET = CreateApiRoute<unknown, Params, ProductDTO>({
   moduleName: "products",
   requiresAuth: { status: true, permission: "product:read" },
   responseSchema: ProductSchema,
-  handler: async (_body, _session, params) => {
+  handler: async (_body, session, params) => {
     const product = await prisma.product.findUnique({
       where: { id: params?.id },
       include: ACTIVE_PRICE_INCLUDE,
@@ -31,7 +32,7 @@ export const GET = CreateApiRoute<unknown, Params, ProductDTO>({
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    return ToProductDTO(product);
+    return ToProductDTO(product, CanSeeCost(session?.permissions));
   },
 });
 
@@ -59,7 +60,7 @@ export const PATCH = CreateApiRoute<UpdateProductInput, Params, ProductDTO>({
     entityLabel: result.name,
     changes: { ...body },
   }),
-  handler: async (body, _session, params) => {
+  handler: async (body, session, params) => {
     if (body.categoryId) {
       const category = await prisma.category.findUnique({
         where: { id: body.categoryId },
@@ -117,7 +118,7 @@ export const PATCH = CreateApiRoute<UpdateProductInput, Params, ProductDTO>({
         },
         include: ACTIVE_PRICE_INCLUDE,
       });
-      return ToProductDTO(product);
+      return ToProductDTO(product, CanSeeCost(session?.permissions));
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
+import { CanSeeCost } from "@/features/products/cost-access";
 import { RecordSaleDialog } from "@/features/sales/components/record-sale-dialog";
 import {
   SaleList,
@@ -49,6 +50,7 @@ export default async function ManagerSalesPage({
         showFilters
         canVoid={session.user.permissions.includes("sale:void")}
         canRestore={session.user.permissions.includes("sale:restore")}
+        canSeeCost={CanSeeCost(session.user.permissions)}
         lockedThrough={periodLock.lockedThrough}
         initialRange={
           RANGES.includes(range as SaleRange) ? (range as SaleRange) : "30d"

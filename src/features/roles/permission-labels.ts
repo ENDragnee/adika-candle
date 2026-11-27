@@ -74,11 +74,17 @@ export const PERMISSION_LABELS: Record<string, PermissionLabel> = {
   },
   "product:read": {
     label: "View products",
-    description: "See the product catalog, prices, and costs.",
+    description: "See the product catalog and prices.",
+  },
+  "product:cost": {
+    label: "View costs",
+    description:
+      "See what each product costs to make, and the margin and profit on sales.",
   },
   "product:manage": {
     label: "Manage products",
-    description: "Add and edit products, and set new prices.",
+    description:
+      "Add and edit products, and set new prices (and costs, with View costs).",
   },
   "category:manage": {
     label: "Manage categories",
