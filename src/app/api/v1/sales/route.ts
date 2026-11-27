@@ -11,6 +11,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { AddBusinessDays, StartOfBusinessDate } from "@/lib/business-time";
 import { CartonsFromKg } from "@/lib/carton-decimal";
+import { FormatSaleQuantity } from "@/lib/packing";
 import {
   BuildPaginationMeta,
   PaginatedResponseSchema,
@@ -131,13 +132,16 @@ export const POST = CreateApiRoute({
   activity: ({ result }) => ({
     type: "sales",
     action: "sale.create",
-    message: `Sold ${result.cartons} ctn of ${result.productName} for ETB ${result.totalAmount}${result.customerName ? ` to ${result.customerName}` : ""}${result.paymentType === "LOAN" ? " on account" : ""}`,
+    message: `Sold ${FormatSaleQuantity(result, "BOTH")} of ${result.productName} for ETB ${result.totalAmount}${result.customerName ? ` to ${result.customerName}` : ""}${result.paymentType === "LOAN" ? " on account" : ""}`,
     entityType: "sale",
     entityId: result.id,
     entityLabel: result.referenceCode,
     changes: {
       product: result.productName,
       cartons: result.cartons,
+      ...(result.inputUnitName === "PACKET" && {
+        packets: result.inputQuantity,
+      }),
       totalAmount: result.totalAmount,
       paymentType: result.paymentType,
       customer: result.customerName,

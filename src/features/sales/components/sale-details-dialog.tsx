@@ -9,9 +9,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ToneBadge } from "@/components/ui/tone-badge";
+import { useSaleUnitMode } from "@/lib/feature-flags/use-flags";
 import { FormatDateTime, FormatMoney, FormatPercent } from "@/lib/format";
-import { FormatPacking, FormatPackingBreakdown } from "@/lib/packing";
-import { PAYMENT_TYPE_META } from "../labels";
+import { FormatPackingBreakdown, FormatSaleQuantity } from "@/lib/packing";
+import { PAYMENT_TYPE_META, SaleUnitPriceLabel } from "../labels";
 import type { SaleDTO } from "../validators/sale.schema";
 
 function Row({
@@ -43,6 +44,9 @@ export function SaleDetailsDialog({
   // "/manager" or "/inventory" — where product/customer links point.
   linkBase: string;
 }) {
+  const mode = useSaleUnitMode();
+  const quantity = FormatSaleQuantity(sale, mode);
+  const breakdown = FormatPackingBreakdown(sale.cartons);
   const cost =
     sale.costPerKgAtSale === null
       ? null
@@ -97,13 +101,19 @@ export function SaleDetailsDialog({
             )}
           </Row>
           <Row label="Quantity">
-            {FormatPacking(sale.cartons)}{" "}
-            <span className="text-muted-foreground">
-              ({FormatPackingBreakdown(sale.cartons)})
-            </span>
+            {quantity}
+            {breakdown !== quantity && (
+              <span className="text-muted-foreground"> ({breakdown})</span>
+            )}
           </Row>
           <Row label="Price at sale">
-            {FormatMoney(sale.pricePerCarton)} / carton
+            {SaleUnitPriceLabel(sale)}
+            {sale.inputUnitName === "PACKET" && (
+              <span className="text-muted-foreground">
+                {" "}
+                ({FormatMoney(sale.pricePerCarton)} / carton)
+              </span>
+            )}
           </Row>
           <Row label="Payment">{PAYMENT_TYPE_META[sale.paymentType].label}</Row>
           <Row label="Total">

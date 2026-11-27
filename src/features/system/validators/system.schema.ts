@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SALE_UNIT_MODES } from "@/lib/feature-flags/flags";
 
 // System settings (Epic 24). Each group is one SystemSetting row; a
 // missing row or a missing field falls back to these defaults, so adding
@@ -35,11 +36,18 @@ export const RetentionSettingsSchema = z.object({
   logRetentionDays: z.number().int().min(90).max(3650).default(365),
 });
 
+// Feature flags (OpenFeature, src/lib/feature-flags). Server code reads
+// them through GetSaleUnitMode, never straight from here.
+export const FeatureSettingsSchema = z.object({
+  saleUnitMode: z.enum(SALE_UNIT_MODES).default("CARTON"),
+});
+
 export const SystemSettingsSchema = z.object({
   security: SecuritySettingsSchema.prefault({}),
   maintenance: MaintenanceSettingsSchema.prefault({}),
   periodLock: PeriodLockSettingsSchema.prefault({}),
   retention: RetentionSettingsSchema.prefault({}),
+  features: FeatureSettingsSchema.prefault({}),
 });
 
 export type SystemSettings = z.infer<typeof SystemSettingsSchema>;
@@ -61,6 +69,7 @@ export const UpdateSystemSettingsInputSchema = z.object({
     .optional(),
   periodLock: PeriodLockSettingsSchema.partial().optional(),
   retention: RetentionSettingsSchema.partial().optional(),
+  features: FeatureSettingsSchema.partial().optional(),
 });
 
 export type UpdateSystemSettingsInput = z.infer<

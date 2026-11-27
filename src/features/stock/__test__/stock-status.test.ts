@@ -9,6 +9,11 @@ describe("ClassifyStock", () => {
     expect(ClassifyStock(0, null)).toBe("OUT_OF_STOCK");
   });
 
+  it("treats the hair packet sales leave behind as empty", () => {
+    expect(ClassifyStock(1e-11, 5)).toBe("OUT_OF_STOCK");
+    expect(ClassifyStock(-1e-11, null)).toBe("OUT_OF_STOCK");
+  });
+
   it("reports stocked products with no threshold as untracked, not healthy", () => {
     expect(ClassifyStock(40, null)).toBe("UNTRACKED");
   });

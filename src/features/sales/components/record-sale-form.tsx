@@ -2,6 +2,7 @@
 
 import { InfoIcon, WarningIcon } from "@phosphor-icons/react";
 import { isAxiosError } from "axios";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { NotifyError } from "@/components/feedback/notify-error";
 import { Button } from "@/components/ui/button";
@@ -17,8 +18,13 @@ import { CustomerSearch } from "@/features/customers/components/customer-search"
 import type { CustomerDTO } from "@/features/customers/validators/customer.schema";
 import { useProducts } from "@/features/products/hooks/use-products";
 import { useStockBalances } from "@/features/stock/hooks/use-stock";
+import { useSaleUnitMode } from "@/lib/feature-flags/use-flags";
 import { FormatMoney } from "@/lib/format";
-import { FormatPacking, FormatPackingBreakdown } from "@/lib/packing";
+import {
+  FormatSaleQuantity,
+  FormatSaleUnits,
+  PACKETS_PER_CARTON,
+} from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 import { useCreateSale } from "../hooks/use-sales";
@@ -48,6 +54,16 @@ function ReadOversell(error: unknown): OversellPrompt | null {
     : null;
 }
 
+// 400 UNIT_NOT_ALLOWED: the Admin changed the sale units after this page
+// loaded.
+function IsUnitNotAllowed(error: unknown): boolean {
+  return (
+    isAxiosError(error) &&
+    (error.response?.data as { code?: string } | undefined)?.code ===
+      "UNIT_NOT_ALLOWED"
+  );
+}
+
 function SummaryRow({
   label,
   value,
@@ -72,9 +88,15 @@ function SummaryRow({
   );
 }
 
-// Sales are always in cartons and always to a named customer (added on
-// the spot from the customer search if they're new).
+// Sales are in cartons, packets or both — whichever the sale-unit-mode
+// flag allows (the API re-checks) — and always to a named customer (added
+// on the spot from the customer search if they're new). Packets are
+// priced at the carton price ÷ 30.
 export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
+  const router = useRouter();
+  const mode = useSaleUnitMode();
+  const showCartons = mode !== "PACKET";
+  const showPackets = mode !== "CARTON";
   const { data: productsResult, isLoading: productsLoading } = useProducts({
     pageSize: MAX_PAGE_SIZE,
   });
@@ -83,6 +105,7 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
 
   const [productId, setProductId] = useState("");
   const [cartons, setCartons] = useState("");
+  const [packets, setPackets] = useState("");
   const [customer, setCustomer] = useState<CustomerDTO | null>(null);
   const [paymentType, setPaymentType] = useState<PaymentType>("CASH");
   const [oversell, setOversell] = useState<OversellPrompt | null>(null);
@@ -94,16 +117,36 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
   const stock = productId ? stockResult?.data[0] : undefined;
   const product = activeProducts.find((item) => item.id === productId);
 
-  const cartonCount = Number(cartons);
+  // A hidden unit counts as zero, so switching modes can't send it.
+  const cartonCount = showCartons ? Number(cartons) || 0 : 0;
+  const packetCount = showPackets ? Number(packets) || 0 : 0;
+  const quantityValid =
+    cartonCount >= 0 && Number.isInteger(packetCount) && packetCount >= 0;
+  const soldCartons = cartonCount + packetCount / PACKETS_PER_CARTON;
+  const hasQuantity = quantityValid && soldCartons > 0;
+  const pricePerCarton = product?.currentPrice
+    ? Number(product.currentPrice)
+    : null;
   const total =
-    cartonCount > 0 && product?.currentPrice
-      ? cartonCount * Number(product.currentPrice)
+    hasQuantity && pricePerCarton !== null
+      ? Math.round(soldCartons * pricePerCarton * 100) / 100
       : null;
+  const priceLabel =
+    pricePerCarton === null
+      ? "—"
+      : [
+          showCartons && `${FormatMoney(pricePerCarton)} / carton`,
+          showPackets &&
+            `${FormatMoney(pricePerCarton / PACKETS_PER_CARTON)} / packet`,
+        ]
+          .filter(Boolean)
+          .join(" · ");
   const availableCartons = stock ? Number(stock.quantityCartons) : null;
   const wouldOversell =
-    cartonCount > 0 &&
+    hasQuantity &&
     availableCartons !== null &&
-    cartonCount > availableCartons;
+    // Carton counts come back at 6 dp; don't warn over that rounding.
+    soldCartons > availableCartons + 1e-6;
 
   const balance = customer ? Number(customer.loanBalance) : 0;
   const creditUsed =
@@ -122,6 +165,7 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
         productId,
         customerId: customer.id,
         cartons: cartonCount,
+        packets: packetCount,
         paymentType,
         ...(allowOversell && { allowOversell: true }),
       });
@@ -132,6 +176,8 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
         setOversell(prompt);
         return;
       }
+      // Pick up the new mode so the form shows the right inputs.
+      if (IsUnitNotAllowed(error)) router.refresh();
       NotifyError(error, "Couldn't record sale");
     }
   }
@@ -174,9 +220,11 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
                 disabled={!item.currentPrice}
               >
                 {item.name} ·{" "}
-                {item.currentPrice
-                  ? `${FormatMoney(item.currentPrice)} / carton`
-                  : "no price set"}
+                {!item.currentPrice
+                  ? "no price set"
+                  : mode === "PACKET"
+                    ? `${FormatMoney(Number(item.currentPrice) / PACKETS_PER_CARTON)} / packet`
+                    : `${FormatMoney(item.currentPrice)} / carton`}
               </SelectItem>
             ))}
           </SelectContent>
@@ -190,30 +238,61 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
                 availableCartons <= 0 ? "text-destructive" : "text-foreground",
               )}
             >
-              {FormatPackingBreakdown(availableCartons)}
+              {FormatSaleUnits(availableCartons, mode)}
             </span>
           </p>
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="sale-cartons" className="text-sm font-medium">
-          Cartons
-        </label>
-        <Input
-          id="sale-cartons"
-          type="number"
-          step="any"
-          min="0"
-          inputMode="decimal"
-          value={cartons}
-          onChange={(event) => {
-            setCartons(event.target.value);
-            ResetOversell();
-          }}
-          required
-        />
+      <div className={cn("grid gap-3", mode === "BOTH" && "grid-cols-2")}>
+        {showCartons && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="sale-cartons" className="text-sm font-medium">
+              Cartons
+            </label>
+            <Input
+              id="sale-cartons"
+              type="number"
+              step="any"
+              min="0"
+              inputMode="decimal"
+              placeholder={mode === "BOTH" ? "0" : undefined}
+              value={cartons}
+              onChange={(event) => {
+                setCartons(event.target.value);
+                ResetOversell();
+              }}
+              required={mode === "CARTON"}
+            />
+          </div>
+        )}
+        {showPackets && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="sale-packets" className="text-sm font-medium">
+              Packets
+            </label>
+            <Input
+              id="sale-packets"
+              type="number"
+              step="1"
+              min="0"
+              inputMode="numeric"
+              placeholder={mode === "BOTH" ? "0" : undefined}
+              value={packets}
+              onChange={(event) => {
+                setPackets(event.target.value);
+                ResetOversell();
+              }}
+              required={mode === "PACKET"}
+            />
+          </div>
+        )}
       </div>
+      {showPackets && (
+        <p className="-mt-2 text-xs text-muted-foreground">
+          {PACKETS_PER_CARTON} packets make a carton.
+        </p>
+      )}
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-sm font-medium">Payment</legend>
@@ -242,13 +321,19 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
       </fieldset>
 
-      {cartonCount > 0 && product && (
+      {hasQuantity && product && (
         <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3 text-sm">
-          <SummaryRow label="Quantity" value={FormatPacking(cartonCount)} />
           <SummaryRow
-            label="Price"
-            value={`${FormatMoney(product.currentPrice)} / carton`}
+            label="Quantity"
+            value={FormatSaleQuantity(
+              {
+                cartons: soldCartons,
+                inputUnitName: packetCount > 0 ? "PACKET" : "CARTON",
+              },
+              mode,
+            )}
           />
+          <SummaryRow label="Price" value={priceLabel} />
           {creditUsed > 0 && (
             <SummaryRow
               label="Paid from customer's credit"
@@ -275,7 +360,7 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
             className="mt-0.5 size-3.5 shrink-0"
             style={{ color: "var(--color-status-warning)" }}
           />
-          This is more than the {FormatPackingBreakdown(availableCartons)}{" "}
+          This is more than the {FormatSaleUnits(availableCartons, mode)}{" "}
           remaining. You'll be asked to confirm.
         </p>
       )}
@@ -293,11 +378,10 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
         >
           <p className="font-medium">Not enough stock on record</p>
           <p className="text-muted-foreground">
-            Only {FormatPackingBreakdown(oversell.availableCartons)} is
-            recorded, but this sale is{" "}
-            {FormatPacking(oversell.requestedCartons)}. If the goods are really
-            there, record the sale anyway and do a stock count afterwards so the
-            numbers match.
+            Only {FormatSaleUnits(oversell.availableCartons, mode)} is recorded,
+            but this sale is {FormatSaleUnits(oversell.requestedCartons, mode)}.
+            If the goods are really there, record the sale anyway and do a stock
+            count afterwards so the numbers match.
           </p>
           <div className="flex gap-2">
             <Button
@@ -329,7 +413,7 @@ export function RecordSaleForm({ onSuccess }: { onSuccess: () => void }) {
             productsLoading ||
             !product ||
             !customer ||
-            !(cartonCount > 0)
+            !hasQuantity
           }
         >
           {createSale.isPending

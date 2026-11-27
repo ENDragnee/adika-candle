@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { create } from "zustand";
+import { useSaleUnitMode } from "@/lib/feature-flags/use-flags";
 import {
   PACKING_UNIT_META,
   PACKING_UNITS,
@@ -8,20 +10,31 @@ import {
 } from "@/lib/packing";
 import { cn } from "@/lib/utils";
 
-// The unit reports and analytics show quantities in. Cartons by default;
-// one shared choice so switching to pieces on one tab carries to the next.
+// The unit reports and analytics show quantities in. Cartons by default,
+// packets when sales are packets-only (sale-unit-mode flag) until the
+// user picks one; one shared choice so switching to pieces on one tab
+// carries to the next.
 interface PackingUnitState {
   unit: PackingUnit;
+  chosen: boolean;
   setUnit: (unit: PackingUnit) => void;
+  setDefaultUnit: (unit: PackingUnit) => void;
 }
 
 export const usePackingUnit = create<PackingUnitState>((set) => ({
   unit: "CARTON",
-  setUnit: (unit) => set({ unit }),
+  chosen: false,
+  setUnit: (unit) => set({ unit, chosen: true }),
+  setDefaultUnit: (unit) => set((state) => (state.chosen ? state : { unit })),
 }));
 
 export function PackingUnitToggle({ className }: { className?: string }) {
-  const { unit, setUnit } = usePackingUnit();
+  const { unit, setUnit, setDefaultUnit } = usePackingUnit();
+  const mode = useSaleUnitMode();
+
+  useEffect(() => {
+    setDefaultUnit(mode === "PACKET" ? "PACKET" : "CARTON");
+  }, [mode, setDefaultUnit]);
 
   return (
     <fieldset

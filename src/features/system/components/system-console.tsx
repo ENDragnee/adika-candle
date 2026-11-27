@@ -6,6 +6,7 @@ import { BackupCard } from "./backup-card";
 import { MaintenanceCard } from "./maintenance-card";
 import { PeriodLockCard } from "./period-lock-card";
 import { RetentionCard } from "./retention-card";
+import { SaleUnitsCard } from "./sale-units-card";
 import { SecurityCard } from "./security-card";
 
 // /manager/system (Epic 24): the Admin's controls, one card per power.
@@ -26,6 +27,10 @@ export function SystemConsole() {
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
       <SecurityCard settings={settings.security} />
+      <SaleUnitsCard
+        key={settings.features.saleUnitMode}
+        settings={settings.features}
+      />
       <PeriodLockCard
         key={settings.periodLock.lockedThrough ?? "open"}
         settings={settings.periodLock}
