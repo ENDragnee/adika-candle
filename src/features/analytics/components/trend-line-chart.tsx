@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { MOTION } from "@/components/motion/motion-tokens";
-import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 import { BuildLinearScale, XLabelIndices } from "./chart-scale";
 
 export interface TrendSeries {
@@ -69,7 +67,6 @@ export function TrendLineChart({
   referenceLine?: { value: number; label: string } | null;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const hasEntered = useChartEntrance(points.length > 0);
 
   const allValues = points.flatMap((point) =>
     series
@@ -218,12 +215,6 @@ export function TrendLineChart({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
-                pathLength={1}
-                style={{
-                  strokeDasharray: 1,
-                  strokeDashoffset: hasEntered ? 0 : 1,
-                  transition: `stroke-dashoffset ${MOTION.lineDrawMs}ms ${MOTION.easeOut}`,
-                }}
               />
             ))}
             {points.map((point, index) => (

@@ -1,7 +1,6 @@
 "use client";
 
 import { MOTION } from "@/components/motion/motion-tokens";
-import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 
 export interface RankedBarDatum {
   key: string;
@@ -10,15 +9,9 @@ export interface RankedBarDatum {
   color: string;
 }
 
-// Ranked lists have few bars, so a longer per-bar stagger reads as a
-// gentle cascade rather than a flicker.
-const RANKED_STAGGER_MS = 40;
-
 // Hand-built horizontal bar chart — used for Stock Health's status
-// distribution and Best Sellers' two rankings. Final width is set directly
-// (not animated); entrance is a composite-only scaleX from the left edge,
-// gated by Epic 16's useChartEntrance — same pattern as SalesTrendChart's
-// vertical bars, rotated.
+// distribution and Best Sellers' two rankings. Bars render at their final
+// width (no entrance); a refetch eases the width to its new value.
 export function RankedBarChart({
   data,
   valueFormatter = (value: number) => value.toString(),
@@ -26,8 +19,6 @@ export function RankedBarChart({
   data: RankedBarDatum[];
   valueFormatter?: (value: number) => string;
 }) {
-  const hasEntered = useChartEntrance(data.length > 0);
-
   if (data.length === 0) {
     return <p className="text-sm text-muted-foreground">No data yet.</p>;
   }
@@ -36,7 +27,7 @@ export function RankedBarChart({
 
   return (
     <div className="flex flex-col gap-2">
-      {data.map((datum, index) => {
+      {data.map((datum) => {
         const widthPercent = Math.max((datum.value / maxValue) * 100, 0);
 
         return (
@@ -53,12 +44,7 @@ export function RankedBarChart({
                 style={{
                   width: `${widthPercent}%`,
                   backgroundColor: datum.color,
-                  transform: hasEntered ? "scaleX(1)" : "scaleX(0)",
-                  transformOrigin: "left",
-                  transitionProperty: "transform, width",
-                  transitionDuration: `${MOTION.barEnterMs}ms, ${MOTION.updateMs}ms`,
-                  transitionTimingFunction: `${MOTION.easeOut}, ${MOTION.easeOut}`,
-                  transitionDelay: `${Math.min(index * RANKED_STAGGER_MS, MOTION.barStaggerCapMs)}ms, 0ms`,
+                  transition: `width ${MOTION.updateMs}ms ${MOTION.easeOut}`,
                 }}
               />
             </div>

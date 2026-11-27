@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { MOTION } from "@/components/motion/motion-tokens";
-import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 import { ToneColor } from "@/components/ui/tone-badge";
 import { cn } from "@/lib/utils";
 import { STOCK_STATUSES, type StockStatus } from "../stock-status";
@@ -31,7 +30,6 @@ export function StockStatusStrip({
   hrefFor?: (status: StockStatus) => string;
   hideEmpty?: boolean;
 }) {
-  const hasEntered = useChartEntrance(counts.length > 0);
   const byStatus = new Map(counts.map((item) => [item.status, item.count]));
   const total = counts.reduce((sum, item) => sum + item.count, 0);
   const ordered = STOCK_STATUSES.map((status) => ({
@@ -59,7 +57,7 @@ export function StockStatusStrip({
               <span
                 key={item.status}
                 className={cn(
-                  "h-full transition-opacity",
+                  "h-full",
                   selected && selected !== item.status && "opacity-35",
                 )}
                 style={{
@@ -67,9 +65,7 @@ export function StockStatusStrip({
                   backgroundColor: ToneColor(
                     STOCK_STATUS_META[item.status].tone,
                   ),
-                  transform: hasEntered ? "scaleX(1)" : "scaleX(0)",
-                  transformOrigin: "left",
-                  transition: `transform ${MOTION.barEnterMs}ms ${MOTION.easeOut}, opacity 150ms ease, flex-grow ${MOTION.updateMs}ms ${MOTION.easeOut}`,
+                  transition: `opacity ${MOTION.hoverMs}ms ease-out, flex-grow ${MOTION.updateMs}ms ${MOTION.easeOut}`,
                 }}
               />
             ))}

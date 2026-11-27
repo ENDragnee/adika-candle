@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { PageTransition } from "@/components/motion/page-transition";
 import { AppShell } from "@/components/shell/app-shell";
 import { MaintenanceBanner } from "@/features/system/components/maintenance-banner";
 import { GetSystemSettings } from "@/features/system/server/settings";
@@ -31,7 +30,7 @@ export default async function DashboardLayout({
   return (
     <AppShell user={session.user}>
       {maintenance.enabled && <MaintenanceBanner />}
-      <PageTransition>{children}</PageTransition>
+      {children}
     </AppShell>
   );
 }
