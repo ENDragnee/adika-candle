@@ -176,28 +176,3 @@
     @apply font-sans;
   }
 }
-
-/* Epic 16: page-transition crossfade (src/components/motion/page-transition.tsx).
-   Shortened + re-eased from the browser's default view-transition timing —
-   short and subtle, for a business admin tool's route changes, not a
-   marketing-style reveal. Wildcard selectors cover every <ViewTransition>
-   boundary's auto-generated name, matching Next's own reduced-motion
-   pattern for this feature. */
-::view-transition-old(*),
-::view-transition-new(*) {
-  /* Keep in step with MOTION.routeMs (src/components/motion/motion-tokens.ts). */
-  animation-duration: 220ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* Keeps the live page clickable while the transition overlay plays. */
-::view-transition {
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation-duration: 0.01ms !important;
-  }
-}

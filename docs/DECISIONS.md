@@ -12,6 +12,30 @@ undo.
 
 ---
 
+## 2026-11-27 — Corporate motion pass
+
+The owner is moving the UI toward a corporate look and asked for the
+playful motion to go. This reverses most of Epic 16 and Epic 22's motion:
+
+- **No route transitions.** `PageTransition` (`<ViewTransition>` crossfade)
+  and its `::view-transition-*` CSS are removed; pages swap instantly.
+- **No stat-tile count-up.** `StatTile` renders the formatted value
+  directly. `use-count-up.ts` is deleted.
+- **No chart entrances.** Bars no longer grow from the baseline with a
+  stagger, the trend line no longer draws in, the stock strip no longer
+  slides in. `use-chart-entrance.ts` and `use-reduced-motion.ts` are
+  deleted (nothing else used them; the tour checks `matchMedia` itself).
+  What stays: a short (200ms) ease when a value changes on a chart that
+  is already on screen, and a 120ms hover dim — both help reading data.
+- **Buttons don't nudge on press.** `Button` lost
+  `active:translate-y-px` and `transition-all`. Besides feeling toy-like,
+  the nudge broke any `Button` positioned with `-translate-y-1/2`: on press
+  Tailwind's `--tw-translate-y` switched from `-50%` to `1px`, so the
+  password show/hide eye jumped half its height and animated back.
+
+Dialog/menu fade-and-zoom (shadcn defaults, 100ms) and skeleton pulse are
+kept — they're standard and brief.
+
 ## 2026-11-27 — Inventory Manager sees price, never cost or margin
 
 Request: "Limit the product view of the inventory. They can't see cost nor

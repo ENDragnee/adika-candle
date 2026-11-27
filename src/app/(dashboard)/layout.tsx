@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { PageTransition } from "@/components/motion/page-transition";
 import { FeatureFlagProvider } from "@/components/providers/feature-flag-provider";
 import { AppShell } from "@/components/shell/app-shell";
 import { MaintenanceBanner } from "@/features/system/components/maintenance-banner";
@@ -37,7 +36,7 @@ export default async function DashboardLayout({
     <FeatureFlagProvider flags={{ saleUnitMode }}>
       <AppShell user={session.user}>
         {maintenance.enabled && <MaintenanceBanner />}
-        <PageTransition>{children}</PageTransition>
+        {children}
       </AppShell>
     </FeatureFlagProvider>
   );

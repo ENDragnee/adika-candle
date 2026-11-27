@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { MOTION } from "@/components/motion/motion-tokens";
-import { useChartEntrance } from "@/components/motion/use-chart-entrance";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BuildLinearScale, XLabelIndices } from "./chart-scale";
 
@@ -42,7 +41,6 @@ export function StackedBarChart({
   emptyMessage?: string;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const hasEntered = useChartEntrance(points.length > 0);
 
   const totals = points.map((point) =>
     series.reduce((sum, item) => sum + (point.values[item.key] ?? 0), 0),
@@ -179,15 +177,9 @@ export function StackedBarChart({
                         height: `${Math.max(heightPercent, 0)}%`,
                         minHeight: total > 0 ? 2 : 0,
                         opacity: hoveredIndex === null || isHovered ? 1 : 0.55,
-                        // Entrance: composite-only scaleY from the baseline
-                        // (Epic 16). After that, a refetch eases the bar's
-                        // height to its new value instead of jumping.
-                        transform: hasEntered ? "scaleY(1)" : "scaleY(0)",
-                        transformOrigin: "bottom",
-                        transitionProperty: "opacity, transform, height",
-                        transitionDuration: `150ms, ${MOTION.barEnterMs}ms, ${MOTION.updateMs}ms`,
-                        transitionTimingFunction: `ease, ${MOTION.easeOut}, ${MOTION.easeOut}`,
-                        transitionDelay: `0ms, ${Math.min(index * MOTION.barStaggerMs, MOTION.barStaggerCapMs)}ms, 0ms`,
+                        // No entrance; a refetch eases the bar's height to
+                        // its new value instead of jumping.
+                        transition: `opacity ${MOTION.hoverMs}ms ease-out, height ${MOTION.updateMs}ms ${MOTION.easeOut}`,
                       }}
                     >
                       {nonZero.map((item) => (

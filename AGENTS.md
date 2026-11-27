@@ -89,11 +89,10 @@ per-product recipe (`ProductMaterialRequirement`) editable from a new
 tab + "Set new cost" modal on the product detail page, and
 `Sale.costPerKgAtSale` snapshotted at sale time (nullable — doesn't block
 sales, just means that one sale isn't counted in margin math). Motion (16):
-a single subtle route-change crossfade via React 19.3's native
-`<ViewTransition>` (zero new dependency) applied once at each shell
-boundary, plus three shared chart-entrance primitives in
-`src/components/motion/` (`useChartEntrance`, `useCountUp`,
-`useReducedMotion`) retrofitted onto `SalesTrendChart`'s bars. Analytics
+route crossfade, count-ups and chart entrances — all removed on
+2026-11-27 in the corporate motion pass (see `docs/DECISIONS.md`); only
+short value-update and hover transitions remain, timed in
+`src/components/motion/motion-tokens.ts`. Analytics
 Hub (17): a new `/manager/analytics` route with 4 lazily-queried GraphQL-
 backed tabs (Production/Profitability/Stock Health/Best Sellers) informed
 by `idea-boards/old-report-papers.jpg`, the factory's existing paper

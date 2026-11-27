@@ -7,21 +7,9 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import type * as React from "react";
-import { useCountUp } from "@/components/motion/use-count-up";
 import { Card, CardContent } from "@/components/ui/card";
 import { EMPTY_VALUE, FormatNumber, FormatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-function CountUpValue({
-  value,
-  format,
-}: {
-  value: number;
-  format: (value: number) => string;
-}) {
-  const ref = useCountUp(value, { format });
-  return <span ref={ref}>{format(value)}</span>;
-}
 
 // Change vs. a comparison value, as "+12.5% vs yesterday". Up isn't
 // always good (e.g. debt), so the caller says which direction is good.
@@ -105,11 +93,7 @@ export function StatTile({
           {label}
         </span>
         <span className="text-2xl font-semibold tracking-tight tabular-nums">
-          {value === null ? (
-            EMPTY_VALUE
-          ) : (
-            <CountUpValue value={value} format={format} />
-          )}
+          {value === null ? EMPTY_VALUE : format(value)}
         </span>
         {delta && value !== null && (
           <DeltaLine
