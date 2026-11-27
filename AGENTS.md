@@ -18,8 +18,13 @@ stock). Standard customers (Merkato, Gondor, Moges, Mekele) can lend/borrow
 items or money against future purchases (loans). Pricing is variable over
 time and manager-only.
 
-**Units (2026-11-25):** people enter stock and sales in **cartons only**;
-remaining stock reads as cartons · packets · pieces (1 carton = 30 packets
+**Units (2026-11-25, sales updated 2026-11-27):** people enter stock in
+**cartons only**. Sales are entered in cartons, packets, or both in one
+sale, depending on the `sale-unit-mode` feature flag (`CARTON` | `PACKET` |
+`BOTH`, default `CARTON`). The Admin sets it in /manager/system.
+Packets are priced at the carton price ÷ 30. A sale's
+`inputUnitName` (`CARTON`, or `PACKET` for packet/mixed sales) decides how
+it displays, whatever the current mode. Remaining stock reads as cartons · packets · pieces (1 carton = 30 packets
 = 240 pieces) and reports toggle between the three. Each product is
 `NORMAL` (7 kg of wax per carton) or `PLUS` (8.5 kg). Quantities, prices
 and costs are still *stored* per kg and converted at the API boundary —
@@ -206,6 +211,19 @@ request input and response shapes) · Biome (lint/format) · pnpm.
   dev-time `blocking-prerender-dynamic` validation for a descendant
   segment that makes its own blocking call. See `docs/DECISIONS.md`
   (2026-11-07, "Opted the whole app out of Instant Navigation...").
+
+- **Feature flags:** OpenFeature. Each flag's key, variants and parser live in
+  `src/lib/feature-flags/flags.ts` (client-safe). Values are stored in the
+  `features` SystemSetting group, served on the server by
+  `SystemSettingsProvider` (`src/lib/feature-flags/server.ts`), and passed to
+  the browser by `FeatureFlagProvider` in the dashboard layout. Server code
+  reads a flag only through its getter (e.g. `GetSaleUnitMode()`) and enforces
+  it itself. Client hooks (`use-flags.ts`) only shape the UI. To add a flag:
+  1. Add a field to `FeatureSettingsSchema`.
+  2. Add a branch to the provider.
+  3. Add a getter.
+  4. Add the flag to `ServerFlags`/`ToConfiguration`.
+  5. Add a hook.
 
 ## Commands
 

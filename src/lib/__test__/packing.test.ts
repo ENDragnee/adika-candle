@@ -3,6 +3,8 @@ import {
   CartonsToKg,
   FormatPacking,
   FormatPackingBreakdown,
+  FormatSaleQuantity,
+  FormatSaleUnits,
   KgToCartons,
   PackingToCartons,
   SplitPacking,
@@ -40,5 +42,26 @@ describe("packing", () => {
 
   it("adds counted packets and pieces back up to cartons", () => {
     expect(PackingToCartons({ cartons: 1, packets: 30, pieces: 240 })).toBe(3);
+  });
+});
+
+describe("sale quantities", () => {
+  const packetSale = { cartons: 1.5, inputUnitName: "PACKET" };
+  const cartonSale = { cartons: 2.5, inputUnitName: "CARTON" };
+
+  it("reads packet sales in packets when selling by packet", () => {
+    expect(FormatSaleQuantity(packetSale, "PACKET")).toBe("45 pkt");
+    expect(FormatSaleUnits(0.4, "PACKET")).toBe("12 pkt");
+  });
+
+  it("reads packet sales as cartons + packets otherwise", () => {
+    expect(FormatSaleQuantity(packetSale, "BOTH")).toBe("1 ctn · 15 pkt");
+    expect(FormatSaleQuantity(packetSale, "CARTON")).toBe("1 ctn · 15 pkt");
+  });
+
+  it("keeps carton sales as they were recorded in every mode", () => {
+    expect(FormatSaleQuantity(cartonSale, "CARTON")).toBe("2.5 ctn");
+    expect(FormatSaleQuantity(cartonSale, "PACKET")).toBe("2.5 ctn");
+    expect(FormatSaleQuantity(cartonSale, "BOTH")).toBe("2.5 ctn");
   });
 });

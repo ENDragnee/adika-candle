@@ -154,11 +154,11 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     badge: "Core Workflow",
     requiredPermissions: ["sale:read", "sale:create", "sale:void"],
     summary:
-      "Record cash or on-account candle sales in cartons, to a named customer, with live price snapshots, oversell confirmations, and append-only voids.",
+      "Record cash or on-account candle sales in cartons, packets or both, to a named customer, with live price snapshots, oversell confirmations, and append-only voids.",
     overview:
-      "All sales are recorded through a single unified flow, always in cartons and always to a named customer (search by name, or add a new customer on the spot). Each sale snapshots the active price and cost at the exact moment of sale. Sales are single-product transactions that update finished goods stock atomically. When stock is low, the system prompts for explicit oversell confirmation. Mistakes are never deleted; sales are voided, reversing both stock and loan balances through audit entries.",
+      "All sales are recorded through a single unified flow, in the units the Admin allows (cartons, packets, or both) and always to a named customer (search by name, or add a new customer on the spot). Each sale snapshots the active price and cost at the exact moment of sale. Sales are single-product transactions that update finished goods stock atomically. When stock is low, the system prompts for explicit oversell confirmation. Mistakes are never deleted; sales are voided, reversing both stock and loan balances through audit entries.",
     keyRules: [
-      "Cartons only: quantities are entered in cartons (1 carton = 30 packets = 240 pieces).",
+      "Sale units: the Admin chooses in System whether sales are entered in cartons, packets, or both (1 carton = 30 packets = 240 pieces). Packets cost the carton price ÷ 30.",
       "Named customers: every sale has a customer. New buyers are added from the customer search in the Record Sale dialog.",
       "Payment Types: CASH (paid now) or LOAN ('On account' - added to what the customer owes, after any credit they have).",
       "Immutable Snapshots: the price (and, for margin reports, the cost) is snapshotted on the sale record, never recalculated retrospectively. Only roles with 'View costs' see a sale's cost and profit.",
@@ -177,7 +177,7 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
         step: 2,
         title: "Choose product, cartons and payment",
         instruction:
-          "Select the candle product (its price per carton is shown), enter the number of cartons, and choose Cash or On account.",
+          "Select the candle product (its price per carton is shown), enter the cartons and/or packets, and choose Cash or On account.",
       },
       {
         step: 3,

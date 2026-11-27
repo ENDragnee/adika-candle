@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Customer, Product, Sale } from "@/generated/prisma/client";
-import { CartonsString, PerCarton } from "@/lib/carton-decimal";
+import { CartonsString, PerCarton, PerPacket } from "@/lib/carton-decimal";
 
 export const SalePaymentTypeSchema = z.enum(["CASH", "LOAN"]);
 
@@ -16,9 +16,13 @@ export const SaleSchema = z.object({
   inputUnitName: z.string(),
   inputRatioToKg: z.string(),
   quantityKg: z.string(),
-  // What people see: cartons sold and the price per carton.
+  // What people see: cartons sold and the price per carton, or per
+  // packet (carton price ÷ 30) for sales entered in packets.
+  // inputUnitName says which: "CARTON", or "PACKET" for a packet or mixed
+  // sale (inputQuantity is then the total packets).
   cartons: z.string(),
   pricePerCarton: z.string(),
+  pricePerPacket: z.string(),
   unitPriceAtSale: z.string(),
   totalAmount: z.string(),
   // Snapshot of the active Cost.amountPerKg at sale time (Epic 15); null if
@@ -69,6 +73,7 @@ export function ToSaleDTO(
     quantityKg: sale.quantityKg.toString(),
     cartons: CartonsString(sale.quantityKg, sale.product.cartonSize),
     pricePerCarton: PerCarton(sale.unitPriceAtSale, sale.product.cartonSize),
+    pricePerPacket: PerPacket(sale.unitPriceAtSale, sale.product.cartonSize),
     unitPriceAtSale: sale.unitPriceAtSale.toString(),
     totalAmount: sale.totalAmount.toString(),
     costPerKgAtSale: showCost
@@ -113,21 +118,33 @@ export const SaleQuerySchema = z.object({
 
 export type SaleQuery = z.input<typeof SaleQuerySchema>;
 
-// Sold in cartons only, always to a named customer — the Record Sale
-// dialog can add a new one on the spot, so there's no anonymous walk-in
-// (older sales may still have customerId null). LOAN posts to the
+// Sold in cartons, packets or both — which ones the sale-unit-mode flag
+// allows is checked by RecordSale, not here, since the flag can change
+// between page load and submit. Always to a named customer — the Record
+// Sale dialog can add a new one on the spot, so there's no anonymous
+// walk-in (older sales may still have customerId null). LOAN posts to the
 // customer's account; CASH doesn't.
-export const CreateSaleInputSchema = z.object({
-  productId: z.string().min(1, "Product is required"),
-  customerId: z.string().min(1, "Customer is required"),
-  cartons: z.coerce.number().positive().finite(),
-  paymentType: SalePaymentTypeSchema,
-  // Required to record a sale that takes the product's stock below zero.
-  // Without it the API answers 409 INSUFFICIENT_STOCK with the available
-  // cartons, and the Record Sale dialog asks the user to confirm. See
-  // docs/DECISIONS.md, "Epic 21 decisions".
-  allowOversell: z.boolean().optional(),
-});
+export const CreateSaleInputSchema = z
+  .object({
+    productId: z.string().min(1, "Product is required"),
+    customerId: z.string().min(1, "Customer is required"),
+    cartons: z.coerce.number().min(0).finite().default(0),
+    packets: z.coerce
+      .number()
+      .int("Packets must be a whole number")
+      .min(0)
+      .default(0),
+    paymentType: SalePaymentTypeSchema,
+    // Required to record a sale that takes the product's stock below zero.
+    // Without it the API answers 409 INSUFFICIENT_STOCK with the available
+    // cartons, and the Record Sale dialog asks the user to confirm. See
+    // docs/DECISIONS.md, "Epic 21 decisions".
+    allowOversell: z.boolean().optional(),
+  })
+  .refine((input) => input.cartons + input.packets > 0, {
+    message: "Enter how much was sold",
+    path: ["cartons"],
+  });
 
 export type CreateSaleInput = z.infer<typeof CreateSaleInputSchema>;
 
