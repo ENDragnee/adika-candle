@@ -115,7 +115,7 @@ function DashboardSkeleton() {
 // how is today going, what needs my attention, how are sales trending,
 // where does stock stand, and who owes us money. Every block links to the
 // page where the detail lives or the problem gets fixed.
-export function ManagerDashboard() {
+export function ManagerDashboard({ canSeeCost }: { canSeeCost: boolean }) {
   const { data, isLoading } = useManagerDashboard();
 
   if (isLoading || !data) return <DashboardSkeleton />;
@@ -154,7 +154,11 @@ export function ManagerDashboard() {
             previous: Number(data.salesTotalPrior30Days),
             label: "the previous 30 days",
           }}
-          href="/manager/analytics?tab=profitability"
+          href={
+            canSeeCost
+              ? "/manager/analytics?tab=profitability"
+              : "/manager/sales?range=30d"
+          }
         />
         <StatTile
           icon={HandCoinsIcon}

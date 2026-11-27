@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
 import { ManagerDashboard } from "@/features/analytics/components/manager-dashboard";
+import { CanSeeCost } from "@/features/products/cost-access";
 import { SystemOverview } from "@/features/sessions/components/system-overview";
 import { GetSession } from "@/lib/session";
 
@@ -20,7 +21,7 @@ export default async function ManagerDashboardPage() {
       <PageHeader description="How today is going, what needs your attention, and where stock and money stand." />
       {/* Admin only (Epic 23). */}
       {permissions.includes("session:manage") && <SystemOverview />}
-      <ManagerDashboard />
+      <ManagerDashboard canSeeCost={CanSeeCost(permissions)} />
     </div>
   );
 }

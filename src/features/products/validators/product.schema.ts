@@ -20,7 +20,8 @@ export const ProductSchema = z.object({
   // Normal (7 kg) or Plus (8.5 kg) — see src/lib/packing.ts.
   cartonSize: CartonSizeSchema,
   // Active price/cost per carton (stored per kg, converted here). Null =
-  // not set.
+  // not set. `currentCost` is also null when the caller lacks
+  // product:cost (see ../cost-access.ts).
   currentPrice: z.string().nullable(),
   currentCost: z.string().nullable(),
   // Low-stock alert level in cartons. Null means no alert is ever raised
@@ -67,10 +68,15 @@ type ProductWithRelations = Product & {
   _count: { stockLedgerEntries: number };
 };
 
-export function ToProductDTO(product: ProductWithRelations): ProductDTO {
+// `showCost` is CanSeeCost(session permissions). Required, so no route can
+// forget it and leak cost to the Inventory Manager.
+export function ToProductDTO(
+  product: ProductWithRelations,
+  showCost: boolean,
+): ProductDTO {
   const size = product.cartonSize;
   const price = product.prices[0]?.amountPerKg;
-  const cost = product.costs[0]?.amountPerKg;
+  const cost = showCost ? product.costs[0]?.amountPerKg : undefined;
   return {
     id: product.id,
     name: product.name,

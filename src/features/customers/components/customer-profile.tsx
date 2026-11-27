@@ -29,11 +29,14 @@ export function CustomerProfile({
   customerId,
   canAdjust,
   linkBase,
+  canSeeCost = false,
 }: {
   customerId: string;
   canAdjust: boolean;
   // "/manager" or "/inventory".
   linkBase: string;
+  // product:cost: shows each sale's profit in its details.
+  canSeeCost?: boolean;
 }) {
   const { data: customer, isLoading } = useCustomer(customerId);
   const [isRepaymentOpen, setIsRepaymentOpen] = useState(false);
@@ -117,7 +120,11 @@ export function CustomerProfile({
               <LoanLedger accountId={customer.loanAccountId} />
             </TabsContent>
             <TabsContent value="purchases" className="pt-2">
-              <SaleList customerId={customerId} linkBase={linkBase} />
+              <SaleList
+                customerId={customerId}
+                linkBase={linkBase}
+                canSeeCost={canSeeCost}
+              />
             </TabsContent>
           </Tabs>
         </>

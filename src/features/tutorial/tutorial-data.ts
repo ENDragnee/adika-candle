@@ -154,14 +154,14 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     badge: "Core Workflow",
     requiredPermissions: ["sale:read", "sale:create", "sale:void"],
     summary:
-      "Record cash or on-account candle sales in cartons, to a named customer, with live price snapshots, oversell confirmations, and append-only voids.",
+      "Record cash or on-account candle sales in cartons, packets or both, to a named customer, with live price snapshots, oversell confirmations, and append-only voids.",
     overview:
-      "All sales are recorded through a single unified flow, always in cartons and always to a named customer (search by name, or add a new customer on the spot). Each sale snapshots the active price and cost at the exact moment of sale. Sales are single-product transactions that update finished goods stock atomically. When stock is low, the system prompts for explicit oversell confirmation. Mistakes are never deleted; sales are voided, reversing both stock and loan balances through audit entries.",
+      "All sales are recorded through a single unified flow, in the units the Admin allows (cartons, packets, or both) and always to a named customer (search by name, or add a new customer on the spot). Each sale snapshots the active price and cost at the exact moment of sale. Sales are single-product transactions that update finished goods stock atomically. When stock is low, the system prompts for explicit oversell confirmation. Mistakes are never deleted; sales are voided, reversing both stock and loan balances through audit entries.",
     keyRules: [
-      "Cartons only: quantities are entered in cartons (1 carton = 30 packets = 240 pieces).",
+      "Sale units: the Admin chooses in System whether sales are entered in cartons, packets, or both (1 carton = 30 packets = 240 pieces). Packets cost the carton price ÷ 30.",
       "Named customers: every sale has a customer. New buyers are added from the customer search in the Record Sale dialog.",
       "Payment Types: CASH (paid now) or LOAN ('On account' - added to what the customer owes, after any credit they have).",
-      "Immutable Snapshots: price and cost are snapshotted on the sale record, never recalculated retrospectively.",
+      "Immutable Snapshots: the price (and, for margin reports, the cost) is snapshotted on the sale record, never recalculated retrospectively. Only roles with 'View costs' see a sale's cost and profit.",
       "Oversell Guard: Selling more than the remaining stock triggers a 409 INSUFFICIENT_STOCK warning requiring explicit operator confirmation.",
       "Void, Never Delete: Voiding a sale writes SALE_VOID stock and loan ledger entries, keeping the audit trail intact.",
       "Closed Period Lock: Sales created on or before a closed financial lock date cannot be voided or restored.",
@@ -177,7 +177,7 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
         step: 2,
         title: "Choose product, cartons and payment",
         instruction:
-          "Select the candle product (its price per carton is shown), enter the number of cartons, and choose Cash or On account.",
+          "Select the candle product (its price per carton is shown), enter the cartons and/or packets, and choose Cash or On account.",
       },
       {
         step: 3,
@@ -313,7 +313,9 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
     title: "Product Pricing, Unit Costing & Profit Margins",
     category: "Pricing & Costing",
     badge: "Profitability",
-    requiredPermissions: ["product:read", "product:manage"],
+    // Cost and margin are hidden from anyone without product:cost, so the
+    // section is too (product:read alone isn't enough).
+    requiredPermissions: ["product:manage", "product:cost"],
     summary:
       "Set time-versioned selling prices and production costs per carton to track exact profit margins across all candle products.",
     overview:
@@ -322,7 +324,7 @@ export const TUTORIAL_SECTIONS: TutorialSection[] = [
       "Time-Versioned: Setting a new price or cost never alters old sales; past sales retain the snapshot active when they occurred.",
       "Nullable Cost: If a product has no cost set, sales can still occur. Margin reports simply exclude uncosted sales rather than reporting an artificial 100% margin.",
       "Formula: Profit = (price per carton − cost per carton) × cartons. Gross Margin % = (Profit / total) × 100.",
-      "Manager-Only: Pricing and costing are restricted to managerial permissions. The Inventory Manager sees prices only when recording a sale.",
+      "Manager-Only: Setting prices needs 'Manage products'; seeing costs, margins and profit needs 'View costs' (product:cost). The Inventory Manager sees prices only — never costs or margins, in the app or the API.",
     ],
     stepByStep: [
       {

@@ -1,5 +1,9 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { type CartonSize, KG_PER_CARTON } from "@/lib/packing";
+import {
+  type CartonSize,
+  KG_PER_CARTON,
+  PACKETS_PER_CARTON,
+} from "@/lib/packing";
 
 // Decimal half of src/lib/packing.ts: conversions between the kg the
 // database stores and the cartons people see. Prices and costs are stored
@@ -40,4 +44,29 @@ export function PerKg(
   size: CartonSize,
 ): Prisma.Decimal {
   return amountPerCarton.dividedBy(KG_PER_CARTON[size]);
+}
+
+// Packets sold, in kg. One division of the whole count, since a packet's
+// kg (7 ÷ 30) repeats — multiplying a rounded per-packet ratio would drift.
+// 12 dp keeps a carton made of 30 single packets within a rounding hair
+// of a whole one; carton counts are read back at 6 dp.
+const PACKET_KG_DP = 12;
+
+export function KgFromPackets(
+  packets: Prisma.Decimal,
+  size: CartonSize,
+): Prisma.Decimal {
+  return packets
+    .times(KG_PER_CARTON[size])
+    .dividedBy(PACKETS_PER_CARTON)
+    .toDecimalPlaces(PACKET_KG_DP);
+}
+
+// A per-kg price shown per packet (carton price ÷ 30, to the cent).
+export function PerPacket(amountPerKg: Prisma.Decimal, size: CartonSize) {
+  return amountPerKg
+    .times(KG_PER_CARTON[size])
+    .dividedBy(PACKETS_PER_CARTON)
+    .toDecimalPlaces(2)
+    .toString();
 }

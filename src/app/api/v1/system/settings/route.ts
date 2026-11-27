@@ -11,6 +11,7 @@ import {
 import type { ActivityInput } from "@/lib/activity/record-activity";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { BusinessDateKey } from "@/lib/business-time";
+import { SALE_UNIT_MODE_META } from "@/lib/feature-flags/flags";
 import { DomainError } from "@/lib/server/domain-error";
 
 export const GET = CreateApiRoute({
@@ -43,6 +44,15 @@ function Describe(body: UpdateSystemSettingsInput): ActivityInput {
         : "Unlocked all past periods",
       severity: "WARN",
       changes: { ...body.periodLock },
+    };
+  }
+  if (body.features?.saleUnitMode) {
+    return {
+      type: "system",
+      action: "system.sale_unit_mode",
+      message: `Set sale units to ${SALE_UNIT_MODE_META[body.features.saleUnitMode].label.toLowerCase()}`,
+      severity: "WARN",
+      changes: { ...body.features },
     };
   }
   return {
@@ -121,6 +131,17 @@ export const PATCH = CreateApiRoute({
         SystemSettingsSchema.shape.retention.parse({
           ...current.retention,
           ...body.retention,
+        }),
+        session?.id,
+      );
+    }
+
+    if (body.features) {
+      await SaveSystemSetting(
+        "features",
+        SystemSettingsSchema.shape.features.parse({
+          ...current.features,
+          ...body.features,
         }),
         session?.id,
       );

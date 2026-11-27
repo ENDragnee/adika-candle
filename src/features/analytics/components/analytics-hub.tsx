@@ -21,13 +21,17 @@ type AnalyticsTab = (typeof TABS)[number];
 // into the DOM. The active tab lives in `?tab=` (Epic 21) so the Dashboard
 // can link straight to e.g. Stock Health filtered to low stock, and a
 // refresh or shared link keeps the tab.
-export function AnalyticsHub() {
+// Profitability is cost data: without product:cost its tab is hidden (and
+// the GraphQL `profitability` query refuses anyway).
+export function AnalyticsHub({ canSeeCost }: { canSeeCost: boolean }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const requested = searchParams.get("tab");
-  const tab: AnalyticsTab = TABS.includes(requested as AnalyticsTab)
-    ? (requested as AnalyticsTab)
-    : "production";
+  const tab: AnalyticsTab =
+    TABS.includes(requested as AnalyticsTab) &&
+    (canSeeCost || requested !== "profitability")
+      ? (requested as AnalyticsTab)
+      : "production";
 
   function HandleChange(value: string) {
     // Native replaceState, not router.replace: a tab switch isn't a
@@ -43,7 +47,9 @@ export function AnalyticsHub() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <TabsList>
           <TabsTrigger value="production">Production</TabsTrigger>
-          <TabsTrigger value="profitability">Profitability</TabsTrigger>
+          {canSeeCost && (
+            <TabsTrigger value="profitability">Profitability</TabsTrigger>
+          )}
           <TabsTrigger value="stock-health">Stock health</TabsTrigger>
           <TabsTrigger value="best-sellers">Best sellers</TabsTrigger>
         </TabsList>
@@ -53,9 +59,11 @@ export function AnalyticsHub() {
       <TabsContent value="production">
         <ProductionTab />
       </TabsContent>
-      <TabsContent value="profitability">
-        <ProfitabilityTab />
-      </TabsContent>
+      {canSeeCost && (
+        <TabsContent value="profitability">
+          <ProfitabilityTab />
+        </TabsContent>
+      )}
       <TabsContent value="stock-health">
         <StockHealthTab />
       </TabsContent>

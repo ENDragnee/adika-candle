@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CanSeeCost } from "@/features/products/cost-access";
 import {
   SaleSchema,
   ToSaleDTO,
@@ -14,7 +15,7 @@ export const GET = CreateApiRoute<unknown, Params>({
   moduleName: "sales",
   requiresAuth: { status: true, permission: "sale:read" },
   responseSchema: SaleSchema,
-  handler: async (_body, _session, params) => {
+  handler: async (_body, session, params) => {
     const sale = await prisma.sale.findUnique({
       where: { id: params?.id },
       include: WITH_SALE_RELATIONS_INCLUDE,
@@ -27,6 +28,7 @@ export const GET = CreateApiRoute<unknown, Params>({
     return ToSaleDTO(
       sale,
       await LoadUserNames([sale.createdById, sale.voidedById]),
+      CanSeeCost(session?.permissions),
     );
   },
 });

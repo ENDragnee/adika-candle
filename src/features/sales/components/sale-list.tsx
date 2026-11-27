@@ -41,14 +41,20 @@ import {
   ResolveDateRange,
 } from "@/lib/date-range";
 import type { ExportColumn } from "@/lib/export/export-column";
+import type { SaleUnitMode } from "@/lib/feature-flags/flags";
+import { useSaleUnitMode } from "@/lib/feature-flags/use-flags";
 import { FormatDateTime, FormatMoney, Pluralize } from "@/lib/format";
-import { FormatPacking } from "@/lib/packing";
+import {
+  FormatPacking,
+  FormatSaleQuantity,
+  FormatSaleUnits,
+} from "@/lib/packing";
 import { MAX_PAGE_SIZE } from "@/lib/pagination";
 import { useDebounce } from "@/lib/use-debounce";
 import { usePagination } from "@/lib/use-pagination";
 import { cn } from "@/lib/utils";
 import { useSales } from "../hooks/use-sales";
-import { PAYMENT_TYPE_META } from "../labels";
+import { PAYMENT_TYPE_META, SaleUnitPriceLabel } from "../labels";
 import { FetchSales, type SalesQueryParams } from "../services/sale.service";
 import type { SaleDTO } from "../validators/sale.schema";
 import { RestoreSaleDialog } from "./restore-sale-dialog";
@@ -76,12 +82,14 @@ function SaleActions({
   canRestore,
   lockedThrough,
   linkBase,
+  canSeeCost,
 }: {
   sale: SaleDTO;
   canVoid: boolean;
   canRestore: boolean;
   lockedThrough: string | null;
   linkBase: string;
+  canSeeCost: boolean;
 }) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isVoidOpen, setIsVoidOpen] = useState(false);
@@ -129,6 +137,7 @@ function SaleActions({
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         linkBase={linkBase}
+        canSeeCost={canSeeCost}
       />
       {canVoid && (
         <VoidSaleDialog
@@ -155,6 +164,8 @@ function BuildColumns({
   canRestore,
   lockedThrough,
   linkBase,
+  canSeeCost,
+  mode,
 }: {
   showProduct: boolean;
   showCustomer: boolean;
@@ -162,6 +173,8 @@ function BuildColumns({
   canRestore: boolean;
   lockedThrough: string | null;
   linkBase: string;
+  canSeeCost: boolean;
+  mode: SaleUnitMode;
 }): DataTableColumn<SaleDTO>[] {
   return [
     {
@@ -207,9 +220,9 @@ function BuildColumns({
       header: "Quantity",
       cell: (sale) => (
         <span className="flex flex-col tabular-nums">
-          <span>{FormatPacking(sale.cartons)}</span>
+          <span>{FormatSaleQuantity(sale, mode)}</span>
           <span className="text-xs text-muted-foreground">
-            {FormatMoney(sale.pricePerCarton)} / carton
+            {SaleUnitPriceLabel(sale)}
           </span>
         </span>
       ),
@@ -259,6 +272,7 @@ function BuildColumns({
           canRestore={canRestore}
           lockedThrough={lockedThrough}
           linkBase={linkBase}
+          canSeeCost={canSeeCost}
         />
       ),
       className: "w-10",
@@ -273,7 +287,13 @@ const exportColumns: ExportColumn<SaleDTO>[] = [
   { header: "SKU", value: (sale) => sale.productSku },
   { header: "Customer", value: (sale) => sale.customerName ?? "Walk-in" },
   { header: "Cartons", value: (sale) => sale.cartons },
+  {
+    header: "Packets",
+    value: (sale) =>
+      sale.inputUnitName === "PACKET" ? sale.inputQuantity : "",
+  },
   { header: "Price / carton", value: (sale) => sale.pricePerCarton },
+  { header: "Price / packet", value: (sale) => sale.pricePerPacket },
   { header: "Total", value: (sale) => sale.totalAmount },
   {
     header: "Payment",
@@ -313,8 +333,12 @@ export function SaleList({
   linkBase = "/manager",
   // The Inventory Manager sees each sale's price but no money totals.
   showMoneySummary = true,
+  // product:cost: shows each sale's profit in its details. Off by default;
+  // the API sends no cost without it anyway.
+  canSeeCost = false,
 }: {
   showMoneySummary?: boolean;
+  canSeeCost?: boolean;
   createdById?: string;
   productId?: string;
   customerId?: string;
@@ -364,6 +388,7 @@ export function SaleList({
     isLoading,
     isFetching,
   } = useSales({ ...query, ...pager.params });
+  const mode = useSaleUnitMode();
 
   const columns = BuildColumns({
     showProduct: !productId,
@@ -372,6 +397,8 @@ export function SaleList({
     canRestore,
     lockedThrough,
     linkBase,
+    canSeeCost,
+    mode,
   });
 
   // Any filter change goes back to page 1.
@@ -512,8 +539,12 @@ export function SaleList({
             value={Pluralize(summary.saleCount, "sale")}
           />
           <SummaryStat
-            label="Cartons"
-            value={FormatPacking(summary.totalCartons)}
+            label={mode === "PACKET" ? "Packets" : "Cartons"}
+            value={
+              mode === "CARTON"
+                ? FormatPacking(summary.totalCartons)
+                : FormatSaleUnits(summary.totalCartons, mode)
+            }
           />
           {showMoneySummary && (
             <>

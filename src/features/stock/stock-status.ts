@@ -23,10 +23,16 @@ export type StockStatus = (typeof STOCK_STATUSES)[number];
 export const CRITICAL_RATIO = 0.5;
 export const OVERSTOCKED_RATIO = 3;
 
+// Packet sales store kg to 12 dp (a packet of Normal is 7 ÷ 30 kg, which
+// repeats), so a product sold out packet by packet can sit a hair off
+// zero. Anything under this — far below one piece (≈ 0.029 kg) — is zero.
+const ZERO_KG = 1e-6;
+
 export function ClassifyStock(
-  quantityKg: number,
+  rawQuantityKg: number,
   thresholdKg: number | null,
 ): StockStatus {
+  const quantityKg = Math.abs(rawQuantityKg) < ZERO_KG ? 0 : rawQuantityKg;
   // A negative balance means more was sold than was ever recorded as
   // accepted — always a data problem to fix with a stock count, never a
   // normal "empty" state.

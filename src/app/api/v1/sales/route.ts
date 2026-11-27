@@ -1,3 +1,4 @@
+import { CanSeeCost } from "@/features/products/cost-access";
 import { RecordSale } from "@/features/sales/server/record-sale";
 import {
   CreateSaleInputSchema,
@@ -11,6 +12,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { CreateApiRoute } from "@/lib/api-handlers/rest.handler";
 import { AddBusinessDays, StartOfBusinessDate } from "@/lib/business-time";
 import { CartonsFromKg } from "@/lib/carton-decimal";
+import { FormatSaleQuantity } from "@/lib/packing";
 import {
   BuildPaginationMeta,
   PaginatedResponseSchema,
@@ -51,7 +53,7 @@ export const GET = CreateApiRoute({
   responseSchema: PaginatedResponseSchema(SaleSchema).extend({
     summary: SalesSummarySchema,
   }),
-  handler: async (query) => {
+  handler: async (query, session) => {
     const where = BuildWhere(query);
     // Totals always describe live sales — a voided sale never counts as
     // money taken, even when the list is showing voided rows.
@@ -110,7 +112,9 @@ export const GET = CreateApiRoute({
       ).toString();
 
     return {
-      data: sales.map((sale) => ToSaleDTO(sale, userNames)),
+      data: sales.map((sale) =>
+        ToSaleDTO(sale, userNames, CanSeeCost(session?.permissions)),
+      ),
       pagination: BuildPaginationMeta(query, total),
       summary: {
         saleCount: totals._count,
@@ -131,13 +135,16 @@ export const POST = CreateApiRoute({
   activity: ({ result }) => ({
     type: "sales",
     action: "sale.create",
-    message: `Sold ${result.cartons} ctn of ${result.productName} for ETB ${result.totalAmount}${result.customerName ? ` to ${result.customerName}` : ""}${result.paymentType === "LOAN" ? " on account" : ""}`,
+    message: `Sold ${FormatSaleQuantity(result, "BOTH")} of ${result.productName} for ETB ${result.totalAmount}${result.customerName ? ` to ${result.customerName}` : ""}${result.paymentType === "LOAN" ? " on account" : ""}`,
     entityType: "sale",
     entityId: result.id,
     entityLabel: result.referenceCode,
     changes: {
       product: result.productName,
       cartons: result.cartons,
+      ...(result.inputUnitName === "PACKET" && {
+        packets: result.inputQuantity,
+      }),
       totalAmount: result.totalAmount,
       paymentType: result.paymentType,
       customer: result.customerName,
@@ -147,6 +154,10 @@ export const POST = CreateApiRoute({
     // requiresAuth.status guarantees a session id here.
     const createdById = session?.id ?? "";
     const sale = await RecordSale(body, createdById);
-    return ToSaleDTO(sale, await LoadUserNames([sale.createdById]));
+    return ToSaleDTO(
+      sale,
+      await LoadUserNames([sale.createdById]),
+      CanSeeCost(session?.permissions),
+    );
   },
 });

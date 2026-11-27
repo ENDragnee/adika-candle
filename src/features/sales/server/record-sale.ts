@@ -1,14 +1,15 @@
 import { Prisma } from "@/generated/prisma/client";
-import { CartonsString, KgFromCartons } from "@/lib/carton-decimal";
+import { CartonsFromKg, CartonsString } from "@/lib/carton-decimal";
+import { GetSaleUnitMode } from "@/lib/feature-flags/server";
 import { GenerateCode } from "@/lib/generate-code";
 import { ApplyLoanDelta, ApplyStockDelta } from "@/lib/ledger-balance";
-import { KG_PER_CARTON } from "@/lib/packing";
 import { prisma } from "@/lib/prisma";
 import { DomainError } from "@/lib/server/domain-error";
 import {
   type CreateSaleInput,
   WITH_SALE_RELATIONS_INCLUDE,
 } from "../validators/sale.schema";
+import { AssertSaleUnitsAllowed, SaleQuantity } from "./sale-quantity";
 
 const MAX_REFERENCE_CODE_ATTEMPTS = 5;
 
@@ -79,6 +80,8 @@ async function PostOnAccount(
 }
 
 export async function RecordSale(input: CreateSaleInput, createdById: string) {
+  AssertSaleUnitsAllowed(await GetSaleUnitMode(), input);
+
   const product = await prisma.product.findUnique({
     where: { id: input.productId },
   });
@@ -125,10 +128,11 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
     );
   }
 
-  const cartons = new Prisma.Decimal(input.cartons);
-  const kgPerCarton = KG_PER_CARTON[product.cartonSize];
-  const quantityKg = KgFromCartons(cartons, product.cartonSize);
-  // cartons × price per carton, to the cent — the figure the seller quoted.
+  const { quantityKg, inputUnitName, inputQuantity, inputRatioToKg } =
+    SaleQuantity(input, product.cartonSize);
+  const requestedCartons = CartonsFromKg(quantityKg, product.cartonSize);
+  // cartons × price per carton (packets × carton price ÷ 30), to the cent
+  // — the figure the seller quoted.
   const totalAmount = quantityKg
     .times(activePrice.amountPerKg)
     .toDecimalPlaces(2);
@@ -143,14 +147,18 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
             where: { productId: input.productId },
           });
           const available = balance?.quantityKg ?? new Prisma.Decimal(0);
-          if (available.lessThan(quantityKg)) {
+          // Compared in cartons (6 dp, finer than a piece) so the kg
+          // remainder packet sales leave behind (7 ÷ 30 repeats) can't
+          // block selling the last packet.
+          const availableCartons = CartonsFromKg(available, product.cartonSize);
+          if (availableCartons.lessThan(requestedCartons)) {
             throw new DomainError(
               "Not enough stock on hand for this sale",
               409,
               "INSUFFICIENT_STOCK",
               {
                 availableCartons: CartonsString(available, product.cartonSize),
-                requestedCartons: cartons.toString(),
+                requestedCartons: requestedCartons.toString(),
               },
             );
           }
@@ -166,9 +174,9 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
             referenceCode,
             productId: input.productId,
             customerId: customer.id,
-            inputQuantity: cartons,
-            inputUnitName: "CARTON",
-            inputRatioToKg: kgPerCarton,
+            inputQuantity,
+            inputUnitName,
+            inputRatioToKg,
             quantityKg,
             unitPriceAtSale: activePrice.amountPerKg,
             totalAmount,
@@ -189,9 +197,9 @@ export async function RecordSale(input: CreateSaleInput, createdById: string) {
             type: "SALE",
             quantityKg: quantityKg.negated(),
             balanceAfterKg,
-            inputQuantity: cartons,
-            inputUnitName: "CARTON",
-            inputRatioToKg: kgPerCarton,
+            inputQuantity,
+            inputUnitName,
+            inputRatioToKg,
             saleId: sale.id,
             createdById,
           },

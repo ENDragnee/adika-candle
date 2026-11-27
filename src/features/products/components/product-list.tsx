@@ -43,7 +43,7 @@ function Missing({ children }: { children: React.ReactNode }) {
   );
 }
 
-const columns: DataTableColumn<ProductDTO>[] = [
+const allColumns: DataTableColumn<ProductDTO>[] = [
   {
     key: "name",
     header: "Product",
@@ -122,7 +122,7 @@ const columns: DataTableColumn<ProductDTO>[] = [
   },
 ];
 
-const exportColumns: ExportColumn<ProductDTO>[] = [
+const allExportColumns: ExportColumn<ProductDTO>[] = [
   { header: "Name", value: (product) => product.name },
   { header: "SKU", value: (product) => product.sku },
   { header: "Category", value: (product) => product.category.name },
@@ -138,7 +138,19 @@ const exportColumns: ExportColumn<ProductDTO>[] = [
   },
 ];
 
-export function ProductList() {
+// Columns derived from cost (cost and margin), hidden without product:cost.
+const COST_COLUMN_KEYS = new Set(["cost", "margin"]);
+const COST_EXPORT_HEADERS = new Set(["Cost / carton", "Margin %"]);
+
+export function ProductList({ canSeeCost }: { canSeeCost: boolean }) {
+  const columns = canSeeCost
+    ? allColumns
+    : allColumns.filter((column) => !COST_COLUMN_KEYS.has(column.key));
+  const exportColumns = canSeeCost
+    ? allExportColumns
+    : allExportColumns.filter(
+        (column) => !COST_EXPORT_HEADERS.has(column.header),
+      );
   const list = useListParams<"name" | "sku" | "createdAt">("name");
   const { data: result, isLoading, isFetching } = useProducts(list.params);
 

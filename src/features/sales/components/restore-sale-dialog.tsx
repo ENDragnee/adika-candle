@@ -11,8 +11,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useSaleUnitMode } from "@/lib/feature-flags/use-flags";
 import { FormatMoney } from "@/lib/format";
-import { FormatPacking } from "@/lib/packing";
+import { FormatSaleQuantity } from "@/lib/packing";
 import { useRestoreSale } from "../hooks/use-sales";
 import type { SaleDTO } from "../validators/sale.schema";
 
@@ -27,6 +28,7 @@ export function RestoreSaleDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const mode = useSaleUnitMode();
   const [reason, setReason] = useState("");
   const restoreSale = useRestoreSale(sale.id);
   const trimmed = reason.trim();
@@ -51,7 +53,9 @@ export function RestoreSaleDialog({
           </DialogHeader>
           <ul className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3 text-sm">
             <li>
-              <span className="font-medium">{FormatPacking(sale.cartons)}</span>{" "}
+              <span className="font-medium">
+                {FormatSaleQuantity(sale, mode)}
+              </span>{" "}
               of {sale.productName} is taken out of stock again.
             </li>
             {sale.paymentType === "LOAN" && sale.customerName && (

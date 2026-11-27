@@ -36,6 +36,96 @@ playful motion to go. This reverses most of Epic 16 and Epic 22's motion:
 Dialog/menu fade-and-zoom (shadcn defaults, 100ms) and skeleton pulse are
 kept — they're standard and brief.
 
+## 2026-11-27 — Inventory Manager sees price, never cost or margin
+
+Request: "Limit the product view of the inventory. They can't see cost nor
+margin. Only price." The Inventory Manager holds `product:read`, which
+opens `/manager/products` and its detail page, and those showed cost,
+margin and a Cost history tab. Per-sale details also exposed cost via
+`costPerKgAtSale`. The API sent cost to anyone with `product:read`.
+
+- **New permission `product:cost` ("View costs").** It is a separate
+  permission, not a role-name check, so custom roles can be given it or
+  not. Manager and Admin get it through the seed's "everything" lists;
+  the Inventory Manager doesn't. `product:read` now means catalog +
+  prices. Re-run `pnpm db:seed`. Custom roles made before this don't
+  get it automatically; grant it on Roles if they should see cost.
+- **Enforced on the server.** `ToProductDTO` and `ToSaleDTO` take a
+  required `showCost` argument (`CanSeeCost(session.permissions)`,
+  `src/features/products/cost-access.ts`). Without it, `currentCost` and
+  `costPerKgAtSale` come back `null`. The argument is required so a new
+  route can't forget it. We kept one DTO with nullable fields instead of
+  a second, cost-free DTO: the fields were already nullable ("not set"),
+  so the response schemas and clients didn't change.
+- **Cost endpoints.** `GET /products/[id]/costs` now needs `product:cost`
+  (it used to need `product:manage`). `POST` needs `product:manage` and
+  `product:cost`. `requiresAuth`'s `string[]` means any-of, so the
+  handler checks the second permission itself.
+- **GraphQL.** `profitability` needs `product:cost` as well as
+  `analytics:read`. `dashboard` drops the "has no cost" attention items
+  without it. The Inventory Manager has no `analytics:read`, so this only
+  matters for custom roles.
+- **UI follows the same permission.** Server pages pass `canSeeCost` to
+  `ProductList` (cost and margin columns and CSV columns),
+  `ProductDetail` (cost and margin cards, Cost history tab), `SaleList` →
+  `SaleDetailsDialog` (Profit row), `CustomerProfile`, `AnalyticsHub`
+  (Profitability tab) and `ManagerDashboard`. The Profit row was gated
+  by `linkBase === "/manager"` before. That gate was wrong, because the
+  Inventory Manager can open the `/manager/products` pages. The
+  tutorial's pricing-and-costing section now needs `product:manage` or
+  `product:cost`, not `product:read`.
+
+## 2026-11-27 — Sale unit mode flag (OpenFeature)
+
+Requested: sales can be entered in cartons, packets or both, chosen by a
+feature flag managed with OpenFeature.
+
+- **One string flag, `sale-unit-mode`:** `CARTON` | `PACKET` | `BOTH`.
+  - Default `CARTON`, which is the 2026-11-25 behaviour.
+  - `BOTH` means one sale can mix units (3 cartons + 12 packets), not a
+    per-sale unit picker.
+  - Stock accept stays cartons-only. The flag covers sales only.
+- **Backed by the SystemSetting table.** A custom OpenFeature server
+  provider (`SystemSettingsProvider`) reads the `features` group through
+  `GetSystemSettings()`.
+  - The Admin changes the flag in /manager/system. This needs
+    `system:manage` and is activity-logged.
+  - The change takes effect without a redeploy: at once on the instance
+    that saved it, and within the 5 s cache on others.
+  - Considered: flagd. It needs a sidecar process and a gRPC dependency for
+    one flag, and the Admin couldn't change it from the app.
+  - Considered: an env-backed in-memory provider. Changing it needs a
+    restart.
+- **The browser gets the server's value.** The dashboard layout evaluates
+  the flag and seeds a web-SDK `InMemoryProvider`
+  (`FeatureFlagProvider`).
+  - That provider has no async init, so SSR and hydration render the same
+    unit.
+  - `router.refresh()` after a save pushes the new value with
+    `putConfiguration`.
+- **The server never trusts the client.** `RecordSale` re-reads the flag.
+  A unit the mode turns off gets 400 `UNIT_NOT_ALLOWED`. The form then
+  refreshes to the new mode.
+- **Void and restore ignore the flag.** They replay the sale's own
+  snapshot.
+- **Packet price is derived:** carton price ÷ 30. No new price column.
+  Totals stay `quantityKg × amountPerKg`, rounded to the cent.
+- **Snapshot rule:**
+  - A sale with no packets is stored exactly as before:
+    `inputUnitName "CARTON"`, quantity in cartons.
+  - Any packets make it `inputUnitName "PACKET"`, with `inputQuantity` =
+    total packets.
+  - `quantityKg` is computed from that whole count in one division, at
+    12 dp. 7 ÷ 30 kg per packet repeats, so a rounded per-packet ratio
+    would drift. `inputRatioToKg` is informational there.
+  - Display follows the snapshot, not the current mode, so old sales read
+    the same after a switch (`FormatSaleQuantity`).
+- **Sub-piece residue.** Packet sales can leave balances a hair off zero.
+  - The oversell check compares in 6-dp cartons.
+  - `ClassifyStock` treats |kg| < 1e-6 as zero.
+- **Defaults follow the mode:** reports default to packets when the mode
+  is `PACKET`, until the user picks a unit.
+
 ## 2026-11-25 — Cartons only, automatic wax use, under-production check
 
 Requested simplification: stock and sales are entered in cartons only;
