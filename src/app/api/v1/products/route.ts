@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { CanSeeCost } from "@/features/products/cost-access";
 import {
+  PINNED_PRODUCT_NAMES,
+  PinnedPageWindow,
+  SortPinnedFirst,
+} from "@/features/products/product-order";
+import {
   ACTIVE_PRICE_INCLUDE,
   CreateProductInputSchema,
   ProductQuerySchema,
@@ -40,23 +45,52 @@ export const GET = CreateApiRoute({
   requiresAuth: { status: true, permission: "product:read" },
   responseSchema: PaginatedResponseSchema(ProductSchema),
   handler: async (query, session) => {
-    const where: Prisma.ProductWhereInput | undefined = query.search
+    const where: Prisma.ProductWhereInput = query.search
       ? {
           OR: [
             { name: { contains: query.search, mode: "insensitive" } },
             { sku: { contains: query.search, mode: "insensitive" } },
           ],
         }
-      : undefined;
-    const [products, total] = await Promise.all([
+      : {};
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] = [
+      { [query.sort]: query.dir },
+      { id: "asc" },
+    ];
+    // Pinned products (Marel, Plus, Color) come first whatever the sort.
+    // Prisma can't order by a custom list, so they're fetched on their
+    // own (there are only a few) and the rest is paginated after them —
+    // see docs/DECISIONS.md, "Pinned products".
+    const isPinned: Prisma.ProductWhereInput = {
+      OR: PINNED_PRODUCT_NAMES.map((name) => ({
+        name: { equals: name, mode: "insensitive" },
+      })),
+    };
+    const [pinnedRows, total] = await Promise.all([
       prisma.product.findMany({
-        where,
-        orderBy: [{ [query.sort]: query.dir }, { id: "asc" }],
+        where: { AND: [where, isPinned] },
+        orderBy,
         include: ACTIVE_PRICE_INCLUDE,
-        ...ToSkipTake(query),
       }),
       prisma.product.count({ where }),
     ]);
+    const pinned = SortPinnedFirst(pinnedRows);
+    const { skip, take } = ToSkipTake(query);
+    const page = PinnedPageWindow(skip, take, pinned.length);
+    const rest =
+      page.restTake > 0
+        ? await prisma.product.findMany({
+            where: { AND: [where, { NOT: isPinned }] },
+            orderBy,
+            include: ACTIVE_PRICE_INCLUDE,
+            skip: page.restSkip,
+            take: page.restTake,
+          })
+        : [];
+    const products = [
+      ...pinned.slice(page.pinnedStart, page.pinnedEnd),
+      ...rest,
+    ];
     return {
       data: products.map((product) =>
         ToProductDTO(product, CanSeeCost(session?.permissions)),

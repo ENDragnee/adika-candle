@@ -12,6 +12,39 @@ undo.
 
 ---
 
+## 2026-11-27 — Pinned products: Marel, Plus, Color first
+
+The owner wants three products listed first on Sales and Products, in
+this order: **Marel**, **Plus**, **Color**. Every other product follows
+in the list's normal order (name by default).
+
+- **Exact names.** They're matched on the product name, case-insensitive
+  and trimmed. They're not prefixes: "Marel 7kg" is not pinned. "Plus" is
+  the product called Plus, not the `PLUS` carton size. "Color" is the
+  product called Color, not a candle color.
+- **One source.** The list and the helpers live in
+  `src/features/products/product-order.ts` (client-safe):
+  `PINNED_PRODUCT_NAMES`, `PinnedProductRank`, `SortPinnedFirst`,
+  `PinnedPageWindow`.
+- **Ordered on the server.** `GET /api/v1/products` is paginated, so a
+  client-side sort could miss pinned products not on page 1. Every
+  product list and picker (Products list, Record sale picker, Sales
+  product filter) reads that endpoint, so they all get the order.
+- **How.** Prisma can't order by a custom list. We considered a raw
+  `ORDER BY CASE ...` query, but it would mean rewriting the search
+  `where` in SQL. Instead the route:
+  1. Fetches the pinned products that match the search (a handful)
+     and sorts them by rank with `SortPinnedFirst`.
+  2. Paginates the rest (`NOT` pinned) with `skip`/`take` shifted by the
+     pinned count (`PinnedPageWindow`).
+  3. Concatenates the two. `total` is a plain count over the search.
+- **Pinned whatever the sort.** Pinned products stay on top even when
+  the user sorts by SKU, date or name descending; the chosen sort only
+  orders the rest. "Must be first" was the request, with no exception.
+- The DB match is `equals` + `mode: "insensitive"`, which doesn't trim.
+  Names are trimmed by the create/update Zod schemas, so stored names
+  have no extra spaces.
+
 ## 2026-11-27 — Corporate motion pass
 
 The owner is moving the UI toward a corporate look and asked for the
